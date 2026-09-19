@@ -21,6 +21,7 @@ RUNTIME_FILES = [
     Path("scripts/dependency_guard.py"),
     Path("scripts/risk_classifier.py"),
     Path("scripts/integration_guard.py"),
+    Path("scripts/completion_gate.py"),
 ]
 
 RUNTIME_DIRS = [

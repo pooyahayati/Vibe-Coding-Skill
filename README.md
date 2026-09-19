@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.3.1-blue)
+![Version](https://img.shields.io/badge/version-0.4.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -178,6 +178,40 @@ python -m unittest discover -s tests -p "test_*.py"
 python scripts/evaluate_agent_output.py agent-result.json --json
 ```
 
+### Real-project validation
+
+```bash
+python scripts/run_project_validations.py
+```
+
+Representative temporary Git repositories cover a tiny static change, brownfield feature work, authentication, destructive production migration, and a multi-module payment integration.
+
+### Failure injection
+
+```bash
+python scripts/run_failure_injections.py
+```
+
+This deliberately exercises prompt injection, hallucinated packages, vulnerable dependency evidence, stale graphs, and unsupported `Done` claims.
+
+### Completion evidence gate
+
+```bash
+python scripts/completion_gate.py completion-report.json --json
+```
+
+A `Done` report without acceptance criteria and passing evidence is blocked.
+
+### Agent benchmark
+
+Actual agent results can be aggregated without inventing results for agents that were not run:
+
+```bash
+python scripts/benchmark_agent_outputs.py benchmark-results --json
+```
+
+See `benchmarks/README.md` for the blind-run protocol.
+
 ## External contract tests
 
 Normal CI is deterministic. Scheduled/manual live contracts smoke-test real registries, OSV, Graphify, and Trivy separately so external outages do not make ordinary PRs flaky.
@@ -208,6 +242,8 @@ Vibe-Coding-Skill/
 ├── config/
 ├── assets/templates/
 ├── evals/
+├── validation/
+├── benchmarks/
 ├── agents/
 ├── skills/vibe-coding-skill/   # generated portable mirror
 ├── tests/
@@ -222,7 +258,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.3.1`
+Current version: `0.4.0`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 

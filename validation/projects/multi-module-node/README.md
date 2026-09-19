@@ -1,0 +1,1 @@
+# Multi-module Node Fixture\n\nAPI and billing modules for integration validation.\n

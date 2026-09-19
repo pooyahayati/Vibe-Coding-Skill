@@ -1,0 +1,1 @@
+FROM node:22-alpine\nWORKDIR /app\nCOPY . .\n

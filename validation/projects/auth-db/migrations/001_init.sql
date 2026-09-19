@@ -1,0 +1,1 @@
+CREATE TABLE legacy_customer (id INTEGER PRIMARY KEY);\n

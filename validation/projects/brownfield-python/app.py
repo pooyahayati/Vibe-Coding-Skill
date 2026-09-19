@@ -1,0 +1,1 @@
+def health():\n    return {"status": "ok"}\n

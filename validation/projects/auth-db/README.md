@@ -1,0 +1,1 @@
+# Auth DB Fixture\n\nAuthentication and database migration validation fixture.\n

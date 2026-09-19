@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Git. Graphify and Trivy are recommended for medium/high-risk projects. Network access is needed for package-registry, OSV, GitHub, or tool-update checks.
 metadata:
   author: "Pooya Hayati"
-  version: "0.3.1"
+  version: "0.4.0"
 ---
 
 # Vibe Coding Skill
@@ -228,7 +228,27 @@ Never report Done without evidence appropriate to the change.
 
 Evidence may include test command/result, build/lint/typecheck, reproduction before/after, security scan, migration validation, deployment smoke check, or graph drift check.
 
+For a structured completion report, use:
+
+`python scripts/completion_gate.py report.json --json`
+
+A Done report with missing acceptance criteria, no passing evidence, or active blockers must be blocked.
+
 If evidence is unavailable, report the task as unverified rather than complete.
+
+## Validation discipline
+
+The skill itself must be tested against representative projects and deliberate failure conditions.
+
+Maintainer validation:
+
+`python scripts/run_project_validations.py`
+
+`python scripts/run_failure_injections.py`
+
+Live agent behavior must be benchmarked separately from deterministic policy tests. Do not claim Codex, Claude Code, or another agent passed unless raw outputs from an actual run were scored.
+
+Read `references/validation-and-benchmarking.md`.
 
 ## Debugging
 
@@ -287,6 +307,7 @@ Load only what is needed:
 - `references/execution-and-verification.md`
 - `references/bootstrap-and-evals.md`
 - `references/risk-classifier-and-integrations.md`
+- `references/validation-and-benchmarking.md`
 
 ## Bundled utilities
 
@@ -298,6 +319,7 @@ Runtime utilities shipped with the portable skill:
 - `scripts/dependency_guard.py`
 - `scripts/risk_classifier.py`
 - `scripts/integration_guard.py`
+- `scripts/completion_gate.py`
 
 Repository-maintainer utilities:
 
@@ -306,6 +328,9 @@ Repository-maintainer utilities:
 - `scripts/live_dependency_evals.py`
 - `scripts/run_evals.py`
 - `scripts/evaluate_agent_output.py`
+- `scripts/run_project_validations.py`
+- `scripts/run_failure_injections.py`
+- `scripts/benchmark_agent_outputs.py`
 - `scripts/validate_skill.py`
 - `scripts/validate_evals.py`
 - `scripts/sync_package.py`

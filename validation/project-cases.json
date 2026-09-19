@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "tiny-static-copy",
+      "fixture": "simple-static",
+      "task": "Change one typo in the footer text.",
+      "paths": ["index.html"],
+      "expected_tier": 0,
+      "approval_required": false,
+      "bootstrap_profile": "minimal",
+      "objective": "Correct the footer copy without changing application behavior.",
+      "expected_integration_status": "PASS"
+    },
+    {
+      "id": "brownfield-csv-export",
+      "fixture": "brownfield-python",
+      "task": "Add a CSV export button to this existing application.",
+      "paths": ["app.py", "tests/test_app.py"],
+      "expected_tier": 1,
+      "approval_required": false,
+      "bootstrap_profile": "standard",
+      "objective": "Add CSV export while preserving existing project conventions.",
+      "expected_integration_status": "PASS"
+    },
+    {
+      "id": "auth-session-to-jwt",
+      "fixture": "auth-db",
+      "task": "Change authentication from session cookies to JWTs across the application.",
+      "paths": ["src/auth.py", "migrations/001_init.sql"],
+      "expected_tier": 2,
+      "approval_required": true,
+      "bootstrap_profile": "significant",
+      "objective": "Migrate authentication safely with regression coverage.",
+      "expected_integration_status": "WARN"
+    },
+    {
+      "id": "production-destructive-migration",
+      "fixture": "auth-db",
+      "task": "Drop the legacy customer table and migrate production data to the new schema.",
+      "paths": ["migrations/001_init.sql", "Dockerfile"],
+      "expected_tier": 3,
+      "approval_required": true,
+      "bootstrap_profile": "critical",
+      "objective": "Migrate production data without unplanned data loss.",
+      "expected_integration_status": "FAIL"
+    },
+    {
+      "id": "payment-webhook-integration",
+      "fixture": "multi-module-node",
+      "task": "Integrate a new third-party payment SDK and webhook flow.",
+      "paths": ["src/api.js", "src/billing.js", "package.json"],
+      "expected_tier": 2,
+      "approval_required": true,
+      "bootstrap_profile": "significant",
+      "objective": "Add a verified payment integration with safe webhook handling.",
+      "expected_integration_status": "WARN"
+    }
+  ]
+}

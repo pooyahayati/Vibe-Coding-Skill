@@ -1,0 +1,1 @@
+export function invoiceTotal(items) { return items.reduce((n, x) => n + x.amount, 0); }\n

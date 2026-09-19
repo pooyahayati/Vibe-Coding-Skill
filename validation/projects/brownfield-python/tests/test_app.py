@@ -1,0 +1,1 @@
+from app import health\n\ndef test_health():\n    assert health()["status"] == "ok"\n
