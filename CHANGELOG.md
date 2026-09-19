@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 — Risk engine, project gate, expanded ecosystems, live eval contract
+
+- Added executable deterministic risk classifier.
+- Added integrated project gate for risk, Graphify freshness, Trivy evidence, Git state, and GitHub detection.
+- Expanded dependency verification to Maven Central, NuGet, and Go in addition to PyPI/npm/crates.io.
+- Added live agent evaluation contract and deterministic scorer.
+- Added scenario-level control contracts and classifier regression tests.
+- Expanded portable package contents and CI validation.
+
+# Changelog
+
 ## 0.2.0 — Bootstrap, dependency guard, evals, and portable packaging
 
 - Added non-destructive adaptive project bootstrap.
