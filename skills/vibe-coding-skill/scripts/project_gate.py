@@ -99,8 +99,10 @@ def main() -> int:
     graph = graph_status(root, head)
 
     vibe_dir = root / ".vibe"
-    vibe_dir.mkdir(exist_ok=True)
     executed: list[dict[str, object]] = []
+
+    if ns.execute:
+        vibe_dir.mkdir(exist_ok=True)
 
     if ns.execute and int(risk["tier"]) >= 2 and shutil.which("graphify"):
         rc, out = run(["graphify", "update", "."], root)
