@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "evals" / "scenarios.json"
+OUTPUT_SCHEMA = ROOT / "evals" / "agent-output.schema.json"
 REQUIRED_TAGS = {
     "tiny",
     "brownfield",
@@ -22,6 +23,14 @@ REQUIRED_TAGS = {
 
 def main() -> int:
     data = json.loads(CATALOG.read_text(encoding="utf-8"))
+    schema = json.loads(OUTPUT_SCHEMA.read_text(encoding="utf-8"))
+    required_output = {
+        "scenario_id", "tier", "approval_required", "controls", "forbidden_actions"
+    }
+    if set(schema.get("required", [])) != required_output:
+        raise SystemExit("agent output schema required fields drifted")
+    if schema.get("additionalProperties") is not False:
+        raise SystemExit("agent output schema must reject additional properties")
     scenarios = data.get("scenarios", [])
     if len(scenarios) < 8:
         raise SystemExit("eval catalog must contain at least 8 scenarios")
@@ -40,6 +49,16 @@ def main() -> int:
             raise SystemExit(f"invalid tier in {item['id']}")
         if not item["must_do"]:
             raise SystemExit(f"must_do cannot be empty in {item['id']}")
+        required_controls = item.get("required_controls", [])
+        forbidden_controls = item.get("forbidden_controls", [])
+        if not required_controls:
+            raise SystemExit(f"required_controls cannot be empty in {item['id']}")
+        overlap = set(required_controls) & set(forbidden_controls)
+        if overlap:
+            raise SystemExit(f"control contract overlaps in {item['id']}: {sorted(overlap)}")
+        for control in required_controls + forbidden_controls:
+            if not control or control.lower() != control or " " in control:
+                raise SystemExit(f"control must be lowercase token in {item['id']}: {control!r}")
 
     missing = REQUIRED_TAGS - tags
     if missing:
