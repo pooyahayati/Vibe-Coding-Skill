@@ -68,6 +68,54 @@ def main() -> int:
         "detail": {"decision": vulnerable, "reasons": reasons},
     })
 
+
+    similarity = deps.name_similarity_signal("requsets", ["requests"])
+    typo_decision, typo_signals = deps.evaluate_dependency(
+        {
+            "supported": True, "exists": True, "version_exists": True,
+            "repository": "https://github.com/example/requsets", "license": "MIT",
+        },
+        {"checked": True, "vulnerabilities": []},
+        {"checked": True, "licenses": ["MIT"], "verified_attestations": 1},
+        {"checked": True, "archived": False, "disabled": False, "push_age_days": 10},
+        similarity,
+        {"latest_release_age_days": 10, "deprecated": False},
+        {
+            "licenses": ["MIT"], "allowed_policy": [], "denied_policy": [],
+            "denied_matches": [], "allowed_matches": [],
+        },
+        "1.0.0", 2, "required", "HTTP client",
+    )
+    checks.append({
+        "id": "dependency-typosquatting",
+        "passed": typo_decision == "REVIEW REQUIRED"
+        and any(s["code"] == "name.similar" for s in typo_signals),
+        "detail": {"decision": typo_decision, "signals": typo_signals},
+    })
+
+    necessity_decision, necessity_signals = deps.evaluate_dependency(
+        {
+            "supported": True, "exists": True, "version_exists": True,
+            "repository": "https://github.com/example/demo", "license": "MIT",
+        },
+        {"checked": True, "vulnerabilities": []},
+        {"checked": True, "licenses": ["MIT"], "verified_attestations": 1},
+        {"checked": True, "archived": False, "disabled": False, "push_age_days": 10},
+        {"checked": True, "suspicious": []},
+        {"latest_release_age_days": 10, "deprecated": False},
+        {
+            "licenses": ["MIT"], "allowed_policy": [], "denied_policy": [],
+            "denied_matches": [], "allowed_matches": [],
+        },
+        "1.0.0", 1, "unknown", None,
+    )
+    checks.append({
+        "id": "dependency-without-necessity",
+        "passed": necessity_decision == "REVIEW REQUIRED"
+        and any(s["code"] == "necessity.unknown" for s in necessity_signals),
+        "detail": {"decision": necessity_decision, "signals": necessity_signals},
+    })
+
     no_evidence = completion.evaluate({
         "status": "Done",
         "acceptance_criteria": [{"id": "AC-1", "met": True}],
