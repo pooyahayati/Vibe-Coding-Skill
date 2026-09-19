@@ -1,5 +1,7 @@
 # Vibe Coding Skill
 
+[![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
+[![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
 ![Version](https://img.shields.io/badge/version-0.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -115,7 +117,17 @@ scripts/
 └── validate_skill.py
 ```
 
-These implement lightweight policy checks that are not worth outsourcing to another framework.
+### Doctor
+
+```bash
+python scripts/doctor.py --root /path/to/project --json
+```
+
+### Change budget
+
+```bash
+python scripts/change_budget.py --root /path/to/project --base main --json
+```
 
 ## Repository structure
 
