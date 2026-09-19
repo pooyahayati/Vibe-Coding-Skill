@@ -1,0 +1,35 @@
+name: Dependency Registry Smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 6 * * 3"
+
+jobs:
+  registry-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify official registry adapters
+        shell: bash
+        run: |
+          set -euo pipefail
+          check() {
+            set +e
+            python scripts/dependency_guard.py "$@" --json
+            rc=$?
+            set -e
+            if [ "$rc" -eq 2 ]; then
+              echo "Registry adapter rejected known package: $*"
+              exit 1
+            fi
+          }
+          check pypi requests --version 2.32.5
+          check npm zod --version 4.1.5
+          check crates serde --version 1.0.219
+          check maven org.slf4j:slf4j-api --version 2.0.17
+          check nuget Newtonsoft.Json --version 13.0.3
+          check go golang.org/x/text --version v0.29.0
