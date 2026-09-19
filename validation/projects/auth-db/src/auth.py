@@ -1,0 +1,1 @@
+def authorize(user, action):\n    return bool(user and action)\n

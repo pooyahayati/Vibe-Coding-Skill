@@ -1,0 +1,1 @@
+# Simple Static Site\n\nA one-page static site fixture.\n
