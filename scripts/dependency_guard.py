@@ -31,12 +31,12 @@ OSV_NAMES = {
 }
 
 DEPSDEV_SYSTEMS = {
-    "pypi": "PYPI",
-    "npm": "NPM",
-    "crates": "CARGO",
-    "maven": "MAVEN",
-    "nuget": "NUGET",
-    "go": "GO",
+    "pypi": "pypi",
+    "npm": "npm",
+    "crates": "cargo",
+    "maven": "maven",
+    "nuget": "nuget",
+    "go": "go",
 }
 
 
@@ -699,6 +699,8 @@ def evaluate_dependency(
 
     if osv.get("vulnerabilities"):
         add("review", "osv.vulnerable", "OSV reports known vulnerabilities for the requested version")
+    if depsdev.get("advisories"):
+        add("review", "depsdev.advisory", "deps.dev reports security advisories for the selected version")
     if not osv.get("checked"):
         add("review", "osv.unavailable", str(osv.get("warning") or "OSV evidence unavailable"))
 
