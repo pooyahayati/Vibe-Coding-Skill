@@ -43,3 +43,7 @@ Do not mechanically rewrite project documents after every command or commit.
 Update durable Git documents only when semantic content changed: objective, architecture, milestone/status, blockers/risks, setup, deployment, or other handoff-relevant facts.
 
 Operational timestamps, graph paths, scanner paths, and transient agent state stay local.
+
+## Resume integration
+
+For a fresh agent or after context loss, use `python scripts/resume_context.py --root . --write-local --json`. If local state is unreadable, inspect and repair it with `scripts/state_recovery.py` before trusting it. Repository evidence remains authoritative.
