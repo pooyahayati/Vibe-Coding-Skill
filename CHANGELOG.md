@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1 — Local-only tooling and clean project repositories
+
+- Moved Vibe Coding operational state from project-local `.vibe/` to `~/.vibe-coding/projects/<project-id>/`.
+- Added a Local Workspace Manager for graph, security, test artifacts, benchmarks, caches, worktrees, and state.
+- Added clone-local exclusions through `.git/info/exclude` without modifying project `.gitignore`.
+- Added Repository Purity Gate to block tracked/staged Graphify, Trivy, benchmark, coverage, and Vibe state artifacts.
+- Updated bootstrap, doctor, integration guard, stale-graph tests, and failure injection to use external local state.
+- Clarified that real product tests remain in Git while generated test/coverage reports remain local.
+- Added worktree-safe Git exclude path resolution.
+
 ## 0.4.0 — Real-project validation, failure injection, and agent benchmark
 
 - Added representative project validation fixtures and deterministic runner.
