@@ -17,6 +17,7 @@ REQUIRED_REFS = [
     "references/project-state-and-traceability.md",
     "references/execution-and-verification.md",
     "references/bootstrap-and-evals.md",
+    "references/risk-classifier-and-integrations.md",
 ]
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
@@ -54,6 +55,39 @@ def main() -> int:
         fail("description must be 1..1024 chars")
     if len(body.splitlines()) > 500:
         fail("SKILL.md exceeds recommended 500 lines")
+
+    version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    metadata_match = re.search(r'(?m)^  version:\\s*"([^"]+)"\\s*        if not (ROOT / rel).exists():
+            fail(f"missing reference: {rel}")
+        if rel not in text:
+            fail(f"SKILL.md does not reference {rel}")
+
+    for script in ("doctor.py", "change_budget.py", "graphify_compat.py", "trivy_compat.py", "bootstrap_project.py", "dependency_guard.py", "risk_classifier.py", "integration_guard.py", "validate_evals.py", "run_evals.py", "live_dependency_evals.py", "sync_package.py"):
+        path = ROOT / "scripts" / script
+        if not path.exists():
+            fail(f"missing script: scripts/{script}")
+        compile(path.read_text(encoding="utf-8"), str(path), "exec")
+
+    print("Vibe Coding Skill validation passed.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+, fm)
+    if not metadata_match:
+        fail("SKILL.md metadata.version is missing")
+    if metadata_match.group(1) != version:
+        fail(f"SKILL.md metadata.version {metadata_match.group(1)!r} != VERSION {version!r}")
+
+    plugin_path = ROOT / "plugin.json"
+    if not plugin_path.exists():
+        fail("plugin.json is missing")
+    plugin = json.loads(plugin_path.read_text(encoding="utf-8"))
+    if plugin.get("version") != version:
+        fail(f"plugin.json version {plugin.get('version')!r} != VERSION {version!r}")
+    if plugin.get("name") != name:
+        fail(f"plugin.json name {plugin.get('name')!r} != skill name {name!r}")
 
     for rel in REQUIRED_REFS:
         if not (ROOT / rel).exists():
