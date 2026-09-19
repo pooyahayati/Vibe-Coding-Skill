@@ -194,17 +194,20 @@ class BootstrapTests(unittest.TestCase):
             self.assertIn("Vibe Coding Skill local-only artifacts", exclude)
 
     def test_standard_skips_project_doc_without_product_facts(self):
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd:
             root = Path(td)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            env = os.environ.copy()
+            env["VIBE_CODING_HOME"] = hd
             cmd = [
                 sys.executable, str(ROOT / "scripts" / "bootstrap_project.py"),
                 "--root", str(root), "--profile", "standard",
                 "--objective", "Test objective", "--json",
             ]
-            out = subprocess.run(cmd, text=True, capture_output=True, check=True)
+            out = subprocess.run(cmd, text=True, capture_output=True, check=True, env=env)
             data = json.loads(out.stdout)
             self.assertFalse((root / "PROJECT.md").exists())
+            self.assertFalse((root / ".vibe").exists())
             self.assertTrue(any("PROJECT.md: insufficient" in item for item in data["skipped"]))
 
 
@@ -215,9 +218,10 @@ class IntegrationGuardTests(unittest.TestCase):
         path.chmod(path.stat().st_mode | stat.S_IEXEC)
 
     def test_tier2_reports_stale_graph_without_mutating_repo(self):
-        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as bindir:
+        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as hd:
             root = Path(td)
             binroot = Path(bindir)
+            local_home = Path(hd)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True)
             subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
             subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
@@ -225,8 +229,6 @@ class IntegrationGuardTests(unittest.TestCase):
             subprocess.run(["git", "add", "."], cwd=root, check=True)
             subprocess.run(["git", "commit", "-qm", "init"], cwd=root, check=True)
             head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
-            local_home = Path(td).parent / (Path(td).name + "-vibe-home")
-            local_home.mkdir(exist_ok=True)
             self._fake_exe(binroot, "graphify", 'echo "graphify 0.9.64"')
             self._fake_exe(binroot, "trivy", 'echo "Version: 0.74.0"')
             env = os.environ.copy()
