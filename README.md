@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -141,11 +141,34 @@ python scripts/bootstrap_project.py \
 
 The bootstrapper does not overwrite existing project documents by default and skips documents when it does not have enough real project context to populate them.
 
+### Risk classifier
+
+```bash
+python scripts/risk_classifier.py \
+  "Change authentication from sessions to JWT across the application" \
+  --json
+```
+
+### Integrated project gate
+
+```bash
+python scripts/project_gate.py \
+  --root /path/to/project \
+  --change "Refactor payment authorization" \
+  --base main \
+  --json
+```
+
+Add `--execute` only when you want the gate to run relevant installed tools such as `Graphify` and `Trivy`.
+
 ### Dependency Guard
 
 ```bash
 python scripts/dependency_guard.py pypi requests --version 2.32.5 --json
 python scripts/dependency_guard.py npm zod --version 4.1.5 --json
+python scripts/dependency_guard.py maven org.slf4j:slf4j-api --version 2.0.17 --json
+python scripts/dependency_guard.py nuget Newtonsoft.Json --version 13.0.3 --json
+python scripts/dependency_guard.py go golang.org/x/text --version v0.29.0 --json
 ```
 
 A missing package/version is rejected. Missing security/provenance evidence becomes `REVIEW REQUIRED`, not a false positive approval.
@@ -157,6 +180,7 @@ A missing package/version is rejected. Missing security/provenance evidence beco
 ```bash
 python scripts/validate_evals.py
 python -m unittest discover -s tests -p "test_*.py"
+python scripts/evaluate_agent_output.py agent-result.json --json
 ```
 
 ## Portable package
@@ -197,7 +221,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.2.0`
+Current version: `0.3.0`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 
