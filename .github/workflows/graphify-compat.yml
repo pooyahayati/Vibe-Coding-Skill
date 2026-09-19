@@ -2,6 +2,11 @@ name: Graphify Compatibility
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "config/toolchain.json"
+      - "scripts/graphify_compat.py"
+      - ".github/workflows/graphify-compat.yml"
   schedule:
     - cron: "17 5 * * 1"
 
@@ -18,7 +23,11 @@ jobs:
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
-      - name: Test latest stable Graphify
+      - name: Test latest stable Graphify on pull request
+        if: github.event_name == 'pull_request'
+        run: python scripts/graphify_compat.py --latest --json | tee graphify-compat.json
+      - name: Test and propose latest stable Graphify on scheduled/manual run
+        if: github.event_name != 'pull_request'
         run: python scripts/graphify_compat.py --latest --update-approved --json | tee graphify-compat.json
       - name: Detect toolchain change
         id: change
