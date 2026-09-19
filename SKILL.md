@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Git. Graphify and Trivy are recommended for medium/high-risk projects. Network access is needed for package-registry, OSV, GitHub, or tool-update checks.
 metadata:
   author: "Pooya Hayati"
-  version: "0.3.0"
+  version: "0.3.1"
 ---
 
 # Vibe Coding Skill
@@ -305,6 +305,7 @@ Repository-maintainer utilities:
 - `scripts/trivy_compat.py`
 - `scripts/live_dependency_evals.py`
 - `scripts/run_evals.py`
+- `scripts/evaluate_agent_output.py`
 - `scripts/validate_skill.py`
 - `scripts/validate_evals.py`
 - `scripts/sync_package.py`
