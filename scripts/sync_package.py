@@ -24,6 +24,9 @@ RUNTIME_FILES = [
     Path("scripts/completion_gate.py"),
     Path("scripts/local_workspace.py"),
     Path("scripts/repository_purity.py"),
+    Path("scripts/graph_provider.py"),
+    Path("scripts/github_traceability.py"),
+    Path("scripts/project_state.py"),
 ]
 
 RUNTIME_DIRS = [

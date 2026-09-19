@@ -22,11 +22,11 @@ For Tier 0 work, do not generate a graph merely for ceremony.
 
 ## Pre-change analysis
 
-When Graphify is available, use commands such as:
+Use the provider contract rather than calling Graphify directly:
 
-- `graphify query "<question>"`
-- `graphify path "<A>" "<B>"`
-- `graphify explain "<concept>"`
+- `python scripts/graph_provider.py query "<question>" --root .`
+- `python scripts/graph_provider.py path "<A>" "<B>" --root .`
+- `python scripts/graph_provider.py explain "<concept>" --root .`
 
 Then verify important conclusions in source.
 
@@ -40,7 +40,9 @@ After significant integration, update the graph, check freshness, reassess tests
 
 Typical command:
 
-`graphify update .`
+`python scripts/graph_provider.py refresh --root . --mode auto --json`
+
+The adapter refreshes Graphify in a shadow copy under the local Vibe workspace and keeps provider output outside the project repository.
 
 ## Graph state
 
@@ -93,3 +95,7 @@ Dynamic imports, reflection, generated code, queues, triggers, environment confi
 ## Repository purity
 
 Machine graph outputs are engineering artifacts, not source. Do not commit them. See `references/local-workspace-and-repository-purity.md`.
+
+## Provider boundary
+
+The stable runtime contract is documented in `references/graph-provider-contract.md`. Other skill components should depend on that contract rather than Graphify-specific paths or command details.

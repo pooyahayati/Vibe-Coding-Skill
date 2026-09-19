@@ -64,7 +64,9 @@ Do not add identifiers to tiny projects when they add more bookkeeping than valu
 
 When GitHub is available, use Issues for work, PRs for implementation/review, Actions for CI, and Releases for stable delivery.
 
-GitHub is an adapter, not a hard requirement.
+Use `scripts/github_traceability.py` for read-only snapshots, local requirement linkage, verification, and explicitly-applied issue creation.
+
+GitHub is an adapter, not a hard requirement. Local traceability state is an index/cache, not a replacement for GitHub objects.
 
 ## Drift checks
 
@@ -82,3 +84,7 @@ Before handoff verify tests/checks, current branch/PR, objective, blockers/risks
 ## Repository purity
 
 Before commit or push, run `python scripts/repository_purity.py --root . --json`. Tool-generated artifacts must not become tracked project files. See `references/local-workspace-and-repository-purity.md`.
+
+## Local state automation
+
+Use `python scripts/project_state.py capture --root . --json` for operational snapshots and `project_state.py drift` before handoff or risky continuation. Machine state stays local; update Git documents only when their semantic content changed. See `references/project-state-automation.md` and `references/github-traceability-automation.md`.

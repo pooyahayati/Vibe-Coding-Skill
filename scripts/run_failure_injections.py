@@ -91,9 +91,16 @@ def main() -> int:
         local = workspace.initialize(project)
         graph_state = Path(local["workspace"]) / "state" / "graph-state.json"
         graph_state.write_text(
-            json.dumps({"source_commit": "0" * 40, "provider": "graphify"}),
+            json.dumps({
+                "source_commit": "0" * 40,
+                "working_tree_fingerprint": "stale",
+                "provider": "graphify"
+            }),
             encoding="utf-8",
         )
+        graph_dir = Path(local["workspace"]) / "graph" / "graphify-out"
+        graph_dir.mkdir(parents=True, exist_ok=True)
+        (graph_dir / "graph.json").write_text('{"nodes":[],"links":[]}\n', encoding="utf-8")
         fake_exe(bindir, "graphify", 'echo "graphify 0.9.64"')
         fake_exe(bindir, "trivy", 'echo "Version: 0.74.0"')
         env = os.environ.copy()

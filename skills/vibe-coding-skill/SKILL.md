@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Git. Graphify and Trivy are recommended for medium/high-risk projects. Network access is needed for package-registry, OSV, GitHub, or tool-update checks.
 metadata:
   author: "Pooya Hayati"
-  version: "0.4.1"
+  version: "0.5.0"
 ---
 
 # Vibe Coding Skill
@@ -142,7 +142,15 @@ After significant changes:
 
 `Implement → Test → Graph Update → Drift Check → Regression Scope`
 
-Read `references/project-intelligence.md`.
+Use the provider contract for graph operations:
+
+`python scripts/graph_provider.py status --root <project> --json`
+
+`python scripts/graph_provider.py refresh --root <project> --mode auto --json`
+
+`python scripts/graph_provider.py query "<question>" --root <project>`
+
+Do not call provider-specific graph paths from other workflow components. Read `references/project-intelligence.md` and `references/graph-provider-contract.md`.
 
 ## Tool policy
 
@@ -226,6 +234,30 @@ For Tier 2+ work, or when tool/project state is uncertain:
 This check is read-only. It verifies Git/GitHub detectability, Graphify version/freshness from local workspace state, and Trivy availability without mutating the project.
 
 Read `references/risk-classifier-and-integrations.md`.
+
+## GitHub traceability
+
+When the project uses GitHub, preserve:
+
+`Requirement → Issue → Acceptance Criteria → PR → Tests → Release`
+
+Use `scripts/github_traceability.py` for snapshots, local traceability indexing, verification, and explicitly-applied issue creation. Mutation commands must remain dry-run unless the user has granted the relevant permission.
+
+Read `references/github-traceability-automation.md`.
+
+## Project state automation
+
+Capture operational state locally without generating repository churn:
+
+`python scripts/project_state.py capture --root <project> --json`
+
+Before handoff or risky continuation:
+
+`python scripts/project_state.py drift --root <project> --json`
+
+`python scripts/project_state.py handoff --root <project> --write-local`
+
+Update repository documents only when semantic project state changed. Read `references/project-state-automation.md`.
 
 ## Execution loop
 
@@ -324,6 +356,9 @@ Load only what is needed:
 - `references/risk-classifier-and-integrations.md`
 - `references/validation-and-benchmarking.md`
 - `references/local-workspace-and-repository-purity.md`
+- `references/graph-provider-contract.md`
+- `references/github-traceability-automation.md`
+- `references/project-state-automation.md`
 
 ## Bundled utilities
 
@@ -338,6 +373,9 @@ Runtime utilities shipped with the portable skill:
 - `scripts/completion_gate.py`
 - `scripts/local_workspace.py`
 - `scripts/repository_purity.py`
+- `scripts/graph_provider.py`
+- `scripts/github_traceability.py`
+- `scripts/project_state.py`
 
 Repository-maintainer utilities:
 

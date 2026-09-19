@@ -9,7 +9,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import local_workspace
+import graph_provider
+import github_traceability
 
 
 def run(cmd: list[str], cwd: Path) -> tuple[int, str]:
@@ -58,25 +59,11 @@ def main() -> int:
             _, status = run(["git", "status", "--porcelain"], root)
             result["git"] = {"installed": True, "head": head, "dirty": bool(status)}
 
-            state_path = local_workspace.state_path(root, "graph-state.json", create=False)
-            result["workspace"] = {
-                "path": str(local_workspace.project_workspace(root, create=False)),
-                "present": local_workspace.project_workspace(root, create=False).exists(),
-            }
-            if state_path.exists():
-                graph["state_file"] = str(state_path)
-                try:
-                    state = json.loads(state_path.read_text(encoding="utf-8"))
-                    source_commit = state.get("source_commit")
-                    stale = bool(source_commit and source_commit != head)
-                    graph["provider"] = state.get("provider")
-                    graph["provider_version"] = state.get("provider_version")
-                    graph["source_commit"] = source_commit
-                    graph["stale"] = stale
-                    if stale:
-                        problems.append("project graph may be stale")
-                except Exception as exc:
-                    problems.append(f"invalid graph state: {exc}")
+            graph_status = graph_provider.status(root)
+            graph.update(graph_status)
+            result["github"] = github_traceability.detect(root)
+            if graph_status.get("stale"):
+                problems.append("project graph may be stale")
 
     if ns.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))

@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.4.1-blue)
+![Version](https://img.shields.io/badge/version-0.5.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -146,6 +146,9 @@ The approved version is stored in `config/toolchain.json`.
 scripts/
 ├── local_workspace.py
 ├── repository_purity.py
+├── graph_provider.py
+├── github_traceability.py
+├── project_state.py
 ├── doctor.py
 ├── change_budget.py
 ├── integration_guard.py
@@ -184,13 +187,44 @@ The bootstrapper does not overwrite existing project documents by default and sk
 python scripts/risk_classifier.py "Change authentication from sessions to JWTs" --json
 ```
 
+### Graph provider
+
+```bash
+python scripts/graph_provider.py status --root /path/to/project --json
+python scripts/graph_provider.py refresh --root /path/to/project --mode auto --json
+python scripts/graph_provider.py query "What is affected by this auth change?" --root /path/to/project
+```
+
+Graphify runs against a local shadow copy and its output remains under `~/.vibe-coding/`, not inside the project repository.
+
+### GitHub traceability
+
+```bash
+python scripts/github_traceability.py status --root /path/to/project --json
+python scripts/github_traceability.py snapshot --root /path/to/project --json
+python scripts/github_traceability.py record REQ-014 --issue 42 --pr 57 --test "pytest" --root /path/to/project --json
+python scripts/github_traceability.py verify --requirement-id REQ-014 --root /path/to/project --json
+```
+
+Issue creation is dry-run unless `--apply` is explicitly supplied.
+
+### Project state automation
+
+```bash
+python scripts/project_state.py capture --root /path/to/project --json
+python scripts/project_state.py drift --root /path/to/project --json
+python scripts/project_state.py handoff --root /path/to/project --write-local
+```
+
+Operational state and handoff snapshots stay local. Durable project documents are only changed when their semantic content actually changes.
+
 ### Integration gate
 
 ```bash
 python scripts/integration_guard.py --root /path/to/project --tier 2 --json
 ```
 
-The integration gate is read-only and checks Git/GitHub context, Graphify version/freshness, and Trivy availability.
+The integration gate is read-only and checks Git/GitHub context, graph-provider freshness, and Trivy availability.
 
 ### Dependency Guard
 
@@ -295,7 +329,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.4.1`
+Current version: `0.5.0`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 

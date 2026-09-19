@@ -59,7 +59,39 @@ def contract_test(version: str) -> dict[str, object]:
         data = json.loads(graph_path.read_text(encoding="utf-8"))
         schema_ok = isinstance(data, (dict, list))
         checks.append({"command": "graph schema smoke check", "ok": schema_ok, "output": str(graph_path)})
-        return {"version": version, "ok": bool(schema_ok), "checks": checks}
+        if not schema_ok:
+            return {"version": version, "ok": False, "checks": checks}
+
+        nodes = data.get("nodes", []) if isinstance(data, dict) else []
+        labels = [
+            str(node.get("label") or node.get("id"))
+            for node in nodes
+            if isinstance(node, dict) and (node.get("label") or node.get("id"))
+        ]
+        if len(labels) < 2:
+            checks.append({"command": "graph node contract", "ok": False, "output": "expected at least two labeled nodes"})
+            return {"version": version, "ok": False, "checks": checks}
+
+        graph_arg = str(graph_path.resolve())
+        adapter_commands = [
+            ["uvx", "--from", package, "graphify", "query", "alpha", "--graph", graph_arg],
+            ["uvx", "--from", package, "graphify", "explain", labels[0], "--graph", graph_arg],
+            ["uvx", "--from", package, "graphify", "path", labels[0], labels[1], "--graph", graph_arg],
+        ]
+        for cmd in adapter_commands:
+            ok, out = run(cmd, root)
+            checks.append({"command": " ".join(cmd), "ok": ok, "output": out})
+            if not ok:
+                return {"version": version, "ok": False, "checks": checks}
+
+        (root / "sample.py").write_text(
+            "def alpha():\n    return beta()\n\ndef beta():\n    return 43\n",
+            encoding="utf-8",
+        )
+        update_cmd = ["uvx", "--from", package, "graphify", "update", "."]
+        ok, out = run(update_cmd, root)
+        checks.append({"command": " ".join(update_cmd), "ok": ok, "output": out})
+        return {"version": version, "ok": bool(ok), "checks": checks}
 
 
 def main() -> int:

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0 — Graph provider contract, GitHub traceability, and project state automation
+
+- Added a provider-neutral graph contract with Graphify as the default adapter.
+- Added local shadow-source graph refresh so Graphify output never needs to live in the user project working tree.
+- Added working-tree fingerprint freshness, including uncommitted and untracked non-ignored source changes.
+- Added local graph query/path/explain routing with stale-graph blocking by default.
+- Expanded Graphify compatibility contracts to cover explicit graph queries and incremental update.
+- Added GitHub traceability snapshots, requirement mapping, verification, and dry-run-by-default Issue creation.
+- Added local project-state capture, drift detection, and handoff snapshots without repository churn.
+- Refactored doctor and integration guard to consume shared graph/GitHub adapters.
+- Added end-to-end tests for graph shadowing, GitHub traceability, and local state automation.
+
 ## 0.4.1 — Local-only tooling and clean project repositories
 
 - Moved Vibe Coding operational state from project-local `.vibe/` to `~/.vibe-coding/projects/<project-id>/`.
