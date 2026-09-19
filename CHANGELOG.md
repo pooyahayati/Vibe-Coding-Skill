@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0 — Dependency intelligence hardening
+
+- Upgraded Dependency Guard from baseline registry/OSV checks to risk-adaptive multi-signal evidence.
+- Added explicit dependency necessity and purpose as separate judgment fields.
+- Added deps.dev package/version, license, advisory, deprecation, related-project, and verified-attestation evidence.
+- Added GitHub source-repository health checks with authenticated mode when a token is available.
+- Added maintenance/release-age and deprecated-package review signals.
+- Added package-name similarity / typo-squatting signals using explicit trusted names and discovered project dependencies.
+- Added project license allow/deny policy evidence without pretending to provide legal advice.
+- Added Tier 2/3 evidence requirements and Tier 3 provenance-attestation review.
+- Added deterministic unit/failure-injection coverage and live provider contract coverage.
+
 ## 0.6.1 — Audit hotfix and governance hardening
 
 - Fixed literal escaped-newline corruption in `SKILL.md` and added semantic validation to prevent recurrence.
