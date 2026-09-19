@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1 — Live agent behavior evaluation
+
+- Added a vendor-neutral JSON behavior contract for real Codex/Claude Code evaluation.
+- Added deterministic scoring of agent tier, approval requirements, required controls, and forbidden actions.
+- Added machine-checkable control contracts to every eval scenario.
+- Added regression tests for passing and failing live-agent outputs.
+
+# Changelog
+
 ## 0.3.0 — Risk classifier, full dependency adapters, and hardened tool contracts
 
 - Added deterministic, explainable risk classification with Tier 0–3 workflow floors.
