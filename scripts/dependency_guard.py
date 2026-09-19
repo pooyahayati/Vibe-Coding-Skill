@@ -440,7 +440,12 @@ def normalize_repo_url(value: str | None) -> str | None:
     if not value:
         return None
     value = value.strip()
-    value = re.sub(r"^(git\+|git://)", "https://", value)
+    if value.startswith(("git+https://", "git+http://")):
+        value = value[4:]
+    elif value.startswith("git://"):
+        value = "https://" + value[len("git://"):]
+    elif value.startswith("git+ssh://git@github.com/"):
+        value = "https://github.com/" + value[len("git+ssh://git@github.com/"):]
     value = value.replace("git@github.com:", "https://github.com/")
     value = value.replace("ssh://git@github.com/", "https://github.com/")
     if value.startswith("github:"):
