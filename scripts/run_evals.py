@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +16,7 @@ def load(name: str):
     spec = importlib.util.spec_from_file_location(name.replace(".py",""), path)
     mod = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
+    sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
     return mod
 
