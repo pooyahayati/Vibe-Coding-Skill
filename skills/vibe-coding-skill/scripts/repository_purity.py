@@ -11,6 +11,9 @@ from pathlib import Path
 FORBIDDEN_PREFIXES = (
     ".vibe/",
     ".vibe-coding/",
+    ".claude/skills/vibe-coding-skill/",
+    ".codex/skills/vibe-coding-skill/",
+    ".agents/skills/vibe-coding-skill/",
     "graphify-out/",
     ".trivy/",
     "benchmark-results/",
