@@ -44,11 +44,9 @@ This gate prevents unsupported Done claims but does not attempt to judge whether
 
 Real agent outputs are scored separately from deterministic policy tests.
 
-Use `evals/AGENT_OUTPUT_SCHEMA.md` for each blind run and aggregate with:
+Use `evals/AGENT_OUTPUT_SCHEMA.md` for each blind run. Store raw outputs in the project's local Vibe Coding workspace, for example `~/.vibe-coding/projects/<project-id>/benchmarks/`, then aggregate that local directory.
 
-```bash
-python scripts/benchmark_agent_outputs.py benchmark-results --json
-```
+Do not commit benchmark output to the project repository.
 
 Do not publish or compare a Codex/Claude result unless that agent actually produced the stored raw contract under the stated skill version.
 
