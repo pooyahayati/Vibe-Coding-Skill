@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Git. Graphify and Trivy are recommended for medium/high-risk projects. Network access is needed for package-registry, OSV, GitHub, or tool-update checks.
 metadata:
   author: "Pooya Hayati"
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Vibe Coding Skill
@@ -172,6 +172,28 @@ Return `ACCEPT`, `REVIEW REQUIRED`, or `REJECT`.
 
 Read `references/security-and-dependencies.md`.
 
+## Project bootstrap
+
+After discovery, bootstrap only the repository state justified by the project.
+
+Use:
+
+`python scripts/bootstrap_project.py --root <project> --profile <minimal|standard|significant|critical> --objective "<current objective>" ...`
+
+The bootstrapper is non-destructive by default. It never overwrites existing project documents unless explicitly forced, and it does not create placeholder documents when the required facts are unknown.
+
+Read `references/bootstrap-and-evals.md`.
+
+## Executable dependency guard
+
+For a proposed Python, npm, or crates.io dependency, run the baseline guard when network access is available:
+
+`python scripts/dependency_guard.py <ecosystem> <package> --version <version> --json`
+
+The guard verifies registry existence/version and checks OSV when a concrete version is provided. Missing evidence produces `REVIEW REQUIRED`, not a false claim of safety.
+
+For unsupported ecosystems, use the same policy manually against the official registry and OSV or equivalent.
+
 ## Execution loop
 
 `Objective → Ready Check → Impact Analysis → Implement → Test → Review → Integrate → Regression Check → Update Repository State → Done`
@@ -245,6 +267,7 @@ Load only what is needed:
 - `references/security-and-dependencies.md`
 - `references/project-state-and-traceability.md`
 - `references/execution-and-verification.md`
+- `references/bootstrap-and-evals.md`
 
 ## Bundled utilities
 
@@ -252,6 +275,9 @@ Load only what is needed:
 - `scripts/change_budget.py`
 - `scripts/graphify_compat.py`
 - `scripts/validate_skill.py`
+- `scripts/bootstrap_project.py`
+- `scripts/dependency_guard.py`
+- `scripts/validate_evals.py`
 
 These assist the workflow; they do not replace engineering judgment.
 
