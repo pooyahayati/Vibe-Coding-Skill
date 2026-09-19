@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Network-backed smoke tests for supported registry and OSV adapters."""
+"""Network-backed smoke tests for dependency intelligence evidence providers."""
 
 from __future__ import annotations
 
@@ -18,6 +18,12 @@ SAMPLES = [
     ("go", "github.com/stretchr/testify", "v1.10.0"),
 ]
 
+DEEP_SAMPLES = {
+    ("pypi", "requests"),
+    ("npm", "zod"),
+    ("crates", "serde"),
+}
+
 
 def load_guard():
     path = ROOT / "scripts" / "dependency_guard.py"
@@ -32,6 +38,7 @@ def main() -> int:
     guard = load_guard()
     results = []
     failures = []
+
     for ecosystem, package, version in SAMPLES:
         registry = guard.registry_lookup(ecosystem, package, version)
         osv = guard.osv_lookup(ecosystem, package, version)
@@ -41,15 +48,42 @@ def main() -> int:
             and osv.get("checked") is True
         )
         row = {
-            "ecosystem": ecosystem, "package": package, "version": version,
+            "ecosystem": ecosystem,
+            "package": package,
+            "version": version,
             "registry_exists": registry.get("exists"),
             "version_exists": registry.get("version_exists"),
             "osv_checked": osv.get("checked"),
             "ok": ok,
         }
+
+        if (ecosystem, package) in DEEP_SAMPLES:
+            depsdev = guard.depsdev_lookup(
+                ecosystem, package, version, registry.get("latest_version")
+            )
+            repository = guard.source_repository(registry, depsdev)
+            repo_health = guard.github_repository_health(repository)
+            row.update(
+                {
+                    "deps_dev_checked": depsdev.get("checked"),
+                    "deps_dev_licenses": depsdev.get("licenses", []),
+                    "source_repository": repository,
+                    "repository_health_checked": repo_health.get("checked"),
+                }
+            )
+            deep_ok = depsdev.get("checked") is True and bool(
+                depsdev.get("licenses") or registry.get("license")
+            )
+            if guard.github_slug(repository):
+                deep_ok = deep_ok and repo_health.get("checked") is True
+            row["deep_ok"] = deep_ok
+            ok = ok and deep_ok
+            row["ok"] = ok
+
         results.append(row)
         if not ok:
             failures.append(row)
+
     print(json.dumps({"results": results, "failures": failures}, indent=2))
     return 1 if failures else 0
 
