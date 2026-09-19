@@ -1,0 +1,9 @@
+{
+  "id": "project-auth-service",
+  "prompt": "Change authentication from server sessions to JWT bearer tokens across the service.",
+  "changed_files": ["auth/session.py", "auth/tokens.py", "api/middleware.py"],
+  "expected_tier": 2,
+  "approval_required": true,
+  "profile": "significant",
+  "expected_bootstrap": ["STATUS.md"]
+}

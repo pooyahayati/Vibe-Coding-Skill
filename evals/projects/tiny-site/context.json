@@ -1,0 +1,9 @@
+{
+  "id": "project-tiny-site",
+  "prompt": "Fix one typo in the footer text.",
+  "changed_files": ["index.html"],
+  "expected_tier": 0,
+  "approval_required": false,
+  "profile": "minimal",
+  "expected_bootstrap": ["STATUS.md"]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "project-production-migration",
+  "prompt": "Drop the legacy customer table during the production migration and cut over traffic.",
+  "changed_files": ["migrations/009_drop_legacy.sql", "infra/production/deployment.yaml"],
+  "expected_tier": 3,
+  "approval_required": true,
+  "profile": "critical",
+  "expected_bootstrap": ["STATUS.md"]
+}
