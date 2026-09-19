@@ -256,6 +256,14 @@ python scripts/run_project_validations.py
 
 Representative temporary Git repositories cover a tiny static change, brownfield feature work, authentication, destructive production migration, and a multi-module payment integration.
 
+Pinned public repositories provide a separate real-world compatibility layer:
+
+```bash
+python scripts/run_real_world_validations.py
+```
+
+These checks use fixed commits from Python, Node, and Go projects and verify repository purity, resume behavior, dry-run bootstrap, and risk classification without modifying the product working tree.
+
 ### Failure injection
 
 ```bash
