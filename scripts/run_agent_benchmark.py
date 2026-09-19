@@ -20,7 +20,11 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "evals" / "scenarios.json"
 SCHEMA_PATH = ROOT / "evals" / "agent-output.schema.json"
 AGENTS_PATH = ROOT / "config" / "agent-benchmarks.json"
-PORTABLE_SKILL = ROOT / "skills" / "vibe-coding-skill"
+PORTABLE_SKILL = (
+    ROOT / "skills" / "vibe-coding-skill"
+    if (ROOT / "skills" / "vibe-coding-skill" / "SKILL.md").exists()
+    else ROOT
+)
 
 
 def utc_now() -> str:
