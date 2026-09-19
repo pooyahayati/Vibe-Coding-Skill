@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.6.1-blue)
+![Version](https://img.shields.io/badge/version-0.7.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -225,17 +225,26 @@ python scripts/integration_guard.py --root /path/to/project --tier 2 --json
 
 The integration gate is read-only and checks Git/GitHub context, graph-provider freshness, and Trivy availability.
 
-### Dependency Guard
+### Dependency Intelligence
 
 ```bash
-python scripts/dependency_guard.py pypi requests --version 2.32.5 --json
-python scripts/dependency_guard.py npm zod --version 4.1.5 --json
-python scripts/dependency_guard.py maven junit:junit --version 4.13.2 --json
-python scripts/dependency_guard.py nuget Newtonsoft.Json --version 13.0.3 --json
-python scripts/dependency_guard.py go github.com/stretchr/testify --version v1.10.0 --json
+python scripts/dependency_guard.py pypi requests \
+  --version 2.32.5 \
+  --risk-tier 2 \
+  --necessity required \
+  --purpose "Mature HTTP client; internal replacement would add non-core maintenance" \
+  --project-root . \
+  --allow-license Apache-2.0 \
+  --json
 ```
 
-A missing package/version is rejected. Missing security/provenance evidence becomes `REVIEW REQUIRED`, not a false positive approval.
+The guard separates **automated evidence** from **judgment**.
+
+Automated evidence can include the official registry, OSV, deps.dev, source-repository health, maintenance/release activity, license policy, and package-name similarity. Dependency necessity and purpose must be stated explicitly; `--necessity unknown` cannot produce `ACCEPT`.
+
+Tier 2/3 requires deeper evidence. Missing deps.dev/source-health evidence becomes `REVIEW REQUIRED`, not a false approval. Tier 3 additionally treats missing verified provenance/attestation evidence as review-worthy.
+
+Supported ecosystems remain `pypi`, `npm`, `crates`, `maven`, `nuget`, and `go`.
 
 ### Evaluation contracts
 
@@ -270,7 +279,7 @@ These checks use fixed commits from Python, Node, and Go projects and verify rep
 python scripts/run_failure_injections.py
 ```
 
-This deliberately exercises prompt injection, hallucinated packages, vulnerable dependency evidence, stale graphs, and unsupported `Done` claims.
+This deliberately exercises prompt injection, hallucinated packages, vulnerable dependency evidence, dependency typo-squatting, unjustified dependency necessity, stale graphs, and unsupported `Done` claims.
 
 ### Completion evidence gate
 
@@ -358,7 +367,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.6.1`
+Current version: `0.7.0`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 
