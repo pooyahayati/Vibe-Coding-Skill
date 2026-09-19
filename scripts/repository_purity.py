@@ -34,7 +34,9 @@ def git(root: Path, *args: str) -> tuple[int, str]:
 
 
 def is_forbidden(path: str) -> bool:
-    normalized = path.replace("\\", "/").lstrip("./")
+    normalized = path.replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
     return normalized in FORBIDDEN_FILES or any(normalized.startswith(prefix) for prefix in FORBIDDEN_PREFIXES)
 
 
@@ -56,14 +58,13 @@ def main() -> int:
     tracked = sorted({p for p in tracked_text.splitlines() if p and is_forbidden(p)})
     staged = sorted({p for p in staged_text.splitlines() if p and is_forbidden(p)})
 
-    git_dir_rc, git_dir_text = git(root, "rev-parse", "--git-dir")
+    exclude_rc, exclude_text = git(root, "rev-parse", "--git-path", "info/exclude")
     exclude_ok = False
     exclude_path = None
-    if git_dir_rc == 0:
-        git_dir = Path(git_dir_text)
-        if not git_dir.is_absolute():
-            git_dir = (root / git_dir).resolve()
-        exclude_path = git_dir / "info" / "exclude"
+    if exclude_rc == 0:
+        exclude_path = Path(exclude_text)
+        if not exclude_path.is_absolute():
+            exclude_path = (root / exclude_path).resolve()
         if exclude_path.exists():
             content = exclude_path.read_text(encoding="utf-8")
             exclude_ok = "Vibe Coding Skill local-only artifacts" in content
