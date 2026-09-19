@@ -35,6 +35,7 @@ def main() -> int:
     risk = load("risk_classifier.py")
     deps = load("dependency_guard.py")
     completion = load("completion_gate.py")
+    workspace = load("local_workspace.py")
     checks: list[dict[str, object]] = []
 
     prompt_result = risk.classify(
@@ -75,17 +76,21 @@ def main() -> int:
     })
     checks.append({"id": "done-without-evidence", "passed": no_evidence["gate"] == "BLOCK", "detail": no_evidence})
 
-    with tempfile.TemporaryDirectory(prefix="vibe-stale-") as td, tempfile.TemporaryDirectory(prefix="vibe-bin-") as bd:
+    with tempfile.TemporaryDirectory(prefix="vibe-stale-") as td, tempfile.TemporaryDirectory(prefix="vibe-bin-") as bd, tempfile.TemporaryDirectory(prefix="vibe-home-") as hd:
         project = Path(td)
         bindir = Path(bd)
+        local_home = Path(hd)
         subprocess.run(["git", "init", "-q"], cwd=project, check=True)
         subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=project, check=True)
         subprocess.run(["git", "config", "user.name", "Test"], cwd=project, check=True)
         (project / "app.py").write_text("print('ok')\n", encoding="utf-8")
         subprocess.run(["git", "add", "."], cwd=project, check=True)
         subprocess.run(["git", "commit", "-qm", "init"], cwd=project, check=True)
-        (project / ".vibe").mkdir()
-        (project / ".vibe" / "graph-state.json").write_text(
+        old_home = os.environ.get("VIBE_CODING_HOME")
+        os.environ["VIBE_CODING_HOME"] = str(local_home)
+        local = workspace.initialize(project)
+        graph_state = Path(local["workspace"]) / "state" / "graph-state.json"
+        graph_state.write_text(
             json.dumps({"source_commit": "0" * 40, "provider": "graphify"}),
             encoding="utf-8",
         )
@@ -93,6 +98,7 @@ def main() -> int:
         fake_exe(bindir, "trivy", 'echo "Version: 0.74.0"')
         env = os.environ.copy()
         env["PATH"] = str(bindir) + os.pathsep + env["PATH"]
+        env["VIBE_CODING_HOME"] = str(local_home)
         p = subprocess.run(
             [
                 sys.executable, str(ROOT / "scripts" / "integration_guard.py"),
@@ -103,9 +109,15 @@ def main() -> int:
         gate = json.loads(p.stdout)
         checks.append({
             "id": "stale-graph",
-            "passed": gate["status"] == "WARN" and gate["checks"]["graph_state"]["stale"] is True,
+            "passed": gate["status"] == "WARN"
+            and gate["checks"]["graph_state"]["stale"] is True
+            and not (project / ".vibe").exists(),
             "detail": gate,
         })
+        if old_home is None:
+            os.environ.pop("VIBE_CODING_HOME", None)
+        else:
+            os.environ["VIBE_CODING_HOME"] = old_home
 
     failures = [item["id"] for item in checks if not item["passed"]]
     print(json.dumps({"checks": checks, "failures": failures}, indent=2))
