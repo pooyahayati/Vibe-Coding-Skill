@@ -42,6 +42,7 @@ REQUIRED_SCRIPTS = [
     "sync_package.py",
     "completion_gate.py",
     "run_project_validations.py",
+    "run_real_world_validations.py",
     "run_failure_injections.py",
     "benchmark_agent_outputs.py",
     "local_workspace.py",
@@ -140,6 +141,16 @@ def main() -> int:
             fail(f"missing reference: {rel}")
         if rel not in text:
             fail(f"SKILL.md does not reference {rel}")
+
+    real_world = ROOT / "validation" / "real-world-projects.json"
+    if not real_world.exists():
+        fail("validation/real-world-projects.json is missing")
+    try:
+        catalog = json.loads(real_world.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        fail(f"real-world validation catalog is invalid JSON: {exc}")
+    if not catalog.get("projects"):
+        fail("real-world validation catalog has no projects")
 
     for script in REQUIRED_SCRIPTS:
         path = ROOT / "scripts" / script
