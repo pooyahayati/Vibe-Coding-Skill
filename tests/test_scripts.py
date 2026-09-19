@@ -241,9 +241,16 @@ class IntegrationGuardTests(unittest.TestCase):
             )
             workspace = Path(json.loads(local.stdout)["workspace"])
             (workspace / "state" / "graph-state.json").write_text(
-                json.dumps({"source_commit": "0" * 40, "provider": "graphify"}),
+                json.dumps({
+                    "source_commit": "0" * 40,
+                    "working_tree_fingerprint": "stale",
+                    "provider": "graphify"
+                }),
                 encoding="utf-8",
             )
+            graph_dir = workspace / "graph" / "graphify-out"
+            graph_dir.mkdir(parents=True, exist_ok=True)
+            (graph_dir / "graph.json").write_text('{"nodes":[],"links":[]}\n', encoding="utf-8")
             out = subprocess.run(
                 [sys.executable, str(ROOT / "scripts" / "integration_guard.py"),
                  "--root", str(root), "--tier", "2", "--json"],
@@ -314,6 +321,214 @@ class LocalWorkspacePurityTests(unittest.TestCase):
             result = json.loads(dirty.stdout)
             self.assertIn("graphify-out/graph.json", result["staged_forbidden"])
             self.assertNotIn("tests/test_app.py", result["staged_forbidden"])
+
+
+
+class GraphProviderContractTests(unittest.TestCase):
+    def _fake_graphify(self, bindir: Path) -> None:
+        path = bindir / "graphify"
+        path.write_text(
+            """#!/bin/sh
+set -eu
+if [ "$1" = "--version" ]; then
+  echo "graphify 0.9.64"
+  exit 0
+fi
+case "$1" in
+  extract|update)
+    mkdir -p graphify-out
+    printf '%s\n' '{"nodes":[{"id":"alpha","label":"alpha"},{"id":"beta","label":"beta"}],"links":[{"source":"alpha","target":"beta"}]}' > graphify-out/graph.json
+    echo "built"
+    ;;
+  query|explain|path)
+    echo "$1-ok"
+    ;;
+  *)
+    echo "unknown" >&2
+    exit 2
+    ;;
+esac
+""",
+            encoding="utf-8",
+        )
+        path.chmod(path.stat().st_mode | stat.S_IEXEC)
+
+    def test_refresh_uses_shadow_workspace_and_detects_working_tree_staleness(self):
+        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd, tempfile.TemporaryDirectory() as bd:
+            root = Path(td)
+            local_home = Path(hd)
+            bindir = Path(bd)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+            (root / "app.py").write_text("def alpha(): return 1\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-qm", "init"], cwd=root, check=True)
+            self._fake_graphify(bindir)
+            env = os.environ.copy()
+            env["PATH"] = str(bindir) + os.pathsep + env["PATH"]
+            env["VIBE_CODING_HOME"] = str(local_home)
+
+            refresh = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "graph_provider.py"),
+                 "refresh", "--root", str(root), "--mode", "full", "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(refresh.returncode, 0, refresh.stdout + refresh.stderr)
+            result = json.loads(refresh.stdout)
+            self.assertTrue(Path(result["graph_path"]).exists())
+            self.assertFalse((root / "graphify-out").exists())
+
+            status = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "graph_provider.py"),
+                 "status", "--root", str(root), "--json"],
+                text=True, capture_output=True, env=env, check=True,
+            )
+            self.assertTrue(json.loads(status.stdout)["fresh"])
+
+            (root / "app.py").write_text("def alpha(): return 2\n", encoding="utf-8")
+            stale = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "graph_provider.py"),
+                 "status", "--root", str(root), "--json"],
+                text=True, capture_output=True, env=env, check=True,
+            )
+            self.assertTrue(json.loads(stale.stdout)["stale"])
+
+            blocked = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "graph_provider.py"),
+                 "query", "alpha", "--root", str(root), "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(blocked.returncode, 2)
+
+            refreshed = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "graph_provider.py"),
+                 "refresh", "--root", str(root), "--mode", "auto", "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(refreshed.returncode, 0, refreshed.stdout + refreshed.stderr)
+            self.assertEqual(json.loads(refreshed.stdout)["mode"], "incremental")
+
+
+class GitHubTraceabilityTests(unittest.TestCase):
+    def _fake_gh(self, bindir: Path) -> None:
+        path = bindir / "gh"
+        path.write_text(
+            """#!/usr/bin/env python3
+import json, sys
+args = sys.argv[1:]
+if args[:2] == ["auth", "status"]:
+    raise SystemExit(0)
+if args[:2] == ["issue", "list"]:
+    print("[]"); raise SystemExit(0)
+if args[:2] == ["pr", "list"]:
+    print("[]"); raise SystemExit(0)
+if args[:2] == ["release", "list"]:
+    print("[]"); raise SystemExit(0)
+if args and args[0] == "api":
+    endpoint = args[1]
+    if endpoint.endswith("/issues/42"):
+        print(json.dumps({"number":42,"state":"open","html_url":"https://github.com/acme/demo/issues/42","title":"[REQ-1] Demo","body":"REQ-1 acceptance"}))
+    elif endpoint.endswith("/pulls/57"):
+        print(json.dumps({"number":57,"state":"closed","merged_at":"2026-01-01T00:00:00Z","html_url":"https://github.com/acme/demo/pull/57","body":"Closes #42"}))
+    elif endpoint.endswith("/releases/tags/v1"):
+        print(json.dumps({"tag_name":"v1","published_at":"2026-01-02T00:00:00Z","html_url":"https://github.com/acme/demo/releases/tag/v1"}))
+    else:
+        raise SystemExit(1)
+    raise SystemExit(0)
+if args[:2] == ["issue", "create"]:
+    print("https://github.com/acme/demo/issues/99"); raise SystemExit(0)
+raise SystemExit(2)
+""",
+            encoding="utf-8",
+        )
+        path.chmod(path.stat().st_mode | stat.S_IEXEC)
+
+    def test_record_snapshot_verify_and_dry_run_stay_local(self):
+        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd, tempfile.TemporaryDirectory() as bd:
+            root = Path(td)
+            bindir = Path(bd)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            subprocess.run(["git", "remote", "add", "origin", "https://github.com/acme/demo.git"], cwd=root, check=True)
+            self._fake_gh(bindir)
+            env = os.environ.copy()
+            env["PATH"] = str(bindir) + os.pathsep + env["PATH"]
+            env["VIBE_CODING_HOME"] = hd
+
+            record = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "github_traceability.py"), "record", "REQ-1",
+                 "--root", str(root), "--issue", "42", "--pr", "57", "--test", "pytest", "--release", "v1", "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(record.returncode, 0, record.stdout + record.stderr)
+            self.assertFalse((root / "traceability.json").exists())
+
+            snapshot = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "github_traceability.py"), "snapshot",
+                 "--root", str(root), "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(snapshot.returncode, 0, snapshot.stdout + snapshot.stderr)
+
+            verify = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "github_traceability.py"), "verify",
+                 "--root", str(root), "--requirement-id", "REQ-1", "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(verify.returncode, 0, verify.stdout + verify.stderr)
+            self.assertEqual(json.loads(verify.stdout)["status"], "PASS")
+
+            plan = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "github_traceability.py"), "create-issue",
+                 "--root", str(root), "--title", "[REQ-2] Plan", "--body", "Acceptance criteria", "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(plan.returncode, 0, plan.stdout + plan.stderr)
+            self.assertFalse(json.loads(plan.stdout)["applied"])
+
+
+class ProjectStateAutomationTests(unittest.TestCase):
+    def test_capture_drift_and_handoff_are_local_only(self):
+        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd:
+            root = Path(td)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+            (root / "README.md").write_text("# Demo\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-qm", "init"], cwd=root, check=True)
+            env = os.environ.copy()
+            env["VIBE_CODING_HOME"] = hd
+
+            capture = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "project_state.py"), "capture",
+                 "--root", str(root), "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(capture.returncode, 0, capture.stdout + capture.stderr)
+            state = json.loads(capture.stdout)
+            self.assertTrue(Path(state["state_path"]).exists())
+            self.assertFalse((root / "project-state.json").exists())
+
+            (root / "README.md").write_text("# Demo\nchanged\n", encoding="utf-8")
+            drift = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "project_state.py"), "drift",
+                 "--root", str(root), "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(drift.returncode, 0, drift.stdout + drift.stderr)
+            drift_data = json.loads(drift.stdout)
+            self.assertEqual(drift_data["status"], "WARN")
+            self.assertIn("working tree changed", drift_data["comparison"]["changes"])
+
+            handoff = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "project_state.py"), "handoff",
+                 "--root", str(root), "--write-local", "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(handoff.returncode, 0, handoff.stdout + handoff.stderr)
+            self.assertTrue(Path(json.loads(handoff.stdout)["handoff_path"]).exists())
+            self.assertFalse((root / "handoff.md").exists())
 
 
 if __name__ == "__main__":
