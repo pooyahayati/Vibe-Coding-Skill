@@ -8,6 +8,7 @@ The project repository should contain only assets that another developer needs t
 
 Keep these local-only:
 
+- the Vibe Coding Skill checkout itself;
 - Graphify generated graph data, HTML, cache, and provider state;
 - Trivy reports and caches;
 - coverage and test-run reports;
@@ -74,7 +75,12 @@ Typical local-only exclusions include:
 - `graphify-out/`
 - `.trivy/`
 - `benchmark-results/`
-- coverage/report directories
+- generated coverage/report directories;
+- `.claude/skills/vibe-coding-skill/`
+- `.codex/skills/vibe-coding-skill/`
+- `.agents/skills/vibe-coding-skill/`
+
+The last three are defensive exclusions for accidental project-local Skill checkouts. The recommended installation remains outside the product repository.
 
 ## Repository purity gate
 
@@ -90,13 +96,11 @@ For a stricter local setup check:
 python scripts/repository_purity.py --root . --strict-excludes --json
 ```
 
-The gate blocks tracked or staged Vibe/tool artifacts. It deliberately does not block product tests such as `tests/`.
+The gate blocks tracked or staged Vibe/tool artifacts and project-local Vibe Skill checkouts. It deliberately does not block product tests such as `tests/`.
 
 ## Graphify
 
-If Graphify can write its generated output directly to an external workspace, prefer that.
-
-If a Graphify command writes `graphify-out/` under the working tree, the directory remains local-only through `.git/info/exclude` and must never be committed.
+Graphify runs against a shadow source copy in the local Vibe workspace. Generated `graphify-out/` must not be committed.
 
 Graph freshness metadata belongs in:
 
@@ -117,8 +121,6 @@ Do not commit scan reports merely to prove a local scan ran. Record only the hum
 Product tests belong in Git.
 
 Generated test artifacts do not.
-
-Examples:
 
 ```text
 tests/                 ← Git
