@@ -252,6 +252,120 @@ class BenchmarkScoringTests(unittest.TestCase):
         self.assertTrue(result["passed"])
 
 
+    def test_benchmark_prompt_is_blind(self):
+        runner = load_script("run_agent_benchmark.py")
+        catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
+        scenario = next(s for s in catalog["scenarios"] if s["id"] == "destructive-migration")
+        prompt = runner.blind_prompt("codex", scenario)
+        self.assertIn(scenario["prompt"], prompt)
+        self.assertNotIn(str(scenario["expected_tier"]), prompt.split("Scenario:", 1)[0])
+        for control in scenario["required_controls"] + scenario["forbidden_controls"]:
+            self.assertNotIn(control, prompt)
+
+    def test_envelope_integrity_is_scored(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
+        scenario = next(s for s in catalog["scenarios"] if s["id"] == "tiny-copy-fix")
+        envelope = {
+            "agent": "codex",
+            "agent_version": "test",
+            "model": "test",
+            "skill_version": "0.8.0",
+            "started_at": "2026-01-01T00:00:00Z",
+            "completed_at": "2026-01-01T00:00:01Z",
+            "integrity": {
+                "blind": True,
+                "expected_contract_not_provided": True,
+                "workspace_clean_after": True,
+            },
+            "schema_failures": [],
+            "contract": {
+                "scenario_id": scenario["id"],
+                "tier": scenario["expected_tier"],
+                "approval_required": scenario["approval_required"],
+                "controls": scenario["required_controls"],
+                "forbidden_actions": scenario["forbidden_controls"],
+            },
+        }
+        scored = mod.score_contract(envelope, catalog)
+        self.assertTrue(scored["passed"])
+        envelope["integrity"]["workspace_clean_after"] = False
+        scored = mod.score_contract(envelope, catalog)
+        self.assertFalse(scored["passed"])
+        self.assertIn("integrity:workspace_mutated", scored["failures"])
+
+    def test_benchmark_aggregator_marks_missing_runs_incomplete(self):
+        catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
+        scenario = catalog["scenarios"][0]
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            agent_dir = root / "codex"
+            agent_dir.mkdir()
+            envelope = {
+                "schema_version": 1,
+                "agent": "codex",
+                "agent_version": "test",
+                "model": "test",
+                "skill_version": "0.8.0",
+                "started_at": "2026-01-01T00:00:00Z",
+                "completed_at": "2026-01-01T00:00:01Z",
+                "runtime": {"exit_code": 0, "duration_ms": 1, "timed_out": False},
+                "integrity": {
+                    "blind": True,
+                    "expected_contract_not_provided": True,
+                    "workspace_clean_after": True,
+                },
+                "schema_failures": [],
+                "contract": {
+                    "scenario_id": scenario["id"],
+                    "tier": scenario["expected_tier"],
+                    "approval_required": scenario["approval_required"],
+                    "controls": scenario["required_controls"],
+                    "forbidden_actions": scenario["forbidden_controls"],
+                },
+            }
+            (agent_dir / f"{scenario['id']}.json").write_text(
+                json.dumps(envelope), encoding="utf-8"
+            )
+            out = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "benchmark_agent_outputs.py"),
+                    str(root),
+                    "--required-agent",
+                    "codex",
+                    "--required-agent",
+                    "claude-code",
+                    "--require-complete",
+                    "--json",
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(out.returncode, 2)
+            data = json.loads(out.stdout)
+            self.assertFalse(data["evidence_complete"])
+            self.assertIn("claude-code", data["missing_required_agents"])
+            codex = next(row for row in data["agents"] if row["agent"] == "codex")
+            self.assertIsNone(codex["conformance_rate"])
+            self.assertGreater(len(codex["missing_scenarios"]), 0)
+
+    def test_benchmark_preflight_does_not_expose_secret_values(self):
+        runner = load_script("run_agent_benchmark.py")
+        original = os.environ.get("OPENAI_API_KEY")
+        try:
+            os.environ["OPENAI_API_KEY"] = "super-secret-benchmark-key"
+            result = runner.preflight("codex", True)
+            rendered = json.dumps(result)
+            self.assertNotIn("super-secret-benchmark-key", rendered)
+            self.assertIn("OPENAI_API_KEY", result["auth"]["present_env_names"])
+        finally:
+            if original is None:
+                os.environ.pop("OPENAI_API_KEY", None)
+            else:
+                os.environ["OPENAI_API_KEY"] = original
+
+
 class BootstrapTests(unittest.TestCase):
     def test_bootstrap_does_not_overwrite_existing_status(self):
         with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd:
