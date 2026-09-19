@@ -71,6 +71,13 @@ class DependencyGuardTests(unittest.TestCase):
         self.assertTrue(any("vulnerabilities" in r for r in reasons))
 
 
+    def test_normalize_git_plus_https_repository(self):
+        mod = load_script("dependency_guard.py")
+        self.assertEqual(
+            mod.normalize_repo_url("git+https://github.com/colinhacks/zod.git"),
+            "https://github.com/colinhacks/zod",
+        )
+
     def test_v2_requires_explicit_necessity(self):
         mod = load_script("dependency_guard.py")
         decision, signals = mod.evaluate_dependency(
