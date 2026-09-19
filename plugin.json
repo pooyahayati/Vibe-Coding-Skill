@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "vibe-coding-skill",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Risk-adaptive software engineering operating skill for reliable AI-assisted vibe coding, architecture, staged implementation, project intelligence, verification, security, and handoff.",
   "author": {
     "name": "Pooya Hayati",

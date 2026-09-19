@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -141,11 +141,28 @@ python scripts/bootstrap_project.py \
 
 The bootstrapper does not overwrite existing project documents by default and skips documents when it does not have enough real project context to populate them.
 
+### Risk classifier
+
+```bash
+python scripts/risk_classifier.py "Change authentication from sessions to JWTs" --json
+```
+
+### Integration gate
+
+```bash
+python scripts/integration_guard.py --root /path/to/project --tier 2 --json
+```
+
+The integration gate is read-only and checks Git/GitHub context, Graphify version/freshness, and Trivy availability.
+
 ### Dependency Guard
 
 ```bash
 python scripts/dependency_guard.py pypi requests --version 2.32.5 --json
 python scripts/dependency_guard.py npm zod --version 4.1.5 --json
+python scripts/dependency_guard.py maven junit:junit --version 4.13.2 --json
+python scripts/dependency_guard.py nuget Newtonsoft.Json --version 13.0.3 --json
+python scripts/dependency_guard.py go github.com/stretchr/testify --version v1.10.0 --json
 ```
 
 A missing package/version is rejected. Missing security/provenance evidence becomes `REVIEW REQUIRED`, not a false positive approval.
@@ -156,8 +173,15 @@ A missing package/version is rejected. Missing security/provenance evidence beco
 
 ```bash
 python scripts/validate_evals.py
+python scripts/run_evals.py
 python -m unittest discover -s tests -p "test_*.py"
 ```
+
+## External contract tests
+
+Normal CI is deterministic. Scheduled/manual live contracts smoke-test real registries, OSV, Graphify, and Trivy separately so external outages do not make ordinary PRs flaky.
+
+Both Graphify and Trivy use approved-version tracking in `config/toolchain.json`.
 
 ## Portable package
 
@@ -197,7 +221,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.2.0`
+Current version: `0.3.0`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 

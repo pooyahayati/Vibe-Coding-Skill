@@ -9,7 +9,11 @@
     "policy": "latest stable release after compatibility contract tests"
   },
   "trivy": {
-    "policy": "use installed stable release when security scanning is required",
+    "channel": "stable",
+    "approved": "0.74.0",
+    "last_known_good": "0.74.0",
+    "latest_seen": "0.74.0",
+    "policy": "latest stable release after compatibility contract tests",
     "required": false
   }
 }

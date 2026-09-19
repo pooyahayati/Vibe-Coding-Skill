@@ -42,13 +42,16 @@ Files under `assets/templates/` are guidance for agents and humans. Do not copy 
 
 The dependency guard is a baseline anti-hallucination and vulnerability check.
 
-Currently automated registry adapters exist for:
+Automated registry adapters exist for:
 
 - PyPI;
 - npm;
-- crates.io.
+- crates.io;
+- Maven Central using `group:artifact`;
+- NuGet;
+- Go modules.
 
-Other ecosystems deliberately return `REVIEW REQUIRED` until a reliable adapter exists. Do not fake support.
+Do not infer missing metadata. An ecosystem may support package/version/OSV checks while still returning `REVIEW REQUIRED` because provenance or license metadata is unavailable.
 
 The automated gate checks:
 
@@ -75,7 +78,8 @@ Each scenario defines:
 These contracts serve two purposes:
 
 1. static regression coverage for the skill design;
-2. a reusable prompt set for future live agent/model evaluations.
+2. executable regression checks through `scripts/run_evals.py`;
+3. a reusable prompt set for future live agent/model evaluations.
 
 A live model evaluation should compare the agent's behavior against the contract rather than grading prose style.
 
