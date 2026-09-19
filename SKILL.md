@@ -271,13 +271,19 @@ Load only what is needed:
 
 ## Bundled utilities
 
+Runtime utilities shipped with the portable skill:
+
 - `scripts/doctor.py`
 - `scripts/change_budget.py`
-- `scripts/graphify_compat.py`
-- `scripts/validate_skill.py`
 - `scripts/bootstrap_project.py`
 - `scripts/dependency_guard.py`
+
+Repository-maintainer utilities:
+
+- `scripts/graphify_compat.py`
+- `scripts/validate_skill.py`
 - `scripts/validate_evals.py`
+- `scripts/sync_package.py`
 
 These assist the workflow; they do not replace engineering judgment.
 
