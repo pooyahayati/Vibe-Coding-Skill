@@ -10,7 +10,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import local_workspace
+import graph_provider
+import github_traceability
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLCHAIN = ROOT / "config" / "toolchain.json"
@@ -53,49 +54,34 @@ def main() -> int:
         if rc != 0:
             problems.append("target is not a readable Git repository")
 
-        if rc2 == 0 and "github.com" in remote:
-            gh = shutil.which("gh")
-            if gh:
-                auth_rc, auth_out = run([gh, "auth", "status"], root)
-                checks["github"] = {"detected": True, "gh_installed": True, "authenticated": auth_rc == 0}
-                if auth_rc != 0:
-                    warnings.append("GitHub remote detected but gh authentication is unavailable")
-            else:
-                checks["github"] = {"detected": True, "gh_installed": False, "authenticated": False}
-                warnings.append("GitHub remote detected but gh CLI is not installed")
-        else:
-            checks["github"] = {"detected": False}
+        gh_status = github_traceability.detect(root)
+        checks["github"] = gh_status
+        if gh_status.get("detected") and not gh_status.get("gh_installed"):
+            warnings.append("GitHub remote detected but gh CLI is not installed")
+        elif gh_status.get("detected") and not gh_status.get("authenticated"):
+            warnings.append("GitHub remote detected but gh authentication is unavailable")
 
-    graphify = shutil.which("graphify")
+    graph = graph_provider.status(root)
     approved = cfg.get("graphify", {}).get("approved")
-    if graphify:
-        rc, out = run([graphify, "--version"], root)
-        installed = first_version(out)
-        checks["graphify"] = {"installed": True, "version": installed, "approved": approved, "command_ok": rc == 0}
-        if installed and approved and installed != approved:
-            warnings.append(f"Graphify {installed} differs from approved {approved}")
-    else:
-        checks["graphify"] = {"installed": False, "approved": approved}
-        if ns.tier >= 2:
-            warnings.append("Graphify unavailable for a Tier 2+ change; use repository/source fallback impact analysis")
-
-    state_path = local_workspace.state_path(root, "graph-state.json", create=False)
-    checks["local_workspace"] = {
-        "path": str(local_workspace.project_workspace(root, create=False)),
-        "present": local_workspace.project_workspace(root, create=False).exists(),
+    installed = first_version(str(graph.get("provider_version") or ""))
+    graph["approved_version"] = approved
+    checks["graph_provider"] = graph
+    checks["graph_state"] = {
+        "present": graph.get("graph_exists"),
+        "stale": graph.get("stale"),
+        "fresh": graph.get("fresh"),
+        "source_commit": graph.get("source_commit"),
+        "graph_path": graph.get("graph_path"),
     }
-    if state_path.exists():
-        try:
-            state = json.loads(state_path.read_text(encoding="utf-8"))
-            head = ((checks.get("git") or {}) if isinstance(checks.get("git"), dict) else {}).get("head")
-            stale = bool(head and state.get("source_commit") and head != state.get("source_commit"))
-            checks["graph_state"] = {"present": True, "stale": stale, "source_commit": state.get("source_commit")}
-            if stale:
-                warnings.append("project graph state is stale relative to HEAD")
-        except Exception as exc:
-            problems.append(f"invalid local graph-state.json: {exc}")
-    else:
-        checks["graph_state"] = {"present": False}
+    if installed and approved and installed != approved:
+        warnings.append(f"Graphify {installed} differs from approved {approved}")
+    if ns.tier >= 2:
+        if not graph.get("available"):
+            warnings.append("Graphify unavailable for a Tier 2+ change; use repository/source fallback impact analysis")
+        elif not graph.get("graph_exists"):
+            warnings.append("No local project graph exists; refresh it or use explicit fallback impact analysis")
+        elif graph.get("stale"):
+            warnings.append("project graph is stale relative to the current working tree")
 
     trivy = shutil.which("trivy")
     if trivy:
@@ -110,7 +96,7 @@ def main() -> int:
         # For critical work, missing key evidence providers are blockers unless a documented equivalent exists.
         if not trivy:
             problems.append("Tier 3 requires a security scanner or documented equivalent")
-        if checks.get("graph_state", {}).get("stale") if isinstance(checks.get("graph_state"), dict) else False:
+        if graph.get("stale"):
             problems.append("Tier 3 cannot rely on a stale graph")
 
     status = "FAIL" if problems else ("WARN" if warnings else "PASS")
