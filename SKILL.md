@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Python 3.10+ and Git. Graphify and Trivy are recommended for medium/high-risk projects. Network access is needed only for package-registry, OSV, GitHub, or tool-update checks.
 metadata:
   author: "Pooya Hayati"
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Vibe Coding Skill
@@ -313,6 +313,18 @@ Maintainer validation:
 
 Live agent behavior must be benchmarked separately from deterministic policy tests. Do not claim Codex, Claude Code, or another agent passed unless raw outputs from an actual run were scored.
 
+For reproducible blind evaluation use:
+
+`python scripts/run_agent_benchmark.py preflight --agent <codex|claude-code> --require-env-auth --json`
+
+`python scripts/run_agent_benchmark.py run --agent <codex|claude-code> --scenario all --results-dir <local-path> --require-env-auth --json`
+
+Then require complete evidence:
+
+`python scripts/benchmark_agent_outputs.py <results-dir> --required-agent codex --required-agent claude-code --require-complete --json`
+
+Missing runs are missing evidence, never success. Raw benchmark evidence is local/ephemeral and must not be committed to user project repositories.
+
 Read `references/validation-and-benchmarking.md`.
 
 ## Debugging
@@ -411,6 +423,7 @@ Repository-maintainer utilities:
 - `scripts/run_project_validations.py`
 - `scripts/run_failure_injections.py`
 - `scripts/benchmark_agent_outputs.py`
+- `scripts/run_agent_benchmark.py`
 - `scripts/validate_skill.py`
 - `scripts/validate_evals.py`
 - `scripts/sync_package.py`
