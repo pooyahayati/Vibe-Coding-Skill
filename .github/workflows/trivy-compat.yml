@@ -2,6 +2,11 @@ name: Trivy Compatibility
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "config/toolchain.json"
+      - "scripts/trivy_compat.py"
+      - ".github/workflows/trivy-compat.yml"
   schedule:
     - cron: "29 5 * * 3"
 
@@ -17,7 +22,11 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
-      - name: Test latest stable Trivy
+      - name: Test latest stable Trivy on pull request
+        if: github.event_name == 'pull_request'
+        run: python scripts/trivy_compat.py --latest --json | tee trivy-compat.json
+      - name: Test and propose latest stable Trivy on scheduled/manual run
+        if: github.event_name != 'pull_request'
         run: python scripts/trivy_compat.py --latest --update-approved --json | tee trivy-compat.json
       - name: Detect toolchain change
         id: change
