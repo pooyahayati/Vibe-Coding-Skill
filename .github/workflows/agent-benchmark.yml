@@ -1,0 +1,128 @@
+name: Real Agent Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      codex_cli_version:
+        description: "@openai/codex npm version"
+        required: true
+        default: "latest"
+        type: string
+      claude_cli_version:
+        description: "@anthropic-ai/claude-code npm version"
+        required: true
+        default: "latest"
+        type: string
+      codex_model:
+        description: "Optional Codex model override"
+        required: false
+        default: ""
+        type: string
+      claude_model:
+        description: "Optional Claude model override"
+        required: false
+        default: ""
+        type: string
+      timeout_seconds:
+        description: "Per-scenario timeout"
+        required: true
+        default: "600"
+        type: string
+      claude_max_budget_usd:
+        description: "Per-scenario Claude Code budget cap"
+        required: true
+        default: "1.00"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      RESULTS_DIR: ${{ runner.temp }}/vibe-agent-benchmark
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+
+      - name: Require benchmark credentials
+        shell: bash
+        run: |
+          test -n "$OPENAI_API_KEY" || { echo "OPENAI_API_KEY secret is required"; exit 2; }
+          test -n "$ANTHROPIC_API_KEY" || { echo "ANTHROPIC_API_KEY secret is required"; exit 2; }
+
+      - name: Install pinned-at-run agent CLIs
+        shell: bash
+        run: |
+          npm install -g "@openai/codex@${{ inputs.codex_cli_version }}"
+          npm install -g "@anthropic-ai/claude-code@${{ inputs.claude_cli_version }}"
+          codex --version
+          claude --version
+
+      - name: Preflight Codex
+        run: python scripts/run_agent_benchmark.py preflight --agent codex --require-env-auth --json
+
+      - name: Preflight Claude Code
+        run: python scripts/run_agent_benchmark.py preflight --agent claude-code --require-env-auth --json
+
+      - name: Run Codex blind benchmark
+        shell: bash
+        run: |
+          args=(
+            run
+            --agent codex
+            --scenario all
+            --results-dir "$RESULTS_DIR"
+            --timeout "${{ inputs.timeout_seconds }}"
+            --require-env-auth
+            --json
+          )
+          if [ -n "${{ inputs.codex_model }}" ]; then
+            args+=(--model "${{ inputs.codex_model }}")
+          fi
+          python scripts/run_agent_benchmark.py "${args[@]}"
+
+      - name: Run Claude Code blind benchmark
+        shell: bash
+        run: |
+          args=(
+            run
+            --agent claude-code
+            --scenario all
+            --results-dir "$RESULTS_DIR"
+            --timeout "${{ inputs.timeout_seconds }}"
+            --max-turns 4
+            --max-budget-usd "${{ inputs.claude_max_budget_usd }}"
+            --require-env-auth
+            --json
+          )
+          if [ -n "${{ inputs.claude_model }}" ]; then
+            args+=(--model "${{ inputs.claude_model }}")
+          fi
+          python scripts/run_agent_benchmark.py "${args[@]}"
+
+      - name: Require complete evidence and aggregate
+        shell: bash
+        run: |
+          python scripts/benchmark_agent_outputs.py "$RESULTS_DIR"             --required-agent codex             --required-agent claude-code             --require-complete             --json | tee "$RESULTS_DIR/aggregate.json"
+
+      - name: Upload raw benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vibe-agent-benchmark-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ env.RESULTS_DIR }}
+          if-no-files-found: error
+          retention-days: 30
