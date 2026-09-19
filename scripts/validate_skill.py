@@ -55,6 +55,7 @@ REQUIRED_SCRIPTS = [
     "skill_lifecycle.py",
 ]
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
 
 
 def fail(message: str) -> None:
@@ -91,11 +92,15 @@ def main() -> int:
         fail("description must be 1..1024 chars")
     if len(body.splitlines()) > 500:
         fail("SKILL.md exceeds recommended 500 lines")
+    if "\\n" in body:
+        fail("SKILL.md contains literal escaped newline sequences; use real newlines")
 
     version_path = ROOT / "VERSION"
     if not version_path.exists():
         fail("VERSION is missing")
     version = version_path.read_text(encoding="utf-8").strip()
+    if not SEMVER_RE.fullmatch(version):
+        fail(f"VERSION is not semantic-version shaped: {version!r}")
 
     metadata_match = re.search(r'(?m)^  version:\s*"([^"]+)"\s*$', fm)
     if not metadata_match:
@@ -111,6 +116,24 @@ def main() -> int:
         fail(f"plugin.json version {plugin.get('version')!r} != VERSION {version!r}")
     if plugin.get("name") != name:
         fail(f"plugin.json name {plugin.get('name')!r} != skill name {name!r}")
+    for key in ("description", "license", "repository"):
+        if not plugin.get(key):
+            fail(f"plugin.json is missing required project metadata: {key}")
+
+    agent_yaml = ROOT / "agents" / "openai.yaml"
+    if not agent_yaml.exists():
+        fail("agents/openai.yaml is missing")
+    agent_text = agent_yaml.read_text(encoding="utf-8")
+    for token in ("interface:", "display_name:", "default_prompt:", "$vibe-coding-skill"):
+        if token not in agent_text:
+            fail(f"agents/openai.yaml is missing expected token: {token}")
+
+    readme = ROOT / "README.md"
+    if not readme.exists():
+        fail("README.md is missing")
+    readme_text = readme.read_text(encoding="utf-8")
+    if f"version-{version}-" not in readme_text and f"Current version: `{version}`" not in readme_text:
+        fail("README.md version marker does not match VERSION")
 
     for rel in REQUIRED_REFS:
         if not (ROOT / rel).exists():
