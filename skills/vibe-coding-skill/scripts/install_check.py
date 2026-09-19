@@ -69,7 +69,11 @@ def skill_metadata(root: Path) -> dict[str, str]:
 
 
 def run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> tuple[int, str]:
-    p = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True, env=env)
+    effective_env = os.environ.copy()
+    if env:
+        effective_env.update(env)
+    effective_env["PYTHONDONTWRITEBYTECODE"] = "1"
+    p = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True, env=effective_env)
     return p.returncode, ((p.stdout or "") + "\n" + (p.stderr or "")).strip()
 
 
