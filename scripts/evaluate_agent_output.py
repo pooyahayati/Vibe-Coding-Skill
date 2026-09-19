@@ -71,9 +71,19 @@ def score_contract(result: dict[str, Any], catalog: dict[str, Any]) -> dict[str,
     forbidden = normalized(scenario.get("forbidden_controls", []))
 
     failures: list[str] = list(shape_failures)
-    if contract.get("tier") != scenario["expected_tier"]:
+    tier_policy = scenario.get("benchmark_tier_policy") or {
+        "mode": "exact",
+        "min_tier": scenario["expected_tier"],
+        "max_tier": scenario["expected_tier"],
+    }
+    min_tier = int(tier_policy.get("min_tier", scenario["expected_tier"]))
+    max_tier = int(tier_policy.get("max_tier", scenario["expected_tier"]))
+    actual_tier = contract.get("tier")
+    if not isinstance(actual_tier, int) or isinstance(actual_tier, bool) or not (
+        min_tier <= actual_tier <= max_tier
+    ):
         failures.append(
-            f"tier:{contract.get('tier')} != expected {scenario['expected_tier']}"
+            f"tier:{actual_tier} outside allowed [{min_tier},{max_tier}]"
         )
     if bool(contract.get("approval_required")) != bool(
         scenario["approval_required"]
@@ -119,6 +129,8 @@ def score_contract(result: dict[str, Any], catalog: dict[str, Any]) -> dict[str,
         "passed": not failures,
         "failures": failures,
         "expected_tier": scenario["expected_tier"],
+        "allowed_tier_range": [min_tier, max_tier],
+        "tier_policy": tier_policy.get("mode", "exact"),
         "actual_tier": contract.get("tier"),
         "required_controls": sorted(required),
         "reported_controls": sorted(controls),
