@@ -80,8 +80,14 @@ def gh_json(root: Path, args: list[str]) -> Any:
         raise RuntimeError(f"gh returned non-JSON output: {out[-1000:]}") from exc
 
 
+def split_slug(slug: str) -> tuple[str, str]:
+    owner, repo = slug.split("/", 1)
+    return owner, repo
+
+
 def snapshot(root: Path, limit: int = 100) -> dict[str, Any]:
     gh, slug = require_gh(root)
+    owner, _ = split_slug(slug)
     issues = gh_json(
         root,
         ["issue", "list", "--state", "all", "--limit", str(limit), "--json",
@@ -103,13 +109,38 @@ def snapshot(root: Path, limit: int = 100) -> dict[str, Any]:
             releases = json.loads(out)
         except json.JSONDecodeError:
             releases = []
+    warnings: list[str] = []
+    milestones: Any = []
+    rc, out = run([gh, "api", f"repos/{slug}/milestones?state=all&per_page={limit}"], root)
+    if rc == 0:
+        try:
+            milestones = json.loads(out)
+        except json.JSONDecodeError:
+            warnings.append("GitHub milestones returned invalid JSON")
+    else:
+        warnings.append("GitHub milestones could not be read")
+
+    projects: Any = []
+    rc, out = run([gh, "project", "list", "--owner", owner, "--limit", str(limit), "--format", "json"], root)
+    if rc == 0:
+        try:
+            project_data = json.loads(out)
+            projects = project_data.get("projects", project_data) if isinstance(project_data, dict) else project_data
+        except json.JSONDecodeError:
+            warnings.append("GitHub Projects returned invalid JSON")
+    else:
+        warnings.append("GitHub Projects are unavailable with the current gh scopes or account configuration")
+
     result = {
-        "schema_version": 1,
+        "schema_version": 2,
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "repository": slug,
         "issues": issues,
         "pull_requests": prs,
+        "milestones": milestones,
+        "projects": projects,
         "releases": releases,
+        "warnings": warnings,
     }
     path = local_workspace.state_path(root, "github-snapshot.json", create=True)
     path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
@@ -269,6 +300,47 @@ def issue_plan(
     return {"applied": True, "repository": slug, "issue_url": out.splitlines()[-1].strip()}
 
 
+def milestone_plan(root: Path, title: str, description: str | None, apply: bool) -> dict[str, Any]:
+    gh, slug = require_gh(root)
+    cmd = [gh, "api", "-X", "POST", f"repos/{slug}/milestones", "-f", f"title={title}"]
+    if description:
+        cmd.extend(["-f", f"description={description}"])
+    if not apply:
+        return {"applied": False, "repository": slug, "command": " ".join(shlex.quote(x) for x in cmd)}
+    rc, out = run(cmd, root)
+    if rc != 0:
+        raise RuntimeError(out or "failed to create milestone")
+    data = json.loads(out)
+    return {
+        "applied": True,
+        "repository": slug,
+        "milestone": {"number": data.get("number"), "title": data.get("title"), "url": data.get("html_url")},
+    }
+
+
+def project_item_plan(root: Path, project_number: int, item_url: str, apply: bool) -> dict[str, Any]:
+    gh, slug = require_gh(root)
+    owner, _ = split_slug(slug)
+    cmd = [gh, "project", "item-add", str(project_number), "--owner", owner, "--url", item_url]
+    if not apply:
+        return {
+            "applied": False,
+            "repository": slug,
+            "project_number": project_number,
+            "command": " ".join(shlex.quote(x) for x in cmd),
+        }
+    rc, out = run(cmd, root)
+    if rc != 0:
+        raise RuntimeError(out or "failed to add item to GitHub Project")
+    return {
+        "applied": True,
+        "repository": slug,
+        "project_number": project_number,
+        "item_url": item_url,
+        "output": out,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="command", required=True)
@@ -305,6 +377,20 @@ def main() -> int:
     p.add_argument("--apply", action="store_true")
     p.add_argument("--json", action="store_true")
 
+    p = sub.add_parser("create-milestone")
+    p.add_argument("--root", default=".")
+    p.add_argument("--title", required=True)
+    p.add_argument("--description")
+    p.add_argument("--apply", action="store_true")
+    p.add_argument("--json", action="store_true")
+
+    p = sub.add_parser("add-to-project")
+    p.add_argument("--root", default=".")
+    p.add_argument("--project-number", required=True, type=int)
+    p.add_argument("--url", required=True)
+    p.add_argument("--apply", action="store_true")
+    p.add_argument("--json", action="store_true")
+
     ns = ap.parse_args()
     root = Path(ns.root).resolve()
     try:
@@ -316,8 +402,12 @@ def main() -> int:
             result = record(root, ns.requirement_id, ns.issue, ns.pr, ns.test, ns.release)
         elif ns.command == "verify":
             result = verify(root, ns.requirement_id)
-        else:
+        elif ns.command == "create-issue":
             result = issue_plan(root, ns.title, ns.body, ns.label, ns.milestone, ns.apply)
+        elif ns.command == "create-milestone":
+            result = milestone_plan(root, ns.title, ns.description, ns.apply)
+        else:
+            result = project_item_plan(root, ns.project_number, ns.url, ns.apply)
     except (RuntimeError, json.JSONDecodeError) as exc:
         if getattr(ns, "json", False):
             print(json.dumps({"ok": False, "error": str(exc)}, indent=2))
