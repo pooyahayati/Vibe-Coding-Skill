@@ -47,6 +47,19 @@ def main() -> int:
         tags.update(item.get("tags", []))
         if item["expected_tier"] not in [0, 1, 2, 3]:
             raise SystemExit(f"invalid tier in {item['id']}")
+        policy = item.get("benchmark_tier_policy")
+        if not isinstance(policy, dict):
+            raise SystemExit(f"benchmark_tier_policy missing in {item['id']}")
+        if policy.get("mode") not in {"exact", "range"}:
+            raise SystemExit(f"invalid benchmark tier policy mode in {item['id']}")
+        min_tier = policy.get("min_tier")
+        max_tier = policy.get("max_tier")
+        if min_tier not in [0, 1, 2, 3] or max_tier not in [0, 1, 2, 3] or min_tier > max_tier:
+            raise SystemExit(f"invalid benchmark tier range in {item['id']}")
+        if not (min_tier <= item["expected_tier"] <= max_tier):
+            raise SystemExit(f"expected tier outside benchmark range in {item['id']}")
+        if policy.get("mode") == "exact" and min_tier != max_tier:
+            raise SystemExit(f"exact benchmark policy must have one tier in {item['id']}")
         if not item["must_do"]:
             raise SystemExit(f"must_do cannot be empty in {item['id']}")
         required_controls = item.get("required_controls", [])
