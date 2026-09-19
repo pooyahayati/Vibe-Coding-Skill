@@ -14,6 +14,10 @@ TARGET = ROOT / "skills" / "vibe-coding-skill"
 RUNTIME_FILES = [
     Path("SKILL.md"),
     Path("config/toolchain.json"),
+    Path("config/agent-benchmarks.json"),
+    Path("evals/scenarios.json"),
+    Path("evals/agent-output.schema.json"),
+    Path("evals/AGENT_OUTPUT_SCHEMA.md"),
     Path("agents/openai.yaml"),
     Path("scripts/doctor.py"),
     Path("scripts/change_budget.py"),
@@ -31,6 +35,9 @@ RUNTIME_FILES = [
     Path("scripts/state_recovery.py"),
     Path("scripts/install_check.py"),
     Path("scripts/skill_lifecycle.py"),
+    Path("scripts/evaluate_agent_output.py"),
+    Path("scripts/benchmark_agent_outputs.py"),
+    Path("scripts/run_agent_benchmark.py"),
 ]
 
 RUNTIME_DIRS = [

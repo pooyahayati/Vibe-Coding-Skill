@@ -33,6 +33,9 @@ RUNTIME_SCRIPTS = [
     "resume_context.py",
     "state_recovery.py",
     "skill_lifecycle.py",
+    "evaluate_agent_output.py",
+    "benchmark_agent_outputs.py",
+    "run_agent_benchmark.py",
 ]
 
 REQUIRED_REFS = [

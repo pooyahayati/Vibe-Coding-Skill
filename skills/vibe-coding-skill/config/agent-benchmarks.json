@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "agents": {
+    "codex": {
+      "display_name": "OpenAI Codex CLI",
+      "binary": "codex",
+      "version_args": [
+        "--version"
+      ],
+      "auth_env": [
+        "OPENAI_API_KEY"
+      ],
+      "install_hint": "npm install -g @openai/codex",
+      "skill_dir": ".agents/skills/vibe-coding-skill",
+      "adapter": "codex"
+    },
+    "claude-code": {
+      "display_name": "Anthropic Claude Code",
+      "binary": "claude",
+      "version_args": [
+        "--version"
+      ],
+      "auth_env": [
+        "ANTHROPIC_API_KEY",
+        "CLAUDE_CODE_OAUTH_TOKEN"
+      ],
+      "install_hint": "npm install -g @anthropic-ai/claude-code",
+      "skill_dir": ".claude/skills/vibe-coding-skill",
+      "adapter": "claude-code"
+    }
+  }
+}

@@ -56,11 +56,34 @@ This gate prevents unsupported Done claims but does not attempt to judge whether
 
 Real agent outputs are scored separately from deterministic policy tests.
 
-Use `evals/AGENT_OUTPUT_SCHEMA.md` for each blind run. Store raw outputs in the project's local Vibe Coding workspace, for example `~/.vibe-coding/projects/<project-id>/benchmarks/`, then aggregate that local directory.
+The strict output schema is `evals/agent-output.schema.json`; human guidance is in `evals/AGENT_OUTPUT_SCHEMA.md`.
+
+Use `scripts/run_agent_benchmark.py` for blind Codex/Claude Code execution. The runner installs the Skill only inside a temporary benchmark Git repository, requests structured output from the real CLI, and records provenance/integrity metadata plus raw stdout/stderr outside the repository.
+
+Preflight:
+
+```bash
+python scripts/run_agent_benchmark.py preflight --agent codex --require-env-auth --json
+python scripts/run_agent_benchmark.py preflight --agent claude-code --require-env-auth --json
+```
+
+Complete evidence:
+
+```bash
+python scripts/benchmark_agent_outputs.py RESULTS_DIR \
+  --required-agent codex \
+  --required-agent claude-code \
+  --require-complete \
+  --json
+```
+
+A conformance rate is reported only when the expected scenario set is complete for that Agent.
+
+The manual GitHub Actions workflow `.github/workflows/agent-benchmark.yml` requires real provider credentials and uploads raw benchmark evidence as an Actions artifact. It is deliberately not an automatic PR workflow because it consumes provider usage.
 
 Do not commit benchmark output to the project repository.
 
-Do not publish or compare a Codex/Claude result unless that agent actually produced the stored raw contract under the stated skill version.
+Do not publish or compare a Codex/Claude result unless that agent actually produced the stored raw contract under the stated Skill version. Missing runs are missing evidence, never success.
 
 ## Interpretation
 

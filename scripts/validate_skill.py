@@ -45,6 +45,7 @@ REQUIRED_SCRIPTS = [
     "run_real_world_validations.py",
     "run_failure_injections.py",
     "benchmark_agent_outputs.py",
+    "run_agent_benchmark.py",
     "local_workspace.py",
     "repository_purity.py",
     "graph_provider.py",
@@ -141,6 +142,26 @@ def main() -> int:
             fail(f"missing reference: {rel}")
         if rel not in text:
             fail(f"SKILL.md does not reference {rel}")
+
+    benchmark_schema = ROOT / "evals" / "agent-output.schema.json"
+    benchmark_agents = ROOT / "config" / "agent-benchmarks.json"
+    for path in (benchmark_schema, benchmark_agents):
+        if not path.exists():
+            fail(f"missing benchmark contract file: {path.relative_to(ROOT)}")
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            fail(f"invalid benchmark contract JSON {path.relative_to(ROOT)}: {exc}")
+        if not isinstance(value, dict):
+            fail(f"benchmark contract must be a JSON object: {path.relative_to(ROOT)}")
+
+    agents_config = json.loads(benchmark_agents.read_text(encoding="utf-8"))
+    if set((agents_config.get("agents") or {}).keys()) != {"codex", "claude-code"}:
+        fail("config/agent-benchmarks.json must define codex and claude-code adapters")
+
+    workflow = ROOT / ".github" / "workflows" / "agent-benchmark.yml"
+    if not workflow.exists():
+        fail("missing .github/workflows/agent-benchmark.yml")
 
     real_world = ROOT / "validation" / "real-world-projects.json"
     if not real_world.exists():
