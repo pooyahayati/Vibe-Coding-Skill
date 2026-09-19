@@ -27,6 +27,10 @@ RUNTIME_FILES = [
     Path("scripts/graph_provider.py"),
     Path("scripts/github_traceability.py"),
     Path("scripts/project_state.py"),
+    Path("scripts/resume_context.py"),
+    Path("scripts/state_recovery.py"),
+    Path("scripts/install_check.py"),
+    Path("scripts/skill_lifecycle.py"),
 ]
 
 RUNTIME_DIRS = [

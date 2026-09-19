@@ -1,0 +1,32 @@
+name: Cross Platform Smoke
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.10'
+          - os: ubuntu-latest
+            python: '3.13'
+          - os: macos-latest
+            python: '3.12'
+          - os: windows-latest
+            python: '3.12'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Offline installation check
+        run: python scripts/install_check.py --skill-root . --json
+      - name: Recovery and lifecycle smoke
+        run: python -m unittest discover -s tests -p "test_cross_platform.py"
+      - name: Portable install check
+        run: python skills/vibe-coding-skill/scripts/install_check.py --skill-root skills/vibe-coding-skill --json

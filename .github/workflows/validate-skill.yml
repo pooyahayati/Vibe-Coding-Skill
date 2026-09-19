@@ -26,5 +26,9 @@ jobs:
         run: python scripts/run_failure_injections.py
       - name: Check repository purity
         run: python scripts/repository_purity.py --root . --json
+      - name: Offline installation check
+        run: python scripts/install_check.py --skill-root . --json
       - name: Check portable package drift
         run: python scripts/sync_package.py --check
+      - name: Portable installation check
+        run: python skills/vibe-coding-skill/scripts/install_check.py --skill-root skills/vibe-coding-skill --json
