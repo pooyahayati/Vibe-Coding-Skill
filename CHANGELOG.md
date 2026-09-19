@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 — Recovery, resume, cross-platform, and installation hardening
+
+- Added repository-first resume context generation that does not depend on chat history.
+- Added safe local-state inspection, quarantine, and recovery.
+- Added offline installation validation for canonical and portable skill installs.
+- Added last-known-good recording, local upgrade planning, and explicit rollback support.
+- Added Linux, macOS, and Windows portability smoke tests across supported Python versions.
+- Added portable-install validation in CI.
+- Documented Python 3.10+ baseline, offline behavior, recovery semantics, and rollback limits.
+
 ## 0.5.0 — Graph provider contract, GitHub traceability, and project state automation
 
 - Added a provider-neutral graph contract with Graphify as the default adapter.
