@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.1 — Audit hotfix and governance hardening
+
+- Fixed literal escaped-newline corruption in `SKILL.md` and added semantic validation to prevent recurrence.
+- Clarified the project-intelligence graph policy while keeping machine-generated graph data local-only.
+- Removed the recommended Claude project-local checkout and hardened repository purity against local Vibe Skill checkouts.
+- Pinned core GitHub Actions by commit SHA and made Graphify/Trivy contract tests read approved versions dynamically.
+- Added automatic latest-stable Trivy compatibility proposals.
+- Added official Agent Skills reference-validator compatibility workflow pinned to a known upstream commit.
+- Hardened last-known-good recording with offline installation validation and isolated target validation before upgrades.
+- Added validated-release automation and safe cleanup of unchanged merged work branches.
+- Extended GitHub traceability snapshots and dry-run mutations to Milestones and GitHub Projects.
+- Improved private security-reporting guidance.
+- Removed stale hard-coded internal version identity from dependency/tool requests.
+
 ## 0.6.0 — Recovery, resume, cross-platform, and installation hardening
 
 - Added repository-first resume context generation that does not depend on chat history.
