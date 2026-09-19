@@ -29,7 +29,7 @@ def main() -> int:
     seen_ids: set[str] = set()
     tags: set[str] = set()
     for item in scenarios:
-        for key in ("id", "prompt", "expected_tier", "must_do", "must_not_do"):
+        for key in ("id", "prompt", "expected_tier", "must_do", "must_not_do", "required_controls", "forbidden_controls"):
             if key not in item:
                 raise SystemExit(f"scenario missing {key}: {item.get('id')}")
         if item["id"] in seen_ids:
