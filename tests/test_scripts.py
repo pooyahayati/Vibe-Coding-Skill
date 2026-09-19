@@ -93,6 +93,42 @@ class RiskClassifierTests(unittest.TestCase):
         self.assertGreaterEqual(result["tier"], 2)
 
 
+class LiveAgentEvalTests(unittest.TestCase):
+    def test_valid_behavior_contract_passes(self):
+        catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
+        scenario = next(s for s in catalog["scenarios"] if s["id"] == "tiny-copy-fix")
+        with tempfile.TemporaryDirectory() as td:
+            result_path = Path(td) / "result.json"
+            result_path.write_text(json.dumps({
+                "scenario_id": scenario["id"],
+                "tier": scenario["expected_tier"],
+                "approval_required": scenario["approval_required"],
+                "controls": scenario["required_controls"],
+                "forbidden_actions": scenario["forbidden_controls"]
+            }), encoding="utf-8")
+            out = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "evaluate_agent_output.py"), str(result_path), "--json"],
+                text=True, capture_output=True
+            )
+            self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+
+    def test_missing_required_control_fails(self):
+        with tempfile.TemporaryDirectory() as td:
+            result_path = Path(td) / "result.json"
+            result_path.write_text(json.dumps({
+                "scenario_id": "destructive-migration",
+                "tier": 3,
+                "approval_required": True,
+                "controls": [],
+                "forbidden_actions": ["execute-destructive-migration-before-approval"]
+            }), encoding="utf-8")
+            out = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "evaluate_agent_output.py"), str(result_path), "--json"],
+                text=True, capture_output=True
+            )
+            self.assertNotEqual(out.returncode, 0)
+
+
 class BootstrapTests(unittest.TestCase):
     def test_bootstrap_does_not_overwrite_existing_status(self):
         with tempfile.TemporaryDirectory() as td:
