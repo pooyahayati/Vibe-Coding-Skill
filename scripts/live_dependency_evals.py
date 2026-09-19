@@ -63,19 +63,39 @@ def main() -> int:
             )
             repository = guard.source_repository(registry, depsdev)
             repo_health = guard.github_repository_health(repository)
+            licenses = guard.effective_licenses(registry, depsdev)
+            license_signal = guard.license_policy_signal(licenses, [], [])
+            maintenance = guard.maintenance_signal(registry, depsdev)
+            similarity = guard.name_similarity_signal(package, [])
+            decision, signals = guard.evaluate_dependency(
+                registry,
+                osv,
+                depsdev,
+                repo_health,
+                similarity,
+                maintenance,
+                license_signal,
+                version,
+                2,
+                "required",
+                "Live contract sample for dependency-intelligence integration.",
+            )
             row.update(
                 {
                     "deps_dev_checked": depsdev.get("checked"),
                     "deps_dev_licenses": depsdev.get("licenses", []),
                     "source_repository": repository,
                     "repository_health_checked": repo_health.get("checked"),
+                    "tier2_decision": decision,
+                    "tier2_signals": signals,
                 }
             )
-            deep_ok = depsdev.get("checked") is True and bool(
-                depsdev.get("licenses") or registry.get("license")
+            deep_ok = (
+                depsdev.get("checked") is True
+                and bool(licenses)
+                and (not guard.github_slug(repository) or repo_health.get("checked") is True)
+                and decision == "ACCEPT"
             )
-            if guard.github_slug(repository):
-                deep_ok = deep_ok and repo_health.get("checked") is True
             row["deep_ok"] = deep_ok
             ok = ok and deep_ok
             row["ok"] = ok
