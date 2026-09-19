@@ -18,6 +18,18 @@ Each fixture is initialized as a real temporary Git repository. The runner verif
 
 Fixtures are intentionally small. They test policy behavior, not framework performance.
 
+## Pinned real-world repository validation
+
+Run:
+
+```bash
+python scripts/run_real_world_validations.py
+```
+
+The catalog in `validation/real-world-projects.json` pins public repositories to exact commits. The runner verifies that local workspace initialization, repository purity, resume context, dry-run bootstrap, and risk classification behave safely on real Python, Node, and Go repository layouts.
+
+This is a compatibility layer, not a claim that a coding agent successfully implemented a feature in those projects.
+
 ## Failure injection
 
 Run:
