@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 — Risk classifier, full dependency adapters, and hardened tool contracts
+
+- Added deterministic, explainable risk classification with Tier 0–3 workflow floors.
+- Added Maven Central, NuGet, and Go module support to Dependency Guard.
+- Added read-only GitHub/Graphify/Trivy integration health gate.
+- Added executable scenario evals against the risk classifier.
+- Added network-backed registry/OSV smoke tests.
+- Added Trivy contract testing and approved-version toolchain tracking.
+- Added unit tests for risk classification and stale-graph integration behavior.
+
 ## 0.2.0 — Bootstrap, dependency guard, evals, and portable packaging
 
 - Added non-destructive adaptive project bootstrap.
