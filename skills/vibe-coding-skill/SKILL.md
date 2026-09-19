@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Git. Graphify and Trivy are recommended for medium/high-risk projects. Network access is needed for package-registry, OSV, GitHub, or tool-update checks.
 metadata:
   author: "Pooya Hayati"
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # Vibe Coding Skill
@@ -70,6 +70,12 @@ Examples: production infrastructure, destructive migration, sensitive data, fina
 Use Tier 2 plus explicit approval gates, rollback/recovery planning, stronger verification, and human review where available.
 
 Read `references/risk-and-autonomy.md` before Tier 2 or Tier 3 work.
+
+When task text or touched paths are available, use the deterministic workflow floor:
+
+`python scripts/risk_classifier.py "<task>" --path <changed-path> --json`
+
+Automated classification may raise the workflow floor. Do not use it to override clearly higher-risk project context.
 
 ## Startup protocol
 
@@ -192,7 +198,19 @@ For a proposed Python, npm, or crates.io dependency, run the baseline guard when
 
 The guard verifies registry existence/version and checks OSV when a concrete version is provided. Missing evidence produces `REVIEW REQUIRED`, not a false claim of safety.
 
-For unsupported ecosystems, use the same policy manually against the official registry and OSV or equivalent.
+Supported automated ecosystems are `pypi`, `npm`, `crates`, `maven` (`group:artifact`), `nuget`, and `go`.
+
+Missing provenance, license, or security evidence produces `REVIEW REQUIRED` rather than a false `ACCEPT`.
+
+## Integration gate
+
+For Tier 2+ work, or when tool/project state is uncertain:
+
+`python scripts/integration_guard.py --root <project> --tier <0|1|2|3> --json`
+
+This check is read-only. It verifies Git/GitHub detectability, Graphify version/freshness, and Trivy availability without mutating the project.
+
+Read `references/risk-classifier-and-integrations.md`.
 
 ## Execution loop
 
@@ -268,6 +286,7 @@ Load only what is needed:
 - `references/project-state-and-traceability.md`
 - `references/execution-and-verification.md`
 - `references/bootstrap-and-evals.md`
+- `references/risk-classifier-and-integrations.md`
 
 ## Bundled utilities
 
@@ -277,10 +296,15 @@ Runtime utilities shipped with the portable skill:
 - `scripts/change_budget.py`
 - `scripts/bootstrap_project.py`
 - `scripts/dependency_guard.py`
+- `scripts/risk_classifier.py`
+- `scripts/integration_guard.py`
 
 Repository-maintainer utilities:
 
 - `scripts/graphify_compat.py`
+- `scripts/trivy_compat.py`
+- `scripts/live_dependency_evals.py`
+- `scripts/run_evals.py`
 - `scripts/validate_skill.py`
 - `scripts/validate_evals.py`
 - `scripts/sync_package.py`
