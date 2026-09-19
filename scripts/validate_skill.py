@@ -20,6 +20,9 @@ REQUIRED_REFS = [
     "references/risk-classifier-and-integrations.md",
     "references/validation-and-benchmarking.md",
     "references/local-workspace-and-repository-purity.md",
+    "references/graph-provider-contract.md",
+    "references/github-traceability-automation.md",
+    "references/project-state-automation.md",
 ]
 REQUIRED_SCRIPTS = [
     "doctor.py",
@@ -41,6 +44,9 @@ REQUIRED_SCRIPTS = [
     "benchmark_agent_outputs.py",
     "local_workspace.py",
     "repository_purity.py",
+    "graph_provider.py",
+    "github_traceability.py",
+    "project_state.py",
 ]
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
