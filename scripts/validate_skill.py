@@ -23,6 +23,8 @@ REQUIRED_REFS = [
     "references/graph-provider-contract.md",
     "references/github-traceability-automation.md",
     "references/project-state-automation.md",
+    "references/recovery-and-resume.md",
+    "references/installation-and-lifecycle.md",
 ]
 REQUIRED_SCRIPTS = [
     "doctor.py",
@@ -47,6 +49,10 @@ REQUIRED_SCRIPTS = [
     "graph_provider.py",
     "github_traceability.py",
     "project_state.py",
+    "resume_context.py",
+    "state_recovery.py",
+    "install_check.py",
+    "skill_lifecycle.py",
 ]
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
