@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.5.0-blue)
+![Version](https://img.shields.io/badge/version-0.6.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -149,6 +149,10 @@ scripts/
 ├── graph_provider.py
 ├── github_traceability.py
 ├── project_state.py
+├── resume_context.py
+├── state_recovery.py
+├── install_check.py
+├── skill_lifecycle.py
 ├── doctor.py
 ├── change_budget.py
 ├── integration_guard.py
@@ -283,6 +287,28 @@ python scripts/benchmark_agent_outputs.py ~/.vibe-coding/projects/<project-id>/b
 
 See `benchmarks/README.md` for the blind-run protocol.
 
+## Recovery and resume
+
+```bash
+python scripts/resume_context.py --root /path/to/project --write-local --json
+python scripts/state_recovery.py inspect --root /path/to/project --json
+```
+
+A fresh agent can resume from repository/local evidence without chat history. Corrupt local state can be quarantined and selectively regenerated without modifying the project repository.
+
+## Installation hardening
+
+```bash
+python scripts/install_check.py --skill-root . --json
+python scripts/skill_lifecycle.py record-good --skill-root . --json
+python scripts/skill_lifecycle.py plan-upgrade --skill-root . --target-ref origin/main --json
+python scripts/skill_lifecycle.py rollback --skill-root . --json
+```
+
+Baseline support is Python 3.10+ plus Git. The installation check is offline. Rollback is dry-run unless `--apply` is explicit.
+
+Portable core smoke tests run on Linux, macOS, and Windows.
+
 ## External contract tests
 
 Normal CI is deterministic. Scheduled/manual live contracts smoke-test real registries, OSV, Graphify, and Trivy separately so external outages do not make ordinary PRs flaky.
@@ -329,7 +355,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.5.0`
+Current version: `0.6.0`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 
