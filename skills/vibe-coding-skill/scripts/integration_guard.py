@@ -10,6 +10,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import local_workspace
+
 ROOT = Path(__file__).resolve().parents[1]
 TOOLCHAIN = ROOT / "config" / "toolchain.json"
 
@@ -77,7 +79,11 @@ def main() -> int:
         if ns.tier >= 2:
             warnings.append("Graphify unavailable for a Tier 2+ change; use repository/source fallback impact analysis")
 
-    state_path = root / ".vibe" / "graph-state.json"
+    state_path = local_workspace.state_path(root, "graph-state.json", create=False)
+    checks["local_workspace"] = {
+        "path": str(local_workspace.project_workspace(root, create=False)),
+        "present": local_workspace.project_workspace(root, create=False).exists(),
+    }
     if state_path.exists():
         try:
             state = json.loads(state_path.read_text(encoding="utf-8"))
@@ -87,7 +93,7 @@ def main() -> int:
             if stale:
                 warnings.append("project graph state is stale relative to HEAD")
         except Exception as exc:
-            problems.append(f"invalid .vibe/graph-state.json: {exc}")
+            problems.append(f"invalid local graph-state.json: {exc}")
     else:
         checks["graph_state"] = {"present": False}
 

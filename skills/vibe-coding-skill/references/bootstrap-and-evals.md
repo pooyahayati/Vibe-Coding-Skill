@@ -16,6 +16,8 @@ The tool is non-destructive by default and skips an existing file.
 
 It also refuses to create a document when the facts required for that document are unknown. This prevents empty/decorative project memory.
 
+Bootstrap initializes Vibe Coding operational state outside the repository under `~/.vibe-coding/projects/<project-id>/` and configures local-only Git exclusions through `.git/info/exclude`. It does not add Vibe-specific rules to the project's `.gitignore`.
+
 Example:
 
 ```bash

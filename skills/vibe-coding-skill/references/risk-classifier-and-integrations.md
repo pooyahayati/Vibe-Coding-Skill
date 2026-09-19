@@ -40,10 +40,12 @@ The integration guard is read-only. It checks:
 - Git repository state;
 - GitHub remote and optional `gh` authentication;
 - Graphify availability/version against the approved toolchain version;
-- graph-state freshness;
+- graph-state freshness from the local Vibe Coding workspace;
 - Trivy availability.
 
 It does not automatically run destructive commands, push, create PRs, refresh a graph, or scan/send project content.
+
+Operational state is read from the local workspace outside the repository. Integration checks must not create `.vibe/` or tool report files in the project tree.
 
 For Tier 2, missing Graphify/Trivy is a warning when a safe fallback exists.
 
@@ -66,3 +68,7 @@ Do not refresh a graph simply to satisfy a check for Tier 0/1 work.
 Trivy remains the broad baseline scanner. The integration guard checks availability; actual scanning is run only when justified by the risk and scope.
 
 A passing Trivy scan does not replace application-level security review or SAST where needed.
+
+## Local-only tooling
+
+Graphify output, Trivy reports, benchmark output, coverage reports, and Vibe Coding state are local-only. Initialize the local workspace with `python scripts/local_workspace.py init --root . --json` and verify purity before commit/push.
