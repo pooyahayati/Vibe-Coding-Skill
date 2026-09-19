@@ -20,5 +20,9 @@ jobs:
           python -m py_compile scripts/*.py
       - name: Run unit tests
         run: python -m unittest discover -s tests -p "test_*.py"
+      - name: Validate representative projects
+        run: python scripts/run_project_validations.py
+      - name: Run failure injection suite
+        run: python scripts/run_failure_injections.py
       - name: Check portable package drift
         run: python scripts/sync_package.py --check
