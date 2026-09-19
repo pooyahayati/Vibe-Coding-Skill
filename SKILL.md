@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Python 3.10+ and Git. Graphify and Trivy are recommended for medium/high-risk projects. Network access is needed only for package-registry, OSV, GitHub, or tool-update checks.
 metadata:
   author: "Pooya Hayati"
-  version: "0.6.1"
+  version: "0.7.0"
 ---
 
 # Vibe Coding Skill
@@ -223,15 +223,19 @@ Read `references/bootstrap-and-evals.md`.
 
 ## Executable dependency guard
 
-For a proposed Python, npm, or crates.io dependency, run the baseline guard when network access is available:
+For a meaningful proposed dependency, run the risk-adaptive guard when network access is available:
 
-`python scripts/dependency_guard.py <ecosystem> <package> --version <version> --json`
+`python scripts/dependency_guard.py <ecosystem> <package> --version <version> --risk-tier <0|1|2|3> --necessity <required|optional|replacement|unknown> --purpose "<why>" --project-root <project> --json`
 
-The guard verifies registry existence/version and checks OSV when a concrete version is provided. Missing evidence produces `REVIEW REQUIRED`, not a false claim of safety.
+The guard combines official registry evidence, OSV, optional/risk-required deps.dev evidence, source-repository health, maintenance signals, license policy, and name-similarity checks.
 
 Supported automated ecosystems are `pypi`, `npm`, `crates`, `maven` (`group:artifact`), `nuget`, and `go`.
 
-Missing provenance, license, or security evidence produces `REVIEW REQUIRED` rather than a false `ACCEPT`.
+Automated evidence must remain separate from judgment: dependency necessity and purpose are explicit decisions. `--necessity unknown` cannot produce `ACCEPT`.
+
+For Tier 2/3, missing deps.dev or source-health evidence normally produces `REVIEW REQUIRED`. Tier 3 also expects provenance/attestation evidence when available.
+
+Missing or contradictory evidence must never be converted into a false `ACCEPT`.
 
 ## Integration gate
 

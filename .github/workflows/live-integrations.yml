@@ -2,6 +2,12 @@ name: Live Integration Contracts
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "scripts/dependency_guard.py"
+      - "scripts/live_dependency_evals.py"
+      - "references/security-and-dependencies.md"
+      - ".github/workflows/live-integrations.yml"
   schedule:
     - cron: "41 5 * * 2"
 
@@ -13,7 +19,7 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
-      - name: Smoke-test registry and OSV adapters
+      - name: Smoke-test registry OSV deps.dev and source-health adapters
         run: python scripts/live_dependency_evals.py
 
   trivy:
