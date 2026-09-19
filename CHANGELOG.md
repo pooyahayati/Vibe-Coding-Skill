@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.0 — Real-agent benchmark execution and evidence hardening
+
+- Added strict machine JSON Schema for live-agent behavior contracts.
+- Added real Codex CLI and Claude Code benchmark adapters with blind prompt generation.
+- Added provenance envelopes containing agent version, model override, Skill version, timing, hashes, and workspace-integrity evidence.
+- Added raw stdout/stderr preservation outside the repository.
+- Added strict benchmark completeness checks so missing scenarios or agents cannot produce a conformance rate.
+- Added credential-safe preflight that records only credential variable names, never values.
+- Added isolated temporary project-scoped Skill installation for benchmark runs.
+- Added manual credential-gated GitHub Actions workflow for full Codex + Claude Code evaluation.
+- Fixed non-JSON scorer output and added schema/integrity validation.
+- Added regression coverage for prompt blindness, provenance integrity, missing evidence, and secret redaction.
+- Kept actual Agent performance claims blocked until genuine raw runs exist.
+
 ## 0.7.0 — Dependency intelligence hardening
 
 - Upgraded Dependency Guard from baseline registry/OSV checks to risk-adaptive multi-signal evidence.
