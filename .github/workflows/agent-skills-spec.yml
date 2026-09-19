@@ -27,7 +27,12 @@ jobs:
           path: .agent-skills-spec
       - name: Install pinned reference validator
         run: python -m pip install ./.agent-skills-spec/skills-ref
+      - name: Stage canonical skill under the spec-compliant directory name
+        run: |
+          mkdir -p /tmp/vibe-coding-skill
+          cp SKILL.md /tmp/vibe-coding-skill/SKILL.md
+          cp -R references scripts assets /tmp/vibe-coding-skill/
       - name: Validate canonical and portable skill
         run: |
-          skills-ref validate .
+          skills-ref validate /tmp/vibe-coding-skill
           skills-ref validate skills/vibe-coding-skill
