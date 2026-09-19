@@ -9,6 +9,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import local_workspace
+
 
 def run(cmd: list[str], cwd: Path) -> tuple[int, str]:
     p = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
@@ -56,7 +58,11 @@ def main() -> int:
             _, status = run(["git", "status", "--porcelain"], root)
             result["git"] = {"installed": True, "head": head, "dirty": bool(status)}
 
-            state_path = root / ".vibe" / "graph-state.json"
+            state_path = local_workspace.state_path(root, "graph-state.json", create=False)
+            result["workspace"] = {
+                "path": str(local_workspace.project_workspace(root, create=False)),
+                "present": local_workspace.project_workspace(root, create=False).exists(),
+            }
             if state_path.exists():
                 graph["state_file"] = str(state_path)
                 try:

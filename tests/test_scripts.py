@@ -168,34 +168,46 @@ class BenchmarkScoringTests(unittest.TestCase):
 
 class BootstrapTests(unittest.TestCase):
     def test_bootstrap_does_not_overwrite_existing_status(self):
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd:
             root = Path(td)
+            local_home = Path(hd)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True)
             status = root / "STATUS.md"
             status.write_text("keep me\n", encoding="utf-8")
+            env = os.environ.copy()
+            env["VIBE_CODING_HOME"] = str(local_home)
             cmd = [
                 sys.executable, str(ROOT / "scripts" / "bootstrap_project.py"),
                 "--root", str(root), "--profile", "minimal",
                 "--objective", "Test objective", "--json",
             ]
-            out = subprocess.run(cmd, text=True, capture_output=True, check=True)
+            out = subprocess.run(cmd, text=True, capture_output=True, check=True, env=env)
             data = json.loads(out.stdout)
             self.assertEqual(status.read_text(encoding="utf-8"), "keep me\n")
             self.assertTrue(any("STATUS.md: exists" in item for item in data["skipped"]))
-            self.assertTrue((root / ".vibe" / "project.json").exists())
+            self.assertFalse((root / ".vibe").exists())
+            self.assertFalse((root / ".gitignore").exists())
+            states = list((local_home / "projects").glob("*/state/project.json"))
+            self.assertEqual(len(states), 1)
+            exclude = (root / ".git" / "info" / "exclude").read_text(encoding="utf-8")
+            self.assertIn("graphify-out/", exclude)
+            self.assertIn("Vibe Coding Skill local-only artifacts", exclude)
 
     def test_standard_skips_project_doc_without_product_facts(self):
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd:
             root = Path(td)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            env = os.environ.copy()
+            env["VIBE_CODING_HOME"] = hd
             cmd = [
                 sys.executable, str(ROOT / "scripts" / "bootstrap_project.py"),
                 "--root", str(root), "--profile", "standard",
                 "--objective", "Test objective", "--json",
             ]
-            out = subprocess.run(cmd, text=True, capture_output=True, check=True)
+            out = subprocess.run(cmd, text=True, capture_output=True, check=True, env=env)
             data = json.loads(out.stdout)
             self.assertFalse((root / "PROJECT.md").exists())
+            self.assertFalse((root / ".vibe").exists())
             self.assertTrue(any("PROJECT.md: insufficient" in item for item in data["skipped"]))
 
 
@@ -206,9 +218,10 @@ class IntegrationGuardTests(unittest.TestCase):
         path.chmod(path.stat().st_mode | stat.S_IEXEC)
 
     def test_tier2_reports_stale_graph_without_mutating_repo(self):
-        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as bindir:
+        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as hd:
             root = Path(td)
             binroot = Path(bindir)
+            local_home = Path(hd)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True)
             subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
             subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
@@ -216,15 +229,21 @@ class IntegrationGuardTests(unittest.TestCase):
             subprocess.run(["git", "add", "."], cwd=root, check=True)
             subprocess.run(["git", "commit", "-qm", "init"], cwd=root, check=True)
             head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
-            (root / ".vibe").mkdir()
-            (root / ".vibe" / "graph-state.json").write_text(
-                json.dumps({"source_commit": "0" * 40, "provider": "graphify"}),
-                encoding="utf-8",
-            )
             self._fake_exe(binroot, "graphify", 'echo "graphify 0.9.64"')
             self._fake_exe(binroot, "trivy", 'echo "Version: 0.74.0"')
             env = os.environ.copy()
             env["PATH"] = str(binroot) + os.pathsep + env["PATH"]
+            env["VIBE_CODING_HOME"] = str(local_home)
+            local = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "local_workspace.py"),
+                 "init", "--root", str(root), "--json"],
+                text=True, capture_output=True, env=env, check=True,
+            )
+            workspace = Path(json.loads(local.stdout)["workspace"])
+            (workspace / "state" / "graph-state.json").write_text(
+                json.dumps({"source_commit": "0" * 40, "provider": "graphify"}),
+                encoding="utf-8",
+            )
             out = subprocess.run(
                 [sys.executable, str(ROOT / "scripts" / "integration_guard.py"),
                  "--root", str(root), "--tier", "2", "--json"],
@@ -237,6 +256,64 @@ class IntegrationGuardTests(unittest.TestCase):
                 subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip(),
                 head,
             )
+            self.assertFalse((root / ".vibe").exists())
+
+
+class LocalWorkspacePurityTests(unittest.TestCase):
+    def test_local_workspace_uses_git_info_exclude_not_gitignore(self):
+        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd:
+            root = Path(td)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            env = os.environ.copy()
+            env["VIBE_CODING_HOME"] = hd
+            out = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "local_workspace.py"),
+                 "init", "--root", str(root), "--json"],
+                text=True, capture_output=True, env=env, check=True,
+            )
+            data = json.loads(out.stdout)
+            self.assertTrue(Path(data["workspace"]).is_dir())
+            self.assertFalse((root / ".gitignore").exists())
+            exclude = (root / ".git" / "info" / "exclude").read_text(encoding="utf-8")
+            self.assertIn("graphify-out/", exclude)
+            self.assertIn(".trivy/", exclude)
+
+    def test_purity_gate_blocks_tracked_tool_artifact_but_allows_product_tests(self):
+        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd:
+            root = Path(td)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+            (root / "tests").mkdir()
+            (root / "tests" / "test_app.py").write_text("def test_ok(): assert True\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-qm", "product tests"], cwd=root, check=True)
+            env = os.environ.copy()
+            env["VIBE_CODING_HOME"] = hd
+            subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "local_workspace.py"),
+                 "init", "--root", str(root), "--json"],
+                text=True, capture_output=True, env=env, check=True,
+            )
+            clean = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "repository_purity.py"),
+                 "--root", str(root), "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(clean.returncode, 0, clean.stdout + clean.stderr)
+
+            (root / "graphify-out").mkdir()
+            (root / "graphify-out" / "graph.json").write_text("{}\n", encoding="utf-8")
+            subprocess.run(["git", "add", "-f", "graphify-out/graph.json"], cwd=root, check=True)
+            dirty = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "repository_purity.py"),
+                 "--root", str(root), "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(dirty.returncode, 2)
+            result = json.loads(dirty.stdout)
+            self.assertIn("graphify-out/graph.json", result["staged_forbidden"])
+            self.assertNotIn("tests/test_app.py", result["staged_forbidden"])
 
 
 if __name__ == "__main__":

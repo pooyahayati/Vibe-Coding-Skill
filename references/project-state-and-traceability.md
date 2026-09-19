@@ -1,8 +1,18 @@
 # Project State and Traceability
 
-## Repository as persistent memory
+## Repository as persistent project memory
 
-Conversation history is not the project database. Prefer durable state in the repository and Git/GitHub.
+Conversation history is not the project database.
+
+Keep durable **project knowledge** in the repository and Git/GitHub when another developer needs it: requirements, architecture decisions, meaningful status, tests, migrations, setup, and release history.
+
+Keep **tool operational state** outside the repository: graph caches/state, security reports, coverage reports, agent scratch state, benchmarks, and Vibe Coding runtime metadata.
+
+Default local operational state lives under:
+
+`~/.vibe-coding/projects/<project-id>/`
+
+This separation keeps the GitHub repository clean without sacrificing resumability.
 
 ## Adaptive documentation
 
@@ -68,3 +78,7 @@ Compare:
 ## Handoff
 
 Before handoff verify tests/checks, current branch/PR, objective, blockers/risks, pending decisions, graph freshness when relevant, deployment/migration state, and the next executable step.
+
+## Repository purity
+
+Before commit or push, run `python scripts/repository_purity.py --root . --json`. Tool-generated artifacts must not become tracked project files. See `references/local-workspace-and-repository-purity.md`.

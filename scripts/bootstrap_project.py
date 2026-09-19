@@ -9,6 +9,8 @@ import subprocess
 from datetime import date
 from pathlib import Path
 
+import local_workspace
+
 PROFILE_DOCS = {
     "minimal": ["STATUS.md"],
     "standard": ["STATUS.md", "PROJECT.md"],
@@ -206,9 +208,8 @@ def main() -> int:
         for name in wanted:
             write_if_safe(root / name, docs[name], ns.force, created, skipped)
 
-        vibe_dir = root / ".vibe"
-        vibe_dir.mkdir(parents=True, exist_ok=True)
-        state_path = vibe_dir / "project.json"
+        local = local_workspace.initialize(root)
+        state_path = Path(local["workspace"]) / "state" / "project.json"
         if not state_path.exists() or ns.force:
             state = {
                 "schema_version": 1,
@@ -218,9 +219,9 @@ def main() -> int:
                 "updated": date.today().isoformat(),
             }
             state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
-            created.append(".vibe/project.json")
+            created.append(f"local-state:{state_path}")
         else:
-            skipped.append(".vibe/project.json: exists")
+            skipped.append(f"local-state:{state_path}: exists")
     else:
         for name in wanted:
             if docs[name] is None:
@@ -229,7 +230,8 @@ def main() -> int:
                 skipped.append(f"{name}: exists")
             else:
                 created.append(name)
-        created.append(".vibe/project.json (planned)")
+        planned = local_workspace.project_workspace(root, create=False) / "state" / "project.json"
+        created.append(f"local-state:{planned} (planned)")
 
     result = {
         "profile": ns.profile,

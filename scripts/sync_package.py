@@ -22,6 +22,8 @@ RUNTIME_FILES = [
     Path("scripts/risk_classifier.py"),
     Path("scripts/integration_guard.py"),
     Path("scripts/completion_gate.py"),
+    Path("scripts/local_workspace.py"),
+    Path("scripts/repository_purity.py"),
 ]
 
 RUNTIME_DIRS = [

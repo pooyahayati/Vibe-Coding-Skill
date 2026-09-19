@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.4.0-blue)
+![Version](https://img.shields.io/badge/version-0.4.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -93,6 +93,39 @@ Data providers:
 
 The skill owns its decision logic rather than depending on another development methodology.
 
+## Clean repository policy
+
+Vibe Coding tooling stays local. The project repository should contain product source, real product tests, migrations, manifests/lock files, and meaningful project documentation—not Graphify output, Trivy reports, coverage reports, benchmark output, caches, or agent state.
+
+Initialize local tooling state:
+
+```bash
+python scripts/local_workspace.py init --root /path/to/project --json
+```
+
+Default location:
+
+```text
+~/.vibe-coding/projects/<project-id>/
+├── state/
+├── graph/
+├── security/
+├── test-artifacts/
+├── benchmarks/
+├── worktrees/
+└── cache/
+```
+
+Local-only Git exclusions are written to `.git/info/exclude`; the project's `.gitignore` is not modified.
+
+Before commit/push:
+
+```bash
+python scripts/repository_purity.py --root /path/to/project --json
+```
+
+Product tests such as `tests/` remain in Git. Generated coverage/test reports remain local-only.
+
 ## Graphify update model
 
 Graphify is the default graph provider, but the skill does not blindly follow new releases.
@@ -111,8 +144,12 @@ The approved version is stored in `config/toolchain.json`.
 
 ```text
 scripts/
+├── local_workspace.py
+├── repository_purity.py
 ├── doctor.py
 ├── change_budget.py
+├── integration_guard.py
+├── completion_gate.py
 ├── graphify_compat.py
 └── validate_skill.py
 ```
@@ -139,7 +176,7 @@ python scripts/bootstrap_project.py \
   --json
 ```
 
-The bootstrapper does not overwrite existing project documents by default and skips documents when it does not have enough real project context to populate them.
+The bootstrapper does not overwrite existing project documents by default and skips documents when it does not have enough real project context to populate them. Vibe operational state is stored outside the repository in the local workspace.
 
 ### Risk classifier
 
@@ -207,7 +244,7 @@ A `Done` report without acceptance criteria and passing evidence is blocked.
 Actual agent results can be aggregated without inventing results for agents that were not run:
 
 ```bash
-python scripts/benchmark_agent_outputs.py benchmark-results --json
+python scripts/benchmark_agent_outputs.py ~/.vibe-coding/projects/<project-id>/benchmarks --json
 ```
 
 See `benchmarks/README.md` for the blind-run protocol.
@@ -258,7 +295,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.4.0`
+Current version: `0.4.1`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 

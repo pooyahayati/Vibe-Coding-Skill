@@ -24,5 +24,7 @@ jobs:
         run: python scripts/run_project_validations.py
       - name: Run failure injection suite
         run: python scripts/run_failure_injections.py
+      - name: Check repository purity
+        run: python scripts/repository_purity.py --root . --json
       - name: Check portable package drift
         run: python scripts/sync_package.py --check

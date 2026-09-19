@@ -44,7 +44,13 @@ Typical command:
 
 ## Graph state
 
-A project may record `.vibe/graph-state.json`:
+Graph provider state is local-only and must not be committed to the project repository.
+
+Default state location:
+
+`~/.vibe-coding/projects/<project-id>/state/graph-state.json`
+
+Example:
 
 ```json
 {
@@ -57,6 +63,8 @@ A project may record `.vibe/graph-state.json`:
 ```
 
 If `source_commit` differs from current `HEAD`, treat the graph as potentially stale.
+
+Graphify-generated `graphify-out/` is also local-only. Prefer an external output location when supported; otherwise keep the working-tree output untracked through `.git/info/exclude`.
 
 ## Graphify update policy
 
@@ -81,3 +89,7 @@ If a new version breaks the contract, keep the last known good version and surfa
 Graph evidence must be combined with source code, manifests, configuration, feature flags, database schema/migrations, tests, runtime logs, and external integrations.
 
 Dynamic imports, reflection, generated code, queues, triggers, environment configuration, and remote systems may not be fully represented in the graph.
+
+## Repository purity
+
+Machine graph outputs are engineering artifacts, not source. Do not commit them. See `references/local-workspace-and-repository-purity.md`.
