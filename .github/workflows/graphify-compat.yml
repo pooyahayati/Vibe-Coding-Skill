@@ -1,0 +1,47 @@
+name: Graphify Compatibility
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+      - name: Test latest stable Graphify
+        run: python scripts/graphify_compat.py --latest --update-approved --json | tee graphify-compat.json
+      - name: Detect toolchain change
+        id: change
+        shell: bash
+        run: |
+          if git diff --quiet -- config/toolchain.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Propose approved Graphify update
+        if: steps.change.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          VERSION=$(python -c 'import json; print(json.load(open("config/toolchain.json"))["graphify"]["approved"])')
+          BRANCH="bot/graphify-${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add config/toolchain.json
+          git commit -m "chore: approve Graphify ${VERSION}"
+          git push --force-with-lease origin "$BRANCH"
+          gh pr create             --base main             --head "$BRANCH"             --title "chore: approve Graphify ${VERSION}"             --body "Automated compatibility contract tests passed for Graphify ${VERSION}. Merging this PR makes it the approved stable version for Vibe Coding Skill."             || true
