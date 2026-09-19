@@ -1,0 +1,27 @@
+name: Live Integration Contracts
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 5 * * 2"
+
+jobs:
+  registries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Smoke-test registry and OSV adapters
+        run: python scripts/live_dependency_evals.py
+
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Contract-test approved Trivy
+        run: python scripts/trivy_compat.py --version 0.74.0 --json
