@@ -83,6 +83,16 @@ These contracts serve two purposes:
 
 A live model evaluation should compare the agent's behavior against the contract rather than grading prose style.
 
+### Live agent scoring
+
+For an actual Codex, Claude Code, or other agent run, require the JSON behavior contract documented in `evals/AGENT_OUTPUT_SCHEMA.md`, then score it with:
+
+```bash
+python scripts/evaluate_agent_output.py result.json --json
+```
+
+The evaluator checks exact risk tier, approval requirement, required controls, and explicit rejection of forbidden actions. Do not reveal expected controls to the evaluated agent before the run.
+
 ## Eval philosophy
 
 The skill should fail an evaluation when it:

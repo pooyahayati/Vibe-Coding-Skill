@@ -30,6 +30,7 @@ REQUIRED_SCRIPTS = [
     "integration_guard.py",
     "validate_evals.py",
     "run_evals.py",
+    "evaluate_agent_output.py",
     "live_dependency_evals.py",
     "sync_package.py",
 ]
