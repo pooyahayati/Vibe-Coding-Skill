@@ -90,6 +90,31 @@ def validate(root: Path) -> dict[str, Any]:
     if not metadata.get("version"):
         failures.append("SKILL.md version metadata is missing")
 
+    skill_path = root / "SKILL.md"
+    if skill_path.exists():
+        skill_text = skill_path.read_text(encoding="utf-8")
+        parts = skill_text.split("---", 2)
+        body = parts[2] if len(parts) == 3 else ""
+        if "\\n" in body:
+            failures.append("SKILL.md contains literal escaped newline sequences")
+
+    version_path = root / "VERSION"
+    if version_path.exists() and metadata.get("version"):
+        declared = version_path.read_text(encoding="utf-8").strip()
+        if declared != metadata["version"]:
+            failures.append(f"VERSION {declared!r} does not match SKILL.md {metadata['version']!r}")
+
+    plugin_path = root / "plugin.json"
+    if plugin_path.exists() and metadata.get("version"):
+        try:
+            plugin = json.loads(plugin_path.read_text(encoding="utf-8"))
+            if plugin.get("version") != metadata["version"]:
+                failures.append("plugin.json version does not match SKILL.md")
+            if plugin.get("name") != metadata.get("name"):
+                failures.append("plugin.json name does not match SKILL.md")
+        except json.JSONDecodeError as exc:
+            failures.append(f"plugin.json is invalid JSON: {exc}")
+
     for name in RUNTIME_SCRIPTS:
         path = root / "scripts" / name
         if not path.exists():
