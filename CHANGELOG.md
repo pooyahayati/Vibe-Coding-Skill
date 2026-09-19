@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 — Real-project validation, failure injection, and agent benchmark
+
+- Added representative project validation fixtures and deterministic runner.
+- Added failure-injection coverage for prompt injection, hallucinated dependencies, vulnerable packages, stale graphs, and unsupported Done claims.
+- Added a structured completion evidence gate.
+- Added vendor-neutral aggregation for real Codex/Claude Code behavior contracts.
+- Added validation and benchmarking guidance without fabricated agent results.
+- Added CI coverage for project validation and failure injection.
+- Cleaned duplicate changelog heading.
+
 ## 0.3.1 — Live agent behavior evaluation
 
 - Added a vendor-neutral JSON behavior contract for real Codex/Claude Code evaluation.
@@ -7,7 +17,6 @@
 - Added machine-checkable control contracts to every eval scenario.
 - Added regression tests for passing and failing live-agent outputs.
 
-# Changelog
 
 ## 0.3.0 — Risk classifier, full dependency adapters, and hardened tool contracts
 
