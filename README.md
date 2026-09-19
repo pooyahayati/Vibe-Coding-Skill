@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.7.0-blue)
+![Version](https://img.shields.io/badge/version-0.8.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -148,6 +148,7 @@ scripts/
 ├── state_recovery.py
 ├── install_check.py
 ├── skill_lifecycle.py
+├── run_agent_benchmark.py
 ├── doctor.py
 ├── change_budget.py
 ├── integration_guard.py
@@ -289,15 +290,39 @@ python scripts/completion_gate.py completion-report.json --json
 
 A `Done` report without acceptance criteria and passing evidence is blocked.
 
-### Agent benchmark
+### Real agent benchmark
 
-Actual agent results can be aggregated without inventing results for agents that were not run:
+Blind-run preflight:
 
 ```bash
-python scripts/benchmark_agent_outputs.py ~/.vibe-coding/projects/<project-id>/benchmarks --json
+python scripts/run_agent_benchmark.py preflight --agent codex --require-env-auth --json
+python scripts/run_agent_benchmark.py preflight --agent claude-code --require-env-auth --json
 ```
 
-See `benchmarks/README.md` for the blind-run protocol.
+Execute real-agent scenarios only when the corresponding CLI and credentials are actually available:
+
+```bash
+python scripts/run_agent_benchmark.py run \
+  --agent codex \
+  --scenario all \
+  --results-dir ~/.vibe-coding/benchmarks/vibe-coding-skill/0.8.0/run-001 \
+  --require-env-auth \
+  --json
+```
+
+Require complete evidence before interpreting conformance:
+
+```bash
+python scripts/benchmark_agent_outputs.py RESULTS_DIR \
+  --required-agent codex \
+  --required-agent claude-code \
+  --require-complete \
+  --json
+```
+
+The manual `Real Agent Benchmark` GitHub Actions workflow can run both CLIs using repository secrets. Raw outputs are uploaded as workflow artifacts and are not committed.
+
+Missing Agent runs remain missing evidence; they are never counted as PASS. See `benchmarks/README.md`.
 
 ## Recovery and resume
 
@@ -367,7 +392,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.7.0`
+Current version: `0.8.0`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 
