@@ -19,6 +19,7 @@ REQUIRED_REFS = [
     "references/bootstrap-and-evals.md",
     "references/risk-classifier-and-integrations.md",
     "references/validation-and-benchmarking.md",
+    "references/local-workspace-and-repository-purity.md",
 ]
 REQUIRED_SCRIPTS = [
     "doctor.py",
@@ -38,6 +39,8 @@ REQUIRED_SCRIPTS = [
     "run_project_validations.py",
     "run_failure_injections.py",
     "benchmark_agent_outputs.py",
+    "local_workspace.py",
+    "repository_purity.py",
 ]
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
