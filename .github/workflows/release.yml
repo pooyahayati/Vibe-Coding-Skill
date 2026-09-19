@@ -1,0 +1,63 @@
+name: Release Validated Version
+
+on:
+  workflow_run:
+    workflows:
+      - Validate Skill
+      - Cross Platform Smoke
+    types:
+      - completed
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Confirm both required workflows passed
+        id: readiness
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SHA}&per_page=100" > /tmp/runs.json
+          python - <<'PY'
+          import json, os
+          data = json.load(open("/tmp/runs.json"))
+          required = {"Validate Skill", "Cross Platform Smoke"}
+          passed = {
+              r.get("name")
+              for r in data.get("workflow_runs", [])
+              if r.get("head_sha") == os.environ["SHA"]
+              and r.get("head_branch") == "main"
+              and r.get("conclusion") == "success"
+          }
+          ready = required.issubset(passed)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"ready={'true' if ready else 'false'}\n")
+          print({"required": sorted(required), "passed": sorted(passed), "ready": ready})
+          PY
+      - name: Create immutable version tag and GitHub Release
+        if: steps.readiness.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          TAG="v${VERSION}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists."
+            exit 0
+          fi
+          gh release create "$TAG" \
+            --target "$SHA" \
+            --title "Vibe Coding Skill $TAG" \
+            --generate-notes

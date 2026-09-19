@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.6.0-blue)
+![Version](https://img.shields.io/badge/version-0.6.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -23,19 +23,14 @@ Install the repository locally as `vibe-coding-skill` so the directory matches t
 
 ### Claude Code
 
-Global:
+Recommended global install:
 
 ```bash
 git clone --depth 1 https://github.com/pooyahayati/Vibe-Coding-Skill.git \
   "$HOME/.claude/skills/vibe-coding-skill"
 ```
 
-Project-only:
-
-```bash
-git clone --depth 1 https://github.com/pooyahayati/Vibe-Coding-Skill.git \
-  ".claude/skills/vibe-coding-skill"
-```
+Keep the skill checkout outside user project repositories. Do not clone this skill into a project's tracked `.claude/skills/` directory; Vibe Coding tooling is intentionally local-only.
 
 Then invoke:
 
@@ -95,7 +90,7 @@ The skill owns its decision logic rather than depending on another development m
 
 ## Clean repository policy
 
-Vibe Coding tooling stays local. The project repository should contain product source, real product tests, migrations, manifests/lock files, and meaningful project documentation—not Graphify output, Trivy reports, coverage reports, benchmark output, caches, or agent state.
+Vibe Coding tooling stays local. The project repository should contain product source, real product tests, migrations, manifests/lock files, and meaningful project documentation—not the Vibe Coding skill checkout, Graphify output, Trivy reports, coverage reports, benchmark output, caches, or agent state.
 
 Initialize local tooling state:
 
@@ -261,6 +256,14 @@ python scripts/run_project_validations.py
 
 Representative temporary Git repositories cover a tiny static change, brownfield feature work, authentication, destructive production migration, and a multi-module payment integration.
 
+Pinned public repositories provide a separate real-world compatibility layer:
+
+```bash
+python scripts/run_real_world_validations.py
+```
+
+These checks use fixed commits from Python, Node, and Go projects and verify repository purity, resume behavior, dry-run bootstrap, and risk classification without modifying the product working tree.
+
 ### Failure injection
 
 ```bash
@@ -355,7 +358,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.6.0`
+Current version: `0.6.1`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 

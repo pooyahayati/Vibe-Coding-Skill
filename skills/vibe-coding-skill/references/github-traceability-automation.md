@@ -8,6 +8,8 @@ Traceability model:
 
 `Requirement -> Issue -> Acceptance Criteria -> PR -> Tests -> Release`
 
+Milestones group delivery outcomes. GitHub Projects may be used for workflow status when the user/project already uses them.
+
 ## Adapter
 
 Status:
@@ -22,7 +24,7 @@ Read-only snapshot:
 python scripts/github_traceability.py snapshot --root . --json
 ```
 
-The snapshot is stored locally under the Vibe workspace, not committed.
+The snapshot is stored locally under the Vibe workspace, not committed. It includes Issues, PRs, Releases, Milestones, and—when the authenticated `gh` scope permits—GitHub Projects.
 
 ## Requirement mapping
 
@@ -58,8 +60,30 @@ python scripts/github_traceability.py create-issue \
   --json
 ```
 
-Actual creation requires `--apply`. This prevents a planning pass from silently creating GitHub objects.
+Milestone creation is also dry-run by default:
+
+```bash
+python scripts/github_traceability.py create-milestone \
+  --title "v0.8.0 Public Beta" \
+  --description "Real-agent and real-world validation" \
+  --root . \
+  --json
+```
+
+Add an Issue/PR URL to an existing GitHub Project with a dry-run plan:
+
+```bash
+python scripts/github_traceability.py add-to-project \
+  --project-number 1 \
+  --url https://github.com/OWNER/REPO/issues/42 \
+  --root . \
+  --json
+```
+
+Actual mutation requires `--apply`. This prevents a planning pass from silently creating or moving GitHub objects.
+
+GitHub Project operations depend on the authenticated `gh` scopes and account/project availability. Treat an unavailable Project API as a traceability warning, not as permission to invent state.
 
 ## Source of truth
 
-GitHub objects are the execution source of truth when GitHub is used. The local traceability file is an index/cache used by the agent; it is not a replacement for the Issue, PR, test evidence, or Release itself.
+GitHub objects are the execution source of truth when GitHub is used. The local traceability file is an index/cache used by the agent; it is not a replacement for the Issue, PR, test evidence, Milestone, Project, or Release itself.

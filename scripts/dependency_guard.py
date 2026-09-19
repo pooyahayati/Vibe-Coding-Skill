@@ -10,10 +10,13 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from typing import Any
 
 TIMEOUT = 15
-USER_AGENT = "Vibe-Coding-Skill/0.3.0"
+ROOT = Path(__file__).resolve().parents[1]
+SKILL_VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip() if (ROOT / "VERSION").exists() else "unknown"
+USER_AGENT = f"Vibe-Coding-Skill/{SKILL_VERSION}"
 OSV_NAMES = {
     "pypi": "PyPI",
     "npm": "npm",

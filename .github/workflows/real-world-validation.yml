@@ -1,0 +1,27 @@
+name: Real World Repository Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "scripts/run_real_world_validations.py"
+      - "validation/real-world-projects.json"
+      - "scripts/local_workspace.py"
+      - "scripts/repository_purity.py"
+      - "scripts/resume_context.py"
+      - "scripts/bootstrap_project.py"
+      - "scripts/risk_classifier.py"
+      - ".github/workflows/real-world-validation.yml"
+  schedule:
+    - cron: "7 6 * * 4"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate pinned real repositories
+        run: python scripts/run_real_world_validations.py

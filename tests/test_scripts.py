@@ -284,6 +284,9 @@ class LocalWorkspacePurityTests(unittest.TestCase):
             exclude = (root / ".git" / "info" / "exclude").read_text(encoding="utf-8")
             self.assertIn("graphify-out/", exclude)
             self.assertIn(".trivy/", exclude)
+            self.assertIn(".claude/skills/vibe-coding-skill/", exclude)
+            self.assertIn(".codex/skills/vibe-coding-skill/", exclude)
+            self.assertIn(".agents/skills/vibe-coding-skill/", exclude)
 
     def test_purity_gate_blocks_tracked_tool_artifact_but_allows_product_tests(self):
         with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd:
@@ -321,6 +324,22 @@ class LocalWorkspacePurityTests(unittest.TestCase):
             result = json.loads(dirty.stdout)
             self.assertIn("graphify-out/graph.json", result["staged_forbidden"])
             self.assertNotIn("tests/test_app.py", result["staged_forbidden"])
+
+            subprocess.run(["git", "reset", "-q"], cwd=root, check=True)
+            skill_dir = root / ".claude" / "skills" / "vibe-coding-skill"
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "SKILL.md").write_text("# local tool checkout\n", encoding="utf-8")
+            subprocess.run(["git", "add", "-f", ".claude/skills/vibe-coding-skill/SKILL.md"], cwd=root, check=True)
+            tool_checkout = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "repository_purity.py"),
+                 "--root", str(root), "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(tool_checkout.returncode, 2)
+            self.assertIn(
+                ".claude/skills/vibe-coding-skill/SKILL.md",
+                json.loads(tool_checkout.stdout)["staged_forbidden"],
+            )
 
 
 
@@ -485,6 +504,23 @@ raise SystemExit(2)
             )
             self.assertEqual(plan.returncode, 0, plan.stdout + plan.stderr)
             self.assertFalse(json.loads(plan.stdout)["applied"])
+
+            milestone = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "github_traceability.py"), "create-milestone",
+                 "--root", str(root), "--title", "v1", "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(milestone.returncode, 0, milestone.stdout + milestone.stderr)
+            self.assertFalse(json.loads(milestone.stdout)["applied"])
+
+            project_item = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "github_traceability.py"), "add-to-project",
+                 "--root", str(root), "--project-number", "1",
+                 "--url", "https://github.com/acme/demo/issues/42", "--json"],
+                text=True, capture_output=True, env=env,
+            )
+            self.assertEqual(project_item.returncode, 0, project_item.stdout + project_item.stderr)
+            self.assertFalse(json.loads(project_item.stdout)["applied"])
 
 
 class ProjectStateAutomationTests(unittest.TestCase):

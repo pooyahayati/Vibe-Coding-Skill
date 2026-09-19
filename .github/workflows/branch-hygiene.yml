@@ -1,0 +1,43 @@
+name: Branch Hygiene
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - name: Delete unchanged merged work branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
+          gh pr list --state merged --limit 200 --json headRefName,headRefOid > /tmp/merged-prs.json
+          python - <<'PY' > /tmp/merged-branches.txt
+          import json
+          data = json.load(open("/tmp/merged-prs.json"))
+          for pr in data:
+              name = pr.get("headRefName") or ""
+              oid = pr.get("headRefOid") or ""
+              if name.startswith(("feat/", "fix/", "bot/")) and oid:
+                  print(f"{name}|{oid}")
+          PY
+
+          while IFS='|' read -r branch oid; do
+            [ -n "$branch" ] || continue
+            current=$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')
+            if [ -n "$current" ] && [ "$current" = "$oid" ]; then
+              echo "Deleting merged unchanged branch: $branch"
+              git push origin --delete "$branch"
+            fi
+          done < /tmp/merged-branches.txt

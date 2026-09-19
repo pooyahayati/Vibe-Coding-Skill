@@ -16,7 +16,12 @@ CONFIG = ROOT / "config" / "toolchain.json"
 
 
 def latest_pypi_version() -> str:
-    with urllib.request.urlopen("https://pypi.org/pypi/graphifyy/json", timeout=20) as response:
+    version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    req = urllib.request.Request(
+        "https://pypi.org/pypi/graphifyy/json",
+        headers={"User-Agent": f"Vibe-Coding-Skill/{version}"},
+    )
+    with urllib.request.urlopen(req, timeout=20) as response:
         return json.load(response)["info"]["version"]
 
 

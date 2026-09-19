@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "projects": [
+    {
+      "id": "python-itsdangerous",
+      "repository": "https://github.com/pallets/itsdangerous.git",
+      "commit": "672971d66a2ef9f85151e53283113f33d642dabd",
+      "task": "Add a contained feature while preserving the existing Python project architecture.",
+      "paths": [
+        "src/itsdangerous"
+      ],
+      "expected_min_tier": 1
+    },
+    {
+      "id": "node-yocto-queue",
+      "repository": "https://github.com/sindresorhus/yocto-queue.git",
+      "commit": "72a8fa96a9d389765cdf2bb9c6daba8302fc375d",
+      "task": "Add a normal library feature without introducing a parallel framework.",
+      "paths": [
+        "index.js"
+      ],
+      "expected_min_tier": 1
+    },
+    {
+      "id": "go-chi",
+      "repository": "https://github.com/go-chi/chi.git",
+      "commit": "3d1777a1ef8881f7d1da0b02c76ca8f0a29cd2bc",
+      "task": "Add a standard router feature and preserve existing conventions.",
+      "paths": [
+        "middleware"
+      ],
+      "expected_min_tier": 1
+    }
+  ]
+}

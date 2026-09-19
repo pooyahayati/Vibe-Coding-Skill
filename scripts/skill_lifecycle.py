@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Record a last-known-good skill install and plan safe upgrades/rollbacks."""
+"""Record a validated last-known-good skill install and plan safe upgrades/rollbacks."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ import json
 import os
 import re
 import subprocess
+import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -71,6 +73,45 @@ def load_good(root: Path) -> dict[str, Any] | None:
         return None
 
 
+def validate_install(root: Path) -> dict[str, Any]:
+    script = root / "scripts" / "install_check.py"
+    if not script.exists():
+        raise RuntimeError("install_check.py is required before recording or upgrading a known-good installation")
+    p = subprocess.run(
+        [sys.executable, str(script), "--skill-root", str(root), "--json"],
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    try:
+        result = json.loads(p.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"installation validation returned invalid JSON: {(p.stdout or p.stderr)[-1000:]}") from exc
+    if p.returncode != 0 or result.get("status") == "BLOCK":
+        failures = result.get("failures") or [p.stderr.strip() or "installation validation failed"]
+        raise RuntimeError("installation validation failed: " + "; ".join(str(x) for x in failures))
+    return result
+
+
+def validate_target_ref(root: Path, target: str) -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(prefix="vibe-upgrade-check-") as td:
+        worktree = Path(td) / "skill"
+        rc, out = git(root, "worktree", "add", "--detach", str(worktree), target)
+        if rc != 0:
+            raise RuntimeError(f"cannot create isolated upgrade worktree: {out}")
+        try:
+            result = validate_install(worktree)
+            return {
+                "status": result.get("status"),
+                "version": result.get("skill", {}).get("version"),
+                "platform": result.get("platform"),
+                "failures": result.get("failures", []),
+                "warnings": result.get("warnings", []),
+            }
+        finally:
+            git(root, "worktree", "remove", "--force", str(worktree))
+
+
 def record_good(root: Path) -> dict[str, Any]:
     root = root.resolve()
     current = git_status(root)
@@ -78,13 +119,20 @@ def record_good(root: Path) -> dict[str, Any]:
         raise RuntimeError("record-good requires a Git-based skill installation")
     if current.get("dirty"):
         raise RuntimeError("refusing to record last-known-good from a dirty skill installation")
+
+    validation = validate_install(root)
     data = {
-        "schema_version": 1,
+        "schema_version": 2,
         "recorded_at": datetime.now(timezone.utc).isoformat(),
         "skill_root": str(root),
         "version": version(root),
         "head": current["head"],
         "branch": current.get("branch"),
+        "validation": {
+            "status": validation.get("status"),
+            "platform": validation.get("platform"),
+            "warnings": validation.get("warnings", []),
+        },
     }
     path = state_dir(root, create=True) / "last-known-good.json"
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
@@ -111,6 +159,21 @@ def plan_upgrade(root: Path, target_ref: str) -> dict[str, Any]:
     ancestor_rc, _ = git(root, "merge-base", "--is-ancestor", str(current["head"]), target)
     fast_forward = ancestor_rc == 0
     warnings = [] if fast_forward else ["target is not a fast-forward descendant of the current install"]
+
+    try:
+        validation = validate_target_ref(root, target)
+    except RuntimeError as exc:
+        return {
+            "status": "BLOCK",
+            "network_used": False,
+            "current": current,
+            "current_version": version(root),
+            "target_ref": target_ref,
+            "target_commit": target,
+            "fast_forward": fast_forward,
+            "failures": [str(exc)],
+        }
+
     return {
         "status": "WARN" if warnings else "PASS",
         "network_used": False,
@@ -119,6 +182,7 @@ def plan_upgrade(root: Path, target_ref: str) -> dict[str, Any]:
         "target_ref": target_ref,
         "target_commit": target,
         "fast_forward": fast_forward,
+        "target_validation": validation,
         "warnings": warnings,
         "before_upgrade": "run record-good before changing the installation",
     }
@@ -134,6 +198,8 @@ def rollback(root: Path, apply: bool) -> dict[str, Any]:
         raise RuntimeError("refusing rollback while skill installation has local changes")
     if not good or not good.get("head"):
         raise RuntimeError("no last-known-good installation has been recorded")
+    if not good.get("validation"):
+        raise RuntimeError("last-known-good record predates validation hardening; record a validated known-good install first")
 
     target = str(good["head"])
     rc, resolved = git(root, "rev-parse", "--verify", f"{target}^{{commit}}")
@@ -146,6 +212,7 @@ def rollback(root: Path, apply: bool) -> dict[str, Any]:
             "applied": False,
             "target_commit": resolved,
             "target_version": good.get("version"),
+            "validation": good.get("validation"),
             "command": command,
             "note": "dry-run; pass --apply for an explicit detached rollback",
         }
@@ -157,6 +224,7 @@ def rollback(root: Path, apply: bool) -> dict[str, Any]:
         "applied": True,
         "target_commit": resolved,
         "target_version": good.get("version"),
+        "validation": good.get("validation"),
         "output": out,
     }
 

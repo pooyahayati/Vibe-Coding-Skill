@@ -1,14 +1,14 @@
-name: Graphify Compatibility
+name: Trivy Compatibility
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
       - "config/toolchain.json"
-      - "scripts/graphify_compat.py"
-      - ".github/workflows/graphify-compat.yml"
+      - "scripts/trivy_compat.py"
+      - ".github/workflows/trivy-compat.yml"
   schedule:
-    - cron: "17 5 * * 1"
+    - cron: "29 5 * * 3"
 
 permissions:
   contents: write
@@ -22,13 +22,12 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
-      - name: Test latest stable Graphify on pull request
+      - name: Test latest stable Trivy on pull request
         if: github.event_name == 'pull_request'
-        run: python scripts/graphify_compat.py --latest --json | tee graphify-compat.json
-      - name: Test and propose latest stable Graphify on scheduled/manual run
+        run: python scripts/trivy_compat.py --latest --json | tee trivy-compat.json
+      - name: Test and propose latest stable Trivy on scheduled/manual run
         if: github.event_name != 'pull_request'
-        run: python scripts/graphify_compat.py --latest --update-approved --json | tee graphify-compat.json
+        run: python scripts/trivy_compat.py --latest --update-approved --json | tee trivy-compat.json
       - name: Detect toolchain change
         id: change
         shell: bash
@@ -38,18 +37,23 @@ jobs:
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Propose approved Graphify update
+      - name: Propose approved Trivy update
         if: steps.change.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          VERSION=$(python -c 'import json; print(json.load(open("config/toolchain.json"))["graphify"]["approved"])')
-          BRANCH="bot/graphify-${VERSION}"
+          VERSION=$(python -c 'import json; print(json.load(open("config/toolchain.json"))["trivy"]["approved"])')
+          BRANCH="bot/trivy-${VERSION}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
           git add config/toolchain.json
-          git commit -m "chore: approve Graphify ${VERSION}"
+          git commit -m "chore: approve Trivy ${VERSION}"
           git push --force-with-lease origin "$BRANCH"
-          gh pr create             --base main             --head "$BRANCH"             --title "chore: approve Graphify ${VERSION}"             --body "Automated compatibility contract tests passed for Graphify ${VERSION}. Merging this PR makes it the approved stable version for Vibe Coding Skill."             || true
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore: approve Trivy ${VERSION}" \
+            --body "Automated compatibility contract tests passed for Trivy ${VERSION}. Merging this PR makes it the approved stable version for Vibe Coding Skill." \
+            || true

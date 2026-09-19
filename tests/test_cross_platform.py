@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -172,14 +173,10 @@ class CrossPlatformInstallTests(unittest.TestCase):
     def test_last_known_good_and_explicit_rollback(self):
         with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd:
             skill = Path(td)
+            shutil.copytree(ROOT / "skills" / "vibe-coding-skill", skill, dirs_exist_ok=True)
             init_repo(skill)
-            (skill / "SKILL.md").write_text(
-                "---\nname: vibe-coding-skill\nmetadata:\n  version: \"1.0.0\"\n---\n# Skill\n",
-                encoding="utf-8",
-            )
-            (skill / "VERSION").write_text("1.0.0\n", encoding="utf-8")
             git(skill, "add", ".")
-            git(skill, "commit", "-qm", "v1")
+            git(skill, "commit", "-qm", "validated baseline")
             v1 = git(skill, "rev-parse", "HEAD")
 
             env = os.environ.copy()
@@ -200,9 +197,15 @@ class CrossPlatformInstallTests(unittest.TestCase):
             self.assertEqual(recorded.returncode, 0, recorded.stdout + recorded.stderr)
             self.assertEqual(json.loads(recorded.stdout)["head"], v1)
 
-            (skill / "VERSION").write_text("1.1.0\n", encoding="utf-8")
-            git(skill, "add", "VERSION")
-            git(skill, "commit", "-qm", "v1.1")
+            skill_text = (skill / "SKILL.md").read_text(encoding="utf-8")
+            current_version = json.loads(recorded.stdout)["version"]
+            skill_text = skill_text.replace(
+                f'  version: "{current_version}"',
+                '  version: "9.9.9"',
+            )
+            (skill / "SKILL.md").write_text(skill_text, encoding="utf-8")
+            git(skill, "add", "SKILL.md")
+            git(skill, "commit", "-qm", "next version")
             v11 = git(skill, "rev-parse", "HEAD")
             self.assertNotEqual(v1, v11)
 

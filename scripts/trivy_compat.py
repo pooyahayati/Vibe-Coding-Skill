@@ -13,12 +13,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config" / "toolchain.json"
+SKILL_VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
 
 
 def latest_release() -> str:
     req = urllib.request.Request(
         "https://api.github.com/repos/aquasecurity/trivy/releases/latest",
-        headers={"Accept": "application/vnd.github+json", "User-Agent": "Vibe-Coding-Skill/0.3.0"},
+        headers={"Accept": "application/vnd.github+json", "User-Agent": f"Vibe-Coding-Skill/{SKILL_VERSION}"},
     )
     with urllib.request.urlopen(req, timeout=20) as response:
         return json.load(response)["tag_name"].lstrip("v")
