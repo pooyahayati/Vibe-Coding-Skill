@@ -71,6 +71,85 @@ class DependencyGuardTests(unittest.TestCase):
         self.assertTrue(any("vulnerabilities" in r for r in reasons))
 
 
+    def test_v2_requires_explicit_necessity(self):
+        mod = load_script("dependency_guard.py")
+        decision, signals = mod.evaluate_dependency(
+            {"exists": True, "version_exists": True, "repository": "https://github.com/acme/demo", "license": "MIT"},
+            {"checked": True, "vulnerabilities": []},
+            {"checked": True, "licenses": ["MIT"], "verified_attestations": 1},
+            {"checked": True, "archived": False, "disabled": False, "push_age_days": 10},
+            {"checked": True, "suspicious": []},
+            {"latest_release_age_days": 20, "deprecated": False},
+            {"licenses": ["MIT"], "allowed_policy": [], "denied_policy": [], "denied_matches": [], "allowed_matches": []},
+            "1.0.0", 1, "unknown", None,
+        )
+        self.assertEqual(decision, "REVIEW REQUIRED")
+        self.assertTrue(any(s["code"] == "necessity.unknown" for s in signals))
+
+    def test_v2_accepts_complete_tier2_evidence(self):
+        mod = load_script("dependency_guard.py")
+        decision, signals = mod.evaluate_dependency(
+            {"exists": True, "version_exists": True, "repository": "https://github.com/acme/demo", "license": "MIT"},
+            {"checked": True, "vulnerabilities": []},
+            {"checked": True, "licenses": ["MIT"], "verified_attestations": 0},
+            {"checked": True, "archived": False, "disabled": False, "push_age_days": 15},
+            {"checked": True, "suspicious": []},
+            {"latest_release_age_days": 30, "deprecated": False},
+            {"licenses": ["MIT"], "allowed_policy": ["MIT"], "denied_policy": [], "denied_matches": [], "allowed_matches": ["MIT"]},
+            "1.0.0", 2, "required", "Provides protocol parsing that would be costly to maintain internally.",
+        )
+        self.assertEqual(decision, "ACCEPT")
+        self.assertEqual(signals[0]["level"], "pass")
+
+    def test_v2_typosquatting_signal_requires_review(self):
+        mod = load_script("dependency_guard.py")
+        similarity = mod.name_similarity_signal("requsets", ["requests", "urllib3"])
+        self.assertTrue(similarity["suspicious"])
+        decision, signals = mod.evaluate_dependency(
+            {"exists": True, "version_exists": True, "repository": "https://github.com/acme/requsets", "license": "MIT"},
+            {"checked": True, "vulnerabilities": []},
+            {"checked": True, "licenses": ["MIT"], "verified_attestations": 1},
+            {"checked": True, "archived": False, "disabled": False, "push_age_days": 10},
+            similarity,
+            {"latest_release_age_days": 20, "deprecated": False},
+            {"licenses": ["MIT"], "allowed_policy": [], "denied_policy": [], "denied_matches": [], "allowed_matches": []},
+            "1.0.0", 2, "required", "HTTP client",
+        )
+        self.assertEqual(decision, "REVIEW REQUIRED")
+        self.assertTrue(any(s["code"] == "name.similar" for s in signals))
+
+    def test_v2_denied_license_rejects(self):
+        mod = load_script("dependency_guard.py")
+        license_signal = mod.license_policy_signal(["GPL-3.0-only"], ["MIT", "Apache-2.0"], ["GPL-3.0-only"])
+        decision, signals = mod.evaluate_dependency(
+            {"exists": True, "version_exists": True, "repository": "https://github.com/acme/demo", "license": "GPL-3.0-only"},
+            {"checked": True, "vulnerabilities": []},
+            {"checked": True, "licenses": ["GPL-3.0-only"], "verified_attestations": 1},
+            {"checked": True, "archived": False, "disabled": False, "push_age_days": 10},
+            {"checked": True, "suspicious": []},
+            {"latest_release_age_days": 20, "deprecated": False},
+            license_signal,
+            "1.0.0", 2, "required", "Required parser",
+        )
+        self.assertEqual(decision, "REJECT")
+        self.assertTrue(any(s["code"] == "license.denied" for s in signals))
+
+    def test_v2_tier3_requires_provenance_attestation(self):
+        mod = load_script("dependency_guard.py")
+        decision, signals = mod.evaluate_dependency(
+            {"exists": True, "version_exists": True, "repository": "https://github.com/acme/demo", "license": "MIT"},
+            {"checked": True, "vulnerabilities": []},
+            {"checked": True, "licenses": ["MIT"], "verified_attestations": 0},
+            {"checked": True, "archived": False, "disabled": False, "push_age_days": 5},
+            {"checked": True, "suspicious": []},
+            {"latest_release_age_days": 20, "deprecated": False},
+            {"licenses": ["MIT"], "allowed_policy": [], "denied_policy": [], "denied_matches": [], "allowed_matches": []},
+            "1.0.0", 3, "required", "Production-critical dependency",
+        )
+        self.assertEqual(decision, "REVIEW REQUIRED")
+        self.assertTrue(any(s["code"] == "provenance.attestation_missing" for s in signals))
+
+
 class RiskClassifierTests(unittest.TestCase):
     def setUp(self):
         self.mod = load_script("risk_classifier.py")
