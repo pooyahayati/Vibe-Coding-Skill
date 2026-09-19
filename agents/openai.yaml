@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Coding Skill"
+  short_description: "Risk-adaptive engineering for reliable AI coding"
+  default_prompt: "Use $vibe-coding-skill to inspect, architect, plan, implement, verify, and hand off this software project using the minimum process required by its risk."

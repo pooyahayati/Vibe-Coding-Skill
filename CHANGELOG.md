@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 — Bootstrap, dependency guard, evals, and portable packaging
+
+- Added non-destructive adaptive project bootstrap.
+- Added executable dependency guard with PyPI/npm/crates.io registry checks and OSV verification.
+- Added deterministic behavior-contract eval catalog.
+- Added unit tests for dependency decisions and bootstrap safety.
+- Added portable Agent Plugin packaging for Codex-compatible discovery.
+- Added package drift validation to CI.
+
 ## 0.1.0 — Initial core
 
 - Added the risk-adaptive Vibe Coding Skill operating model.

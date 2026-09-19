@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Version](https://img.shields.io/badge/version-0.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -129,6 +129,50 @@ python scripts/doctor.py --root /path/to/project --json
 python scripts/change_budget.py --root /path/to/project --base main --json
 ```
 
+### Project bootstrap
+
+```bash
+python scripts/bootstrap_project.py \
+  --root /path/to/project \
+  --profile standard \
+  --objective "Deliver the next verified vertical slice" \
+  --json
+```
+
+The bootstrapper does not overwrite existing project documents by default and skips documents when it does not have enough real project context to populate them.
+
+### Dependency Guard
+
+```bash
+python scripts/dependency_guard.py pypi requests --version 2.32.5 --json
+python scripts/dependency_guard.py npm zod --version 4.1.5 --json
+```
+
+A missing package/version is rejected. Missing security/provenance evidence becomes `REVIEW REQUIRED`, not a false positive approval.
+
+### Evaluation contracts
+
+`evals/scenarios.json` covers tiny changes, brownfield work, auth, destructive migrations, dependency hallucinations, prompt injection, stale graphs, and production deployment.
+
+```bash
+python scripts/validate_evals.py
+python -m unittest discover -s tests -p "test_*.py"
+```
+
+## Portable package
+
+The repository root remains the canonical source. `scripts/sync_package.py` generates and verifies the portable Agent Plugin mirror under:
+
+```text
+skills/vibe-coding-skill/
+```
+
+This prevents Codex/Plugin packaging from drifting away from the canonical skill.
+
+```bash
+python scripts/sync_package.py --check
+```
+
 ## Repository structure
 
 ```text
@@ -137,7 +181,12 @@ Vibe-Coding-Skill/
 ├── references/
 ├── scripts/
 ├── config/
+├── assets/templates/
+├── evals/
+├── agents/
+├── skills/vibe-coding-skill/   # generated portable mirror
 ├── tests/
+├── plugin.json
 ├── .github/workflows/
 ├── CHANGELOG.md
 ├── SECURITY.md
@@ -148,7 +197,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.1.0`
+Current version: `0.2.0`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 

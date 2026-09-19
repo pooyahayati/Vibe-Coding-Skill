@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -15,6 +16,7 @@ REQUIRED_REFS = [
     "references/security-and-dependencies.md",
     "references/project-state-and-traceability.md",
     "references/execution-and-verification.md",
+    "references/bootstrap-and-evals.md",
 ]
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
@@ -59,7 +61,7 @@ def main() -> int:
         if rel not in text:
             fail(f"SKILL.md does not reference {rel}")
 
-    for script in ("doctor.py", "change_budget.py", "graphify_compat.py"):
+    for script in ("doctor.py", "change_budget.py", "graphify_compat.py", "bootstrap_project.py", "dependency_guard.py", "validate_evals.py", "sync_package.py"):
         path = ROOT / "scripts" / script
         if not path.exists():
             fail(f"missing script: scripts/{script}")

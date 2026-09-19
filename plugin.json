@@ -1,0 +1,38 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "vibe-coding-skill",
+  "version": "0.2.0",
+  "description": "Risk-adaptive software engineering operating skill for reliable AI-assisted vibe coding, architecture, staged implementation, project intelligence, verification, security, and handoff.",
+  "author": {
+    "name": "Pooya Hayati",
+    "url": "https://github.com/pooyahayati"
+  },
+  "homepage": "https://github.com/pooyahayati/Vibe-Coding-Skill",
+  "repository": "https://github.com/pooyahayati/Vibe-Coding-Skill",
+  "license": "MIT",
+  "keywords": [
+    "vibe-coding",
+    "software-engineering",
+    "codex",
+    "claude-code",
+    "agent-skill",
+    "graphify",
+    "security",
+    "project-management"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Vibe Coding Skill",
+        "shortDescription": "Risk-adaptive engineering for reliable AI coding",
+        "longDescription": "Plan, architect, build, test, secure, review, and hand off software with an adaptive process that scales ceremony to risk and uses evidence rather than agent confidence.",
+        "developerName": "Pooya Hayati",
+        "websiteURL": "https://github.com/pooyahayati/Vibe-Coding-Skill",
+        "defaultPrompt": [
+          "Use Vibe Coding Skill to inspect, architect, plan, and build this software project with the minimum process required by its risk.",
+          "Use Vibe Coding Skill to safely continue this existing project from repository state."
+        ]
+      }
+    }
+  }
+}
