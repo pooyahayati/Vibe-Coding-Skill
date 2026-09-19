@@ -144,8 +144,12 @@ The approved version is stored in `config/toolchain.json`.
 
 ```text
 scripts/
+├── local_workspace.py
+├── repository_purity.py
 ├── doctor.py
 ├── change_budget.py
+├── integration_guard.py
+├── completion_gate.py
 ├── graphify_compat.py
 └── validate_skill.py
 ```
@@ -240,7 +244,7 @@ A `Done` report without acceptance criteria and passing evidence is blocked.
 Actual agent results can be aggregated without inventing results for agents that were not run:
 
 ```bash
-python scripts/benchmark_agent_outputs.py benchmark-results --json
+python scripts/benchmark_agent_outputs.py ~/.vibe-coding/projects/<project-id>/benchmarks --json
 ```
 
 See `benchmarks/README.md` for the blind-run protocol.
