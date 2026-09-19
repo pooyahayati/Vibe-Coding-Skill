@@ -90,12 +90,24 @@ def main() -> int:
                     "tier2_signals": signals,
                 }
             )
+            security_findings = bool(osv.get("vulnerabilities") or depsdev.get("advisories"))
+            decision_consistent = decision in {"ACCEPT", "REVIEW REQUIRED"}
+            if security_findings:
+                decision_consistent = (
+                    decision == "REVIEW REQUIRED"
+                    and any(
+                        signal.get("code") in {"osv.vulnerable", "depsdev.advisory"}
+                        for signal in signals
+                    )
+                )
             deep_ok = (
                 depsdev.get("checked") is True
                 and bool(licenses)
                 and (not guard.github_slug(repository) or repo_health.get("checked") is True)
-                and decision == "ACCEPT"
+                and decision_consistent
             )
+            row["security_findings"] = security_findings
+            row["decision_consistent"] = decision_consistent
             row["deep_ok"] = deep_ok
             ok = ok and deep_ok
             row["ok"] = ok
