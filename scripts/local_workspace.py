@@ -91,13 +91,11 @@ def project_workspace(root: Path, create: bool = False) -> Path:
 
 def git_info_exclude(root: Path) -> Path:
     ensure_git_repo(root)
-    rc, git_dir = run_git(root, "rev-parse", "--git-dir")
+    rc, exclude_path = run_git(root, "rev-parse", "--git-path", "info/exclude")
     if rc != 0:
-        raise RuntimeError("cannot resolve Git directory")
-    git_path = Path(git_dir)
-    if not git_path.is_absolute():
-        git_path = (root / git_path).resolve()
-    return git_path / "info" / "exclude"
+        raise RuntimeError("cannot resolve Git local exclude path")
+    path = Path(exclude_path)
+    return path if path.is_absolute() else (root / path).resolve()
 
 
 def configure_local_excludes(root: Path) -> Path:
