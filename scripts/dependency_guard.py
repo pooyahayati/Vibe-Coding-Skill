@@ -141,12 +141,29 @@ def lookup_nuget(name: str, version: str | None) -> dict[str, Any]:
     version_exists = selected in {v.lower() for v in versions}
     metadata: dict[str, Any] = {}
     if version_exists:
-        registration = http_json(f"https://api.nuget.org/v3/registration5-semver1/{urllib.parse.quote(lower, safe='')}/{urllib.parse.quote(selected, safe='')}.json")
-        catalog = registration.get("catalogEntry") or {}
-        metadata = {
-            "repository": catalog.get("projectUrl") or catalog.get("repository"),
-            "license": catalog.get("licenseExpression") or catalog.get("licenseUrl"),
-        }
+        encoded_id = urllib.parse.quote(lower, safe="")
+        encoded_version = urllib.parse.quote(selected, safe="")
+        nuspec = http_text(
+            f"https://api.nuget.org/v3-flatcontainer/{encoded_id}/{encoded_version}/{encoded_id}.nuspec"
+        )
+        root = ET.fromstring(nuspec)
+
+        def first_text(local: str) -> str | None:
+            for elem in root.iter():
+                if elem.tag.rsplit("}", 1)[-1] == local and elem.text and elem.text.strip():
+                    return elem.text.strip()
+            return None
+
+        repository = first_text("projectUrl")
+        license_value = first_text("license")
+        for elem in root.iter():
+            if elem.tag.rsplit("}", 1)[-1] == "repository":
+                repository = elem.attrib.get("url") or repository
+            elif elem.tag.rsplit("}", 1)[-1] == "license":
+                license_value = (elem.text or "").strip() or license_value
+
+        metadata = {"repository": repository, "license": license_value or None}
+
     return {
         "supported": True, "exists": True, "version_exists": version_exists if version else None,
         "latest_version": latest, **metadata,
