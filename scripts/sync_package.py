@@ -52,7 +52,15 @@ def expected_files() -> list[Path]:
 
 def check() -> int:
     problems: list[str] = []
-    for rel in expected_files():
+    expected = set(expected_files())
+    actual = {
+        p.relative_to(TARGET)
+        for p in TARGET.rglob("*")
+        if p.is_file()
+    } if TARGET.exists() else set()
+    for extra in sorted(actual - expected):
+        problems.append(f"unexpected: {TARGET.relative_to(ROOT) / extra}")
+    for rel in expected:
         src = ROOT / rel
         dst = TARGET / rel
         if not dst.exists():
@@ -70,6 +78,8 @@ def check() -> int:
 
 
 def write() -> int:
+    if TARGET.exists():
+        shutil.rmtree(TARGET)
     for rel in expected_files():
         src = ROOT / rel
         dst = TARGET / rel
