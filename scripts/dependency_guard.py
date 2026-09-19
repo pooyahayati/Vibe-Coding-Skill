@@ -96,17 +96,43 @@ def lookup_crates(name: str, version: str | None) -> dict[str, Any]:
 def lookup_maven(name: str, version: str | None) -> dict[str, Any]:
     if ":" not in name:
         return {"supported": True, "exists": None, "version_exists": None, "error": "Maven package must use group:artifact"}
+
     group, artifact = name.split(":", 1)
-    query = urllib.parse.quote(f'g:"{group}" AND a:"{artifact}"')
-    search = http_json(f"https://search.maven.org/solrsearch/select?q={query}&rows=1&wt=json")
-    docs = ((search.get("response") or {}).get("docs") or [])
-    if not docs:
-        return {"supported": True, "exists": False, "version_exists": False, "error": "not found"}
-    latest = docs[0].get("latestVersion")
-    selected = version or latest
     group_path = group.replace(".", "/")
     artifact_q = urllib.parse.quote(artifact, safe="")
-    pom_url = f"https://repo1.maven.org/maven2/{group_path}/{artifact_q}/{selected}/{artifact_q}-{selected}.pom"
+    base = f"https://repo.maven.apache.org/maven2/{group_path}/{artifact_q}"
+
+    metadata_xml = http_text(f"{base}/maven-metadata.xml")
+    metadata_root = ET.fromstring(metadata_xml)
+
+    versions: list[str] = []
+    latest = None
+    release = None
+    for elem in metadata_root.iter():
+        local = elem.tag.rsplit("}", 1)[-1]
+        if local == "version" and elem.text and elem.text.strip():
+            versions.append(elem.text.strip())
+        elif local == "latest" and elem.text and elem.text.strip():
+            latest = elem.text.strip()
+        elif local == "release" and elem.text and elem.text.strip():
+            release = elem.text.strip()
+
+    selected = version or release or latest or (versions[-1] if versions else None)
+    if not selected:
+        return {"supported": True, "exists": False, "version_exists": False, "error": "no released versions found"}
+
+    version_exists = selected in versions
+    if version and not version_exists:
+        return {
+            "supported": True,
+            "exists": True,
+            "version_exists": False,
+            "latest_version": release or latest or (versions[-1] if versions else None),
+            "repository": None,
+            "license": None,
+        }
+
+    pom_url = f"{base}/{urllib.parse.quote(selected, safe='')}/{artifact_q}-{urllib.parse.quote(selected, safe='')}.pom"
     pom = http_text(pom_url)
     root = ET.fromstring(pom)
 
@@ -120,16 +146,30 @@ def lookup_maven(name: str, version: str | None) -> dict[str, Any]:
     for elem in root.iter():
         if elem.tag.rsplit("}", 1)[-1] == "licenses":
             for child in elem.iter():
-                if child.tag.rsplit("}", 1)[-1] == "name" and child.text:
+                if child.tag.rsplit("}", 1)[-1] == "name" and child.text and child.text.strip():
                     license_name = child.text.strip()
                     break
-    repo = first("url")
-    return {
-        "supported": True, "exists": True,
-        "version_exists": True if version else None,
-        "latest_version": latest, "repository": repo, "license": license_name,
-    }
 
+    repository = None
+    for elem in root.iter():
+        if elem.tag.rsplit("}", 1)[-1] == "scm":
+            for child in elem:
+                local = child.tag.rsplit("}", 1)[-1]
+                if local in ("url", "connection") and child.text and child.text.strip():
+                    repository = child.text.strip().replace("scm:git:", "")
+                    break
+        if repository:
+            break
+    repository = repository or first("url")
+
+    return {
+        "supported": True,
+        "exists": True,
+        "version_exists": version_exists if version else None,
+        "latest_version": release or latest or (versions[-1] if versions else None),
+        "repository": repository,
+        "license": license_name,
+    }
 
 def lookup_nuget(name: str, version: str | None) -> dict[str, Any]:
     lower = name.lower()
