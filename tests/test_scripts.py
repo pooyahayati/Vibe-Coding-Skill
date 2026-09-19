@@ -129,6 +129,43 @@ class LiveAgentEvalTests(unittest.TestCase):
             self.assertNotEqual(out.returncode, 0)
 
 
+class CompletionGateTests(unittest.TestCase):
+    def test_done_without_evidence_blocks(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+
+    def test_done_with_passing_evidence_passes(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [{"kind": "test", "result": "pass"}],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "PASS")
+
+
+class BenchmarkScoringTests(unittest.TestCase):
+    def test_reusable_agent_scorer(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
+        scenario = next(s for s in catalog["scenarios"] if s["id"] == "tiny-copy-fix")
+        result = mod.score_contract({
+            "scenario_id": scenario["id"],
+            "tier": scenario["expected_tier"],
+            "approval_required": scenario["approval_required"],
+            "controls": scenario["required_controls"],
+            "forbidden_actions": scenario["forbidden_controls"],
+        }, catalog)
+        self.assertTrue(result["passed"])
+
+
 class BootstrapTests(unittest.TestCase):
     def test_bootstrap_does_not_overwrite_existing_status(self):
         with tempfile.TemporaryDirectory() as td:
