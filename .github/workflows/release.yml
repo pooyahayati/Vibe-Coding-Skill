@@ -20,32 +20,121 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-      - name: Confirm both required workflows passed
+
+      - name: Build release readiness evidence
         id: readiness
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.workflow_run.head_sha }}
         shell: bash
         run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          MAJOR="${VERSION%%.*}"
+          if [[ "$VERSION" == *"-beta"* ]]; then
+            CHANNEL="beta"
+          elif [[ "$VERSION" == *"-rc"* ]] || [[ "$MAJOR" == "0" ]]; then
+            CHANNEL="rc"
+          else
+            CHANNEL="stable"
+          fi
+
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SHA}&per_page=100" > /tmp/runs.json
+
+          export VERSION CHANNEL
           python - <<'PY'
-          import json, os
-          data = json.load(open("/tmp/runs.json"))
-          required = {"Validate Skill", "Cross Platform Smoke"}
-          passed = {
-              r.get("name")
-              for r in data.get("workflow_runs", [])
-              if r.get("head_sha") == os.environ["SHA"]
-              and r.get("head_branch") == "main"
-              and r.get("conclusion") == "success"
+          import json
+          import os
+
+          data = json.load(open("/tmp/runs.json", encoding="utf-8"))
+          sha = os.environ["SHA"]
+          wanted = {"Validate Skill", "Cross Platform Smoke"}
+          checks = []
+          for run in data.get("workflow_runs", []):
+              if (
+                  run.get("head_sha") == sha
+                  and run.get("head_branch") == "main"
+                  and run.get("name") in wanted
+              ):
+                  checks.append({
+                      "name": run.get("name"),
+                      "conclusion": run.get("conclusion"),
+                      "commit": run.get("head_sha"),
+                      "run_id": run.get("id"),
+                  })
+
+          report = {
+              "version": os.environ["VERSION"],
+              "commit": sha,
+              "checks": checks,
           }
-          ready = required.issubset(passed)
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
-              fh.write(f"ready={'true' if ready else 'false'}\n")
-          print({"required": sorted(required), "passed": sorted(passed), "ready": ready})
+          with open("/tmp/release-readiness.json", "w", encoding="utf-8") as fh:
+              json.dump(report, fh, indent=2)
+              fh.write("\n")
+          print(json.dumps({
+              "channel": os.environ["CHANNEL"],
+              "report": report,
+          }, indent=2))
           PY
+
+      - name: Resolve stable benchmark evidence
+        id: benchmark
+        if: steps.readiness.outputs.channel == 'stable'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SHA}&per_page=100" > /tmp/benchmark-runs.json
+          RUN_ID=$(python - <<'PY'
+          import json
+          import os
+
+          data = json.load(open("/tmp/benchmark-runs.json", encoding="utf-8"))
+          candidates = [
+              run
+              for run in data.get("workflow_runs", [])
+              if run.get("head_sha") == os.environ["SHA"]
+              and run.get("head_branch") == "main"
+              and run.get("name") == "Real Agent Benchmark"
+              and run.get("conclusion") == "success"
+          ]
+          candidates.sort(key=lambda run: run.get("created_at") or "", reverse=True)
+          print(candidates[0]["id"] if candidates else "")
+          PY
+          )
+
+          if [ -z "$RUN_ID" ]; then
+            echo "No successful Real Agent Benchmark exists for $SHA."
+            echo "aggregate=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          mkdir -p /tmp/real-agent-benchmark
+          gh run download "$RUN_ID" --dir /tmp/real-agent-benchmark
+          AGGREGATE=$(find /tmp/real-agent-benchmark -type f -name aggregate.json -print -quit)
+          if [ -z "$AGGREGATE" ]; then
+            echo "Successful benchmark run did not contain aggregate.json."
+            echo "aggregate=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "aggregate=$AGGREGATE" >> "$GITHUB_OUTPUT"
+
+      - name: Enforce release readiness
+        shell: bash
+        run: |
+          args=(
+            /tmp/release-readiness.json
+            --channel "${{ steps.readiness.outputs.channel }}"
+            --json
+          )
+          if [ -n "${{ steps.benchmark.outputs.aggregate }}" ]; then
+            args+=(--benchmark-aggregate "${{ steps.benchmark.outputs.aggregate }}")
+          fi
+          python scripts/release_readiness.py "${args[@]}"
+
       - name: Create immutable version tag and GitHub Release
-        if: steps.readiness.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.workflow_run.head_sha }}

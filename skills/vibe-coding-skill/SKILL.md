@@ -327,6 +327,12 @@ Then require complete evidence:
 
 Missing runs are missing evidence, never success. Raw benchmark evidence is local/ephemeral and must not be committed to user project repositories.
 
+For release qualification, use:
+
+`python scripts/release_readiness.py <readiness-report.json> --channel <beta|rc|stable> --json`
+
+Beta requires validated deterministic checks, RC adds cross-platform evidence, and stable additionally requires complete conformant real Codex + Claude Code evidence matching the current Skill identity.
+
 Read `references/validation-and-benchmarking.md`.
 
 ## Debugging
@@ -405,6 +411,7 @@ Runtime utilities shipped with the portable skill:
 - `scripts/risk_classifier.py`
 - `scripts/integration_guard.py`
 - `scripts/completion_gate.py`
+- `scripts/release_readiness.py`
 - `scripts/local_workspace.py`
 - `scripts/repository_purity.py`
 - `scripts/graph_provider.py`

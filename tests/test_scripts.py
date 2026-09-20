@@ -592,6 +592,9 @@ class BenchmarkScoringTests(unittest.TestCase):
                     "blind": True,
                     "expected_contract_not_provided": True,
                     "workspace_clean_after": True,
+                    "skill_tree_sha256": "tree-hash",
+                    "catalog_sha256": "catalog-hash",
+                    "schema_sha256": "schema-hash",
                 },
                 "schema_failures": [],
                 "contract": {
@@ -622,6 +625,9 @@ class BenchmarkScoringTests(unittest.TestCase):
                 codex["tier_assessments"],
                 {"conservative_escalation": 1},
             )
+            self.assertEqual(codex["skill_tree_sha256s"], ["tree-hash"])
+            self.assertEqual(codex["catalog_sha256s"], ["catalog-hash"])
+            self.assertEqual(codex["schema_sha256s"], ["schema-hash"])
 
 
     def test_benchmark_preflight_does_not_expose_secret_values(self):
@@ -703,6 +709,153 @@ class BenchmarkScoringTests(unittest.TestCase):
         self.assertIn("set -o pipefail", workflow)
         self.assertIn('mkdir -p "$RESULTS_DIR"', workflow)
         self.assertNotIn("- name: Require benchmark credentials", workflow)
+
+
+class ReleaseReadinessTests(unittest.TestCase):
+    def _report(self, mod, commit="abc123", include_cross=True):
+        checks = [
+            {
+                "name": "Validate Skill",
+                "conclusion": "success",
+                "commit": commit,
+            },
+        ]
+        if include_cross:
+            checks.append({
+                "name": "Cross Platform Smoke",
+                "conclusion": "success",
+                "commit": commit,
+            })
+        return {
+            "version": mod.current_skill_version(),
+            "commit": commit,
+            "checks": checks,
+        }
+
+    def _stable_benchmark(self, mod):
+        identity = mod.benchmark_identity()
+        agents = []
+        for agent in ("codex", "claude-code"):
+            agents.append({
+                "agent": agent,
+                "expected_scenarios": 10,
+                "completed_scenarios": 10,
+                "passed_scenarios": 10,
+                "complete": True,
+                "conformance_rate": 1.0,
+                "skill_versions": [identity["skill_version"]],
+                "skill_tree_sha256s": [identity["skill_tree_sha256"]],
+                "catalog_sha256s": [identity["catalog_sha256"]],
+                "schema_sha256s": [identity["schema_sha256"]],
+            })
+        return {
+            "schema_version": 4,
+            "required_agents": ["codex", "claude-code"],
+            "missing_required_agents": [],
+            "evidence_complete": True,
+            "agents": agents,
+        }
+
+    def test_beta_requires_validate_skill_on_target_commit(self):
+        mod = load_script("release_readiness.py")
+        result = mod.evaluate(
+            self._report(mod, include_cross=False),
+            "beta",
+        )
+        self.assertEqual(result["gate"], "PASS")
+
+        report = self._report(mod, include_cross=False)
+        report["checks"][0]["commit"] = "different"
+        result = mod.evaluate(report, "beta")
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertIn("Validate Skill", result["missing_checks"])
+
+    def test_rc_requires_cross_platform_on_same_commit(self):
+        mod = load_script("release_readiness.py")
+        result = mod.evaluate(
+            self._report(mod, include_cross=False),
+            "rc",
+        )
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertIn("Cross Platform Smoke", result["missing_checks"])
+
+        result = mod.evaluate(self._report(mod), "rc")
+        self.assertEqual(result["gate"], "PASS")
+
+    def test_stable_blocks_without_real_agent_aggregate(self):
+        mod = load_script("release_readiness.py")
+        result = mod.evaluate(self._report(mod), "stable")
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "real-agent benchmark aggregate" in failure
+                for failure in result["failures"]
+            )
+        )
+
+    def test_stable_accepts_complete_conformant_matching_benchmark(self):
+        mod = load_script("release_readiness.py")
+        benchmark = self._stable_benchmark(mod)
+        result = mod.evaluate(
+            self._report(mod),
+            "stable",
+            benchmark,
+        )
+        self.assertEqual(result["gate"], "PASS")
+        self.assertTrue(
+            all(
+                row["identity_ok"]
+                for row in result["benchmark"]["agents"].values()
+            )
+        )
+
+    def test_stable_rejects_benchmark_from_different_skill_tree(self):
+        mod = load_script("release_readiness.py")
+        benchmark = self._stable_benchmark(mod)
+        benchmark["agents"][0]["skill_tree_sha256s"] = ["stale-tree"]
+        result = mod.evaluate(
+            self._report(mod),
+            "stable",
+            benchmark,
+        )
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "skill_tree_sha256s" in failure
+                for failure in result["failures"]
+            )
+        )
+
+    def test_release_workflow_enforces_release_readiness_gate(self):
+        workflow = (
+            ROOT / ".github" / "workflows" / "release.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("python scripts/release_readiness.py", workflow)
+        self.assertIn("Real Agent Benchmark", workflow)
+        self.assertIn("gh run download", workflow)
+        self.assertIn("steps.readiness.outputs.channel == 'stable'", workflow)
+        self.assertIn('CHANNEL="beta"', workflow)
+        self.assertIn('CHANNEL="rc"', workflow)
+        self.assertIn('CHANNEL="stable"', workflow)
+
+
+    def test_stable_rejects_complete_but_nonconformant_agent(self):
+        mod = load_script("release_readiness.py")
+        benchmark = self._stable_benchmark(mod)
+        benchmark["agents"][1]["passed_scenarios"] = 9
+        benchmark["agents"][1]["conformance_rate"] = 0.9
+        result = mod.evaluate(
+            self._report(mod),
+            "stable",
+            benchmark,
+        )
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "conformance failures: claude-code" in failure
+                for failure in result["failures"]
+            )
+        )
 
 
 class BootstrapTests(unittest.TestCase):

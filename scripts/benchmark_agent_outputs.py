@@ -47,6 +47,9 @@ def aggregate_agent(
     invalid_files: list[dict[str, str]] = []
     seen: Counter[str] = Counter()
     skill_versions: set[str] = set()
+    skill_tree_sha256s: set[str] = set()
+    catalog_sha256s: set[str] = set()
+    schema_sha256s: set[str] = set()
     agent_versions: set[str] = set()
     models: set[str] = set()
 
@@ -64,6 +67,14 @@ def aggregate_agent(
                 if isinstance(raw, dict) and isinstance(raw.get("contract"), dict):
                     if raw.get("skill_version"):
                         skill_versions.add(str(raw["skill_version"]))
+                    integrity = raw.get("integrity") or {}
+                    if isinstance(integrity, dict):
+                        if integrity.get("skill_tree_sha256"):
+                            skill_tree_sha256s.add(str(integrity["skill_tree_sha256"]))
+                        if integrity.get("catalog_sha256"):
+                            catalog_sha256s.add(str(integrity["catalog_sha256"]))
+                        if integrity.get("schema_sha256"):
+                            schema_sha256s.add(str(integrity["schema_sha256"]))
                     if raw.get("agent_version"):
                         agent_versions.add(str(raw["agent_version"]))
                     if raw.get("model"):
@@ -85,6 +96,9 @@ def aggregate_agent(
         and not invalid_files
         and completed == len(expected_ids)
         and len(skill_versions) <= 1
+        and len(skill_tree_sha256s) <= 1
+        and len(catalog_sha256s) <= 1
+        and len(schema_sha256s) <= 1
     )
 
     return {
@@ -103,6 +117,9 @@ def aggregate_agent(
         "failure_types": dict(sorted(failure_types.items())),
         "tier_assessments": dict(sorted(tier_assessments.items())),
         "skill_versions": sorted(skill_versions),
+        "skill_tree_sha256s": sorted(skill_tree_sha256s),
+        "catalog_sha256s": sorted(catalog_sha256s),
+        "schema_sha256s": sorted(schema_sha256s),
         "agent_versions": sorted(agent_versions),
         "models": sorted(models),
     }
@@ -169,7 +186,7 @@ def main() -> int:
     )
 
     output = {
-        "schema_version": 3,
+        "schema_version": 4,
         "expected_scenarios": expected_ids,
         "required_agents": sorted(set(ns.required_agent)),
         "missing_required_agents": missing_required_agents,
