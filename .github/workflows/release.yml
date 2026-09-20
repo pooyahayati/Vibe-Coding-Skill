@@ -68,18 +68,35 @@ jobs:
               "commit": sha,
               "checks": checks,
           }
+          required = (
+              {"Validate Skill"}
+              if os.environ["CHANNEL"] == "beta"
+              else {"Validate Skill", "Cross Platform Smoke"}
+          )
+          passed = {
+              check["name"]
+              for check in checks
+              if check.get("conclusion") == "success"
+              and check.get("commit") == sha
+          }
+          base_ready = required.issubset(passed)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"base_ready={'true' if base_ready else 'false'}\n")
           with open("/tmp/release-readiness.json", "w", encoding="utf-8") as fh:
               json.dump(report, fh, indent=2)
               fh.write("\n")
           print(json.dumps({
               "channel": os.environ["CHANNEL"],
+              "base_ready": base_ready,
+              "required": sorted(required),
+              "passed": sorted(passed),
               "report": report,
           }, indent=2))
           PY
 
       - name: Resolve stable benchmark evidence
         id: benchmark
-        if: steps.readiness.outputs.channel == 'stable'
+        if: steps.readiness.outputs.base_ready == 'true' && steps.readiness.outputs.channel == 'stable'
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.workflow_run.head_sha }}
@@ -122,6 +139,7 @@ jobs:
           echo "aggregate=$AGGREGATE" >> "$GITHUB_OUTPUT"
 
       - name: Enforce release readiness
+        if: steps.readiness.outputs.base_ready == 'true'
         shell: bash
         run: |
           args=(
@@ -135,6 +153,7 @@ jobs:
           python scripts/release_readiness.py "${args[@]}"
 
       - name: Create immutable version tag and GitHub Release
+        if: steps.readiness.outputs.base_ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.workflow_run.head_sha }}
