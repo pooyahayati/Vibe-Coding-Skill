@@ -49,20 +49,29 @@ jobs:
           data = json.load(open("/tmp/runs.json", encoding="utf-8"))
           sha = os.environ["SHA"]
           wanted = {"Validate Skill", "Cross Platform Smoke"}
-          checks = []
+          latest = {}
           for run in data.get("workflow_runs", []):
               if (
                   run.get("head_sha") == sha
                   and run.get("head_branch") == "main"
                   and run.get("name") in wanted
               ):
-                  checks.append({
+                  item = {
                       "name": run.get("name"),
                       "conclusion": run.get("conclusion"),
                       "commit": run.get("head_sha"),
                       "run_id": run.get("id"),
-                  })
+                  }
+                  name = item["name"]
+                  current = latest.get(name)
+                  if (
+                      current is None
+                      or int(item.get("run_id") or 0)
+                      > int(current.get("run_id") or 0)
+                  ):
+                      latest[name] = item
 
+          checks = list(latest.values())
           report = {
               "version": os.environ["VERSION"],
               "commit": sha,
@@ -114,15 +123,25 @@ jobs:
               if run.get("head_sha") == os.environ["SHA"]
               and run.get("head_branch") == "main"
               and run.get("name") == "Real Agent Benchmark"
-              and run.get("conclusion") == "success"
           ]
-          candidates.sort(key=lambda run: run.get("created_at") or "", reverse=True)
-          print(candidates[0]["id"] if candidates else "")
+          candidates.sort(
+              key=lambda run: (
+                  run.get("created_at") or "",
+                  int(run.get("id") or 0),
+              ),
+              reverse=True,
+          )
+          if not candidates:
+              print("")
+          elif candidates[0].get("conclusion") == "success":
+              print(candidates[0]["id"])
+          else:
+              print("")
           PY
           )
 
           if [ -z "$RUN_ID" ]; then
-            echo "No successful Real Agent Benchmark exists for $SHA."
+            echo "No latest successful Real Agent Benchmark exists for $SHA."
             echo "aggregate=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
