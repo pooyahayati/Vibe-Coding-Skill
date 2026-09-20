@@ -34,6 +34,48 @@ def result_files(agent_dir: Path) -> list[Path]:
     )
 
 
+
+def envelope_issues(raw: Any, expected_agent: str) -> list[str]:
+    if not isinstance(raw, dict):
+        return ["benchmark result must be a JSON object"]
+
+    issues: list[str] = []
+    if raw.get("schema_version") != 1:
+        issues.append("envelope schema_version must be 1")
+    if str(raw.get("agent") or "").strip() != expected_agent:
+        issues.append("envelope agent does not match result directory")
+
+    contract = raw.get("contract")
+    if not isinstance(contract, dict):
+        issues.append("benchmark envelope requires contract object")
+        return issues
+
+    envelope_scenario = str(raw.get("scenario_id") or "").strip()
+    contract_scenario = str(contract.get("scenario_id") or "").strip()
+    if not envelope_scenario:
+        issues.append("benchmark envelope requires scenario_id")
+    elif envelope_scenario != contract_scenario:
+        issues.append("envelope scenario_id does not match contract")
+
+    for key in ("skill_version", "agent_version", "started_at", "completed_at"):
+        if not str(raw.get(key) or "").strip():
+            issues.append(f"benchmark envelope requires {key}")
+
+    integrity = raw.get("integrity")
+    if not isinstance(integrity, dict):
+        issues.append("benchmark envelope requires integrity object")
+    else:
+        for key in (
+            "skill_tree_sha256",
+            "catalog_sha256",
+            "schema_sha256",
+        ):
+            if not str(integrity.get(key) or "").strip():
+                issues.append(f"benchmark integrity requires {key}")
+
+    return issues
+
+
 def aggregate_agent(
     agent: str,
     agent_dir: Path | None,
@@ -57,6 +99,13 @@ def aggregate_agent(
         for path in result_files(agent_dir):
             try:
                 raw = json.loads(path.read_text(encoding="utf-8"))
+                issues = envelope_issues(raw, agent)
+                if issues:
+                    invalid_files.append({
+                        "file": path.name,
+                        "error": "; ".join(issues),
+                    })
+                    continue
                 scored = evaluator.score_contract(raw, catalog)
                 scenario_id = str(scored["scenario_id"])
                 seen[scenario_id] += 1
@@ -95,10 +144,11 @@ def aggregate_agent(
         and not duplicates
         and not invalid_files
         and completed == len(expected_ids)
-        and len(skill_versions) <= 1
-        and len(skill_tree_sha256s) <= 1
-        and len(catalog_sha256s) <= 1
-        and len(schema_sha256s) <= 1
+        and len(skill_versions) == 1
+        and len(skill_tree_sha256s) == 1
+        and len(catalog_sha256s) == 1
+        and len(schema_sha256s) == 1
+        and len(agent_versions) == 1
     )
 
     return {
