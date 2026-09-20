@@ -54,8 +54,8 @@ The gate does not try to infer whether a particular test semantically proves the
 
 - Tier 0: at least one passing evidence item; provenance metadata is optional.
 - Tier 1: at least one passing item with `source` and `reference`.
-- Tier 2: at least two passing evidence kinds; each counted item needs `source`, `reference`, and the Git `commit` it verifies.
-- Tier 3: at least two passing evidence kinds with the Tier 2 fields plus an ISO-8601 `captured_at` timestamp.
+- Tier 2: the report must declare the target `commit`; at least two passing evidence kinds must each carry `source`, `reference`, and that exact same `commit`.
+- Tier 3: the Tier 2 revision binding remains mandatory and each counted item also needs a timezone-aware ISO-8601 `captured_at` timestamp.
 
 Example Tier 2 evidence item:
 
@@ -71,7 +71,7 @@ Example Tier 2 evidence item:
 }
 ```
 
-Passing evidence that lacks the provenance required by the current tier is not counted toward completion. Missing provenance is missing evidence, not success.
+Passing evidence that lacks the provenance required by the current tier, points at a different revision, or uses an ambiguous Tier 3 timestamp is not counted toward completion. Acceptance criteria must be structured objects with a boolean `met` value. Missing or malformed evidence is missing evidence, not success.
 
 ## Release readiness
 
@@ -87,7 +87,7 @@ Channels are evidence classes:
 - `rc`: requires both `Validate Skill` and `Cross Platform Smoke` for the target commit.
 - `stable`: requires RC evidence plus a complete, fully conformant real-agent aggregate for both `codex` and `claude-code`.
 
-Stable benchmark evidence must match the current Skill version and the exact portable Skill tree, eval catalog, and agent-output schema hashes. Missing, incomplete, stale, or non-conformant real-agent evidence blocks stable readiness.
+Stable benchmark evidence must match the current Skill version and the exact portable Skill tree, eval catalog, and agent-output schema hashes. Release checks use the latest result for each required workflow on the target commit, and stable qualification considers the latest Real Agent Benchmark run rather than falling back to an older success. Missing, incomplete, stale, superseded-by-failure, or non-conformant evidence blocks readiness.
 
 Repository branch protection is not part of this gate.
 
@@ -117,6 +117,10 @@ python scripts/benchmark_agent_outputs.py RESULTS_DIR \
 ```
 
 A conformance rate is reported only when the expected scenario set is complete for that Agent.
+
+Benchmark completeness also requires a valid runner envelope: the envelope Agent must match its result directory, the envelope and contract scenario IDs must agree, and Skill version plus Skill-tree/catalog/schema identity hashes and Agent version must be present consistently. Raw contracts without that provenance cannot become complete benchmark evidence.
+
+An unexpected internal runner exception is recorded as failing raw evidence for that scenario and does not stop later selected scenarios from being attempted.
 
 Benchmark tier assessment distinguishes four outcomes: `preferred`, `conservative_escalation`, `underclassified`, and `overengineered`. Conservative escalation is allowed only when the hidden scenario policy explicitly defines a higher acceptable ceiling; it does not relax required controls, approval semantics, forbidden-action handling, or integrity checks. Aggregation reports the assessment counts so systematic over-engineering is visible instead of being merged into a generic tier mismatch.
 
