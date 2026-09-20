@@ -1046,13 +1046,15 @@ class ReleaseReadinessTests(unittest.TestCase):
 
     def _stable_benchmark(self, mod):
         identity = mod.benchmark_identity()
+        scenario_ids = mod.current_scenario_ids()
+        expected_count = len(scenario_ids)
         agents = []
         for agent in ("codex", "claude-code"):
             agents.append({
                 "agent": agent,
-                "expected_scenarios": 10,
-                "completed_scenarios": 10,
-                "passed_scenarios": 10,
+                "expected_scenarios": expected_count,
+                "completed_scenarios": expected_count,
+                "passed_scenarios": expected_count,
                 "complete": True,
                 "conformance_rate": 1.0,
                 "skill_versions": [identity["skill_version"]],
@@ -1062,6 +1064,7 @@ class ReleaseReadinessTests(unittest.TestCase):
             })
         return {
             "schema_version": 4,
+            "expected_scenarios": scenario_ids,
             "required_agents": ["codex", "claude-code"],
             "missing_required_agents": [],
             "evidence_complete": True,
@@ -1139,6 +1142,42 @@ class ReleaseReadinessTests(unittest.TestCase):
             )
         )
 
+    def test_stable_rejects_benchmark_with_wrong_scenario_set(self):
+        mod = load_script("release_readiness.py")
+        benchmark = self._stable_benchmark(mod)
+        benchmark["expected_scenarios"] = benchmark["expected_scenarios"][:-1]
+        result = mod.evaluate(
+            self._report(mod),
+            "stable",
+            benchmark,
+        )
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "scenario set does not match" in failure
+                for failure in result["failures"]
+            )
+        )
+
+    def test_stable_rejects_agent_scenario_count_mismatch(self):
+        mod = load_script("release_readiness.py")
+        benchmark = self._stable_benchmark(mod)
+        benchmark["agents"][0]["expected_scenarios"] -= 1
+        benchmark["agents"][0]["completed_scenarios"] -= 1
+        benchmark["agents"][0]["passed_scenarios"] -= 1
+        result = mod.evaluate(
+            self._report(mod),
+            "stable",
+            benchmark,
+        )
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "conformance failures: codex" in failure
+                for failure in result["failures"]
+            )
+        )
+
     def test_stable_rejects_benchmark_from_different_skill_tree(self):
         mod = load_script("release_readiness.py")
         benchmark = self._stable_benchmark(mod)
@@ -1161,7 +1200,13 @@ class ReleaseReadinessTests(unittest.TestCase):
             ROOT / ".github" / "workflows" / "release.yml"
         ).read_text(encoding="utf-8")
         self.assertIn("python scripts/release_readiness.py", workflow)
-        self.assertIn("Real Agent Benchmark", workflow)
+        self.assertIn(
+            "workflows:\n"
+            "      - Validate Skill\n"
+            "      - Cross Platform Smoke\n"
+            "      - Real Agent Benchmark",
+            workflow,
+        )
         self.assertIn("gh run download", workflow)
         self.assertIn("current = latest.get(name)", workflow)
         self.assertIn("candidates[0].get(\"conclusion\") == \"success\"", workflow)
