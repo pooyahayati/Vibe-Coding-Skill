@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.9.0-blue)
+![Version](https://img.shields.io/badge/version-0.9.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -289,7 +289,7 @@ This deliberately exercises prompt injection, hallucinated packages, vulnerable 
 python scripts/completion_gate.py completion-report.json --json
 ```
 
-A `Done` report without acceptance criteria and passing evidence is blocked.
+A `Done` report requires structured acceptance criteria and risk-appropriate evidence. Tier 2/3 evidence must bind to the report's target commit, and Tier 3 timestamps must be timezone-aware.
 
 ### Real agent benchmark
 
@@ -306,7 +306,7 @@ Execute real-agent scenarios only when the corresponding CLI and credentials are
 python scripts/run_agent_benchmark.py run \
   --agent codex \
   --scenario all \
-  --results-dir ~/.vibe-coding/benchmarks/vibe-coding-skill/0.9.0/run-001 \
+  --results-dir ~/.vibe-coding/benchmarks/vibe-coding-skill/0.9.1/run-001 \
   --require-env-auth \
   --json
 ```
@@ -393,7 +393,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.9.0`
+Current version: `0.9.1`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.1 — Evidence correctness and release provenance hotfix
+
+- Rejected malformed acceptance-criteria entries instead of silently ignoring non-object or non-boolean completion claims.
+- Required Tier 2/3 completion reports to declare a target commit and excluded passing evidence bound to a different revision.
+- Tightened Tier 3 evidence timestamps to require timezone-aware ISO-8601 values.
+- Hardened benchmark aggregation so complete evidence requires valid runner envelopes, matching Agent/scenario provenance, and exactly one consistent Skill/version/hash identity set.
+- Prevented unexpected per-scenario runner exceptions from aborting the remaining benchmark scenarios; internal failures are now recorded as failing raw evidence and execution continues.
+- Changed release readiness to use the latest check result for each required workflow, so an older success cannot mask a newer failure on the same commit.
+- Changed stable benchmark resolution to consider the latest Real Agent Benchmark run instead of falling back to an older successful run when a newer run failed.
+- Added regression coverage for malformed completion claims, revision mismatch, ambiguous timestamps, benchmark envelope identity, runner exception isolation, and latest-run release semantics.
+
 ## 0.9.0 — Adaptive evidence and release readiness
 
 - Hardened the real-agent benchmark workflow so Codex and Claude Code failure paths are isolated, aggregation still runs, raw evidence is preserved, and aggregate failures cannot be masked by `tee`.

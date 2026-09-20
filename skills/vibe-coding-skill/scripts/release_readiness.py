@@ -70,20 +70,46 @@ def benchmark_identity() -> dict[str, str]:
     }
 
 
-def successful_checks(
+def latest_check_conclusions(
     checks: list[Any],
     commit: str,
-) -> set[str]:
-    passed: set[str] = set()
-    for item in checks:
+) -> dict[str, str]:
+    latest: dict[str, tuple[tuple[int, int, int], str]] = {}
+    for index, item in enumerate(checks):
         if not isinstance(item, dict):
             continue
         name = str(item.get("name") or "").strip()
         conclusion = str(item.get("conclusion") or "").strip().lower()
         check_commit = str(item.get("commit") or "").strip()
-        if name and conclusion == "success" and check_commit == commit:
-            passed.add(name)
-    return passed
+        if not name or check_commit != commit:
+            continue
+
+        run_id = item.get("run_id")
+        if isinstance(run_id, int) and not isinstance(run_id, bool):
+            rank = (1, run_id, index)
+        else:
+            rank = (0, index, index)
+
+        current = latest.get(name)
+        if current is None or rank > current[0]:
+            latest[name] = (rank, conclusion)
+
+    return {
+        name: value[1]
+        for name, value in latest.items()
+    }
+
+
+def successful_checks(
+    checks: list[Any],
+    commit: str,
+) -> set[str]:
+    latest = latest_check_conclusions(checks, commit)
+    return {
+        name
+        for name, conclusion in latest.items()
+        if conclusion == "success"
+    }
 
 
 def validate_stable_benchmark(
@@ -207,7 +233,12 @@ def evaluate(
         failures.append("release report checks must be an array")
         checks = []
 
-    passed = successful_checks(checks, commit)
+    latest_checks = latest_check_conclusions(checks, commit)
+    passed = {
+        name
+        for name, conclusion in latest_checks.items()
+        if conclusion == "success"
+    }
     required_checks = set(CHANNEL_CHECKS[channel])
     missing_checks = sorted(required_checks - passed)
     if missing_checks:
@@ -241,6 +272,7 @@ def evaluate(
         "commit": commit,
         "required_checks": sorted(required_checks),
         "passing_checks": sorted(passed),
+        "latest_check_conclusions": dict(sorted(latest_checks.items())),
         "missing_checks": missing_checks,
         "benchmark": benchmark_summary,
         "failures": failures,

@@ -252,6 +252,35 @@ class CompletionGateTests(unittest.TestCase):
             result["failures"],
         )
 
+    def test_done_rejects_malformed_acceptance_criteria(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 0,
+            "acceptance_criteria": ["not-a-criterion-object"],
+            "evidence": [{"kind": "test", "result": "pass"}],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any("must be an object" in failure for failure in result["failures"])
+        )
+
+    def test_done_rejects_non_boolean_acceptance_state(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 0,
+            "acceptance_criteria": [{"id": "AC-1", "met": "yes"}],
+            "evidence": [{"kind": "test", "result": "pass"}],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any("requires boolean met" in failure for failure in result["failures"])
+        )
+
+
     def test_tier1_requires_source_and_reference_provenance(self):
         mod = load_script("completion_gate.py")
         missing = mod.evaluate({
@@ -286,6 +315,7 @@ class CompletionGateTests(unittest.TestCase):
         report = {
             "status": "Done",
             "risk_tier": 2,
+            "commit": "abc1234",
             "acceptance_criteria": [{"id": "AC-1", "met": True}],
             "evidence": [
                 {
@@ -317,11 +347,84 @@ class CompletionGateTests(unittest.TestCase):
         result = mod.evaluate(report)
         self.assertEqual(result["gate"], "BLOCK")
 
+    def test_tier2_rejects_evidence_from_different_revision(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 2,
+            "commit": "final-commit",
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [
+                {
+                    "kind": "test",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "ci",
+                        "reference": "run-1",
+                        "commit": "old-commit",
+                    },
+                },
+                {
+                    "kind": "review",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "review",
+                        "reference": "review-1",
+                        "commit": "final-commit",
+                    },
+                },
+            ],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "commit_mismatch" in row["issues"]
+                for row in result["evidence_provenance_issues"]
+            )
+        )
+
+    def test_tier2_requires_target_commit(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 2,
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [
+                {
+                    "kind": "test",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "ci",
+                        "reference": "run-1",
+                        "commit": "abc1234",
+                    },
+                },
+                {
+                    "kind": "review",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "review",
+                        "reference": "review-1",
+                        "commit": "abc1234",
+                    },
+                },
+            ],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertIn(
+            "Tier 2 Done requires target commit",
+            result["failures"],
+        )
+
+
     def test_tier3_requires_timestamped_revision_bound_provenance(self):
         mod = load_script("completion_gate.py")
         base = {
             "status": "Done",
             "risk_tier": 3,
+            "commit": "def5678",
             "acceptance_criteria": [{"id": "AC-1", "met": True}],
             "evidence": [
                 {
@@ -358,11 +461,52 @@ class CompletionGateTests(unittest.TestCase):
             ["source", "reference", "commit", "captured_at"],
         )
 
+    def test_tier3_requires_timezone_aware_timestamp(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 3,
+            "commit": "abc1234",
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [
+                {
+                    "kind": "test",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "ci",
+                        "reference": "run-a",
+                        "commit": "abc1234",
+                        "captured_at": "2026-09-20T07:30:00",
+                    },
+                },
+                {
+                    "kind": "review",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "review",
+                        "reference": "review-a",
+                        "commit": "abc1234",
+                        "captured_at": "2026-09-20T07:30:00Z",
+                    },
+                },
+            ],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "invalid_captured_at" in row["issues"]
+                for row in result["evidence_provenance_issues"]
+            )
+        )
+
+
     def test_tier3_rejects_invalid_provenance_timestamp(self):
         mod = load_script("completion_gate.py")
         result = mod.evaluate({
             "status": "Done",
             "risk_tier": 3,
+            "commit": "abc1234",
             "acceptance_criteria": [{"id": "AC-1", "met": True}],
             "evidence": [
                 {
@@ -525,6 +669,7 @@ class BenchmarkScoringTests(unittest.TestCase):
                 "agent_version": "test",
                 "model": "test",
                 "skill_version": (ROOT / "VERSION").read_text(encoding="utf-8").strip(),
+                "scenario_id": scenario["id"],
                 "started_at": "2026-01-01T00:00:00Z",
                 "completed_at": "2026-01-01T00:00:01Z",
                 "runtime": {"exit_code": 0, "duration_ms": 1, "timed_out": False},
@@ -532,6 +677,9 @@ class BenchmarkScoringTests(unittest.TestCase):
                     "blind": True,
                     "expected_contract_not_provided": True,
                     "workspace_clean_after": True,
+                    "skill_tree_sha256": "tree-hash",
+                    "catalog_sha256": "catalog-hash",
+                    "schema_sha256": "schema-hash",
                 },
                 "schema_failures": [],
                 "contract": {
@@ -585,6 +733,7 @@ class BenchmarkScoringTests(unittest.TestCase):
                 "agent_version": "test",
                 "model": "test",
                 "skill_version": (ROOT / "VERSION").read_text(encoding="utf-8").strip(),
+                "scenario_id": scenario["id"],
                 "started_at": "2026-01-01T00:00:00Z",
                 "completed_at": "2026-01-01T00:00:01Z",
                 "runtime": {"exit_code": 0, "duration_ms": 1, "timed_out": False},
@@ -628,6 +777,167 @@ class BenchmarkScoringTests(unittest.TestCase):
             self.assertEqual(codex["skill_tree_sha256s"], ["tree-hash"])
             self.assertEqual(codex["catalog_sha256s"], ["catalog-hash"])
             self.assertEqual(codex["schema_sha256s"], ["schema-hash"])
+
+
+    def test_benchmark_aggregator_rejects_missing_identity_metadata(self):
+        mod = load_script("benchmark_agent_outputs.py")
+        evaluator = mod.load_evaluator()
+        catalog = json.loads(
+            (ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8")
+        )
+        scenario = catalog["scenarios"][0]
+        with tempfile.TemporaryDirectory() as td:
+            agent_dir = Path(td) / "codex"
+            agent_dir.mkdir()
+            envelope = {
+                "schema_version": 1,
+                "agent": "codex",
+                "agent_version": "test",
+                "skill_version": (ROOT / "VERSION").read_text(
+                    encoding="utf-8"
+                ).strip(),
+                "scenario_id": scenario["id"],
+                "started_at": "2026-01-01T00:00:00Z",
+                "completed_at": "2026-01-01T00:00:01Z",
+                "integrity": {
+                    "blind": True,
+                    "expected_contract_not_provided": True,
+                    "workspace_clean_after": True,
+                },
+                "schema_failures": [],
+                "contract": {
+                    "scenario_id": scenario["id"],
+                    "tier": scenario["expected_tier"],
+                    "approval_required": scenario["approval_required"],
+                    "controls": scenario["required_controls"],
+                    "forbidden_actions": scenario["forbidden_controls"],
+                },
+            }
+            (agent_dir / f"{scenario['id']}.json").write_text(
+                json.dumps(envelope), encoding="utf-8"
+            )
+            row = mod.aggregate_agent(
+                "codex",
+                agent_dir,
+                [scenario["id"]],
+                catalog,
+                evaluator,
+            )
+            self.assertFalse(row["complete"])
+            self.assertTrue(row["invalid_files"])
+
+    def test_benchmark_aggregator_rejects_agent_directory_mismatch(self):
+        mod = load_script("benchmark_agent_outputs.py")
+        evaluator = mod.load_evaluator()
+        catalog = json.loads(
+            (ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8")
+        )
+        scenario = catalog["scenarios"][0]
+        with tempfile.TemporaryDirectory() as td:
+            agent_dir = Path(td) / "codex"
+            agent_dir.mkdir()
+            envelope = {
+                "schema_version": 1,
+                "agent": "claude-code",
+                "agent_version": "test",
+                "skill_version": (ROOT / "VERSION").read_text(
+                    encoding="utf-8"
+                ).strip(),
+                "scenario_id": scenario["id"],
+                "started_at": "2026-01-01T00:00:00Z",
+                "completed_at": "2026-01-01T00:00:01Z",
+                "integrity": {
+                    "blind": True,
+                    "expected_contract_not_provided": True,
+                    "workspace_clean_after": True,
+                    "skill_tree_sha256": "tree-hash",
+                    "catalog_sha256": "catalog-hash",
+                    "schema_sha256": "schema-hash",
+                },
+                "schema_failures": [],
+                "contract": {
+                    "scenario_id": scenario["id"],
+                    "tier": scenario["expected_tier"],
+                    "approval_required": scenario["approval_required"],
+                    "controls": scenario["required_controls"],
+                    "forbidden_actions": scenario["forbidden_controls"],
+                },
+            }
+            (agent_dir / f"{scenario['id']}.json").write_text(
+                json.dumps(envelope), encoding="utf-8"
+            )
+            row = mod.aggregate_agent(
+                "codex",
+                agent_dir,
+                [scenario["id"]],
+                catalog,
+                evaluator,
+            )
+            self.assertFalse(row["complete"])
+            self.assertTrue(
+                any(
+                    "agent does not match" in item["error"]
+                    for item in row["invalid_files"]
+                )
+            )
+
+
+    def test_benchmark_runner_continues_after_internal_scenario_error(self):
+        runner = load_script("run_agent_benchmark.py")
+        catalog = json.loads(
+            (ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8")
+        )
+        scenarios = catalog["scenarios"][:2]
+        original = runner.run_one
+        calls = []
+
+        def fake_run_one(
+            agent,
+            spec,
+            scenario,
+            result_dir,
+            model,
+            timeout,
+            max_turns,
+            max_budget_usd,
+        ):
+            calls.append(scenario["id"])
+            if len(calls) == 1:
+                raise RuntimeError("synthetic runner failure")
+            return {
+                "runtime": {
+                    "exit_code": 0,
+                    "duration_ms": 1,
+                    "timed_out": False,
+                },
+                "schema_failures": [],
+                "integrity": {
+                    "workspace_clean_after": True,
+                },
+            }
+
+        runner.run_one = fake_run_one
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                rows, failed = runner.run_scenarios(
+                    "codex",
+                    {"display_name": "Codex"},
+                    scenarios,
+                    Path(td),
+                    None,
+                    1,
+                    1,
+                    None,
+                    "test-version",
+                )
+                self.assertTrue(failed)
+                self.assertEqual(calls, [s["id"] for s in scenarios])
+                self.assertEqual(len(rows), 2)
+                self.assertEqual(rows[0]["runtime"]["exit_code"], 125)
+                self.assertIn("runner_error", rows[0])
+                self.assertEqual(rows[1]["runtime"]["exit_code"], 0)
+        finally:
+            runner.run_one = original
 
 
     def test_benchmark_preflight_does_not_expose_secret_values(self):
@@ -718,6 +1028,7 @@ class ReleaseReadinessTests(unittest.TestCase):
                 "name": "Validate Skill",
                 "conclusion": "success",
                 "commit": commit,
+                "run_id": 100,
             },
         ]
         if include_cross:
@@ -725,6 +1036,7 @@ class ReleaseReadinessTests(unittest.TestCase):
                 "name": "Cross Platform Smoke",
                 "conclusion": "success",
                 "commit": commit,
+                "run_id": 200,
             })
         return {
             "version": mod.current_skill_version(),
@@ -769,6 +1081,24 @@ class ReleaseReadinessTests(unittest.TestCase):
         result = mod.evaluate(report, "beta")
         self.assertEqual(result["gate"], "BLOCK")
         self.assertIn("Validate Skill", result["missing_checks"])
+
+    def test_release_readiness_uses_latest_check_result(self):
+        mod = load_script("release_readiness.py")
+        report = self._report(mod, include_cross=False)
+        report["checks"].append({
+            "name": "Validate Skill",
+            "conclusion": "failure",
+            "commit": report["commit"],
+            "run_id": 300,
+        })
+        result = mod.evaluate(report, "beta")
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertIn("Validate Skill", result["missing_checks"])
+        self.assertEqual(
+            result["latest_check_conclusions"]["Validate Skill"],
+            "failure",
+        )
+
 
     def test_rc_requires_cross_platform_on_same_commit(self):
         mod = load_script("release_readiness.py")
@@ -833,6 +1163,8 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.assertIn("python scripts/release_readiness.py", workflow)
         self.assertIn("Real Agent Benchmark", workflow)
         self.assertIn("gh run download", workflow)
+        self.assertIn("current = latest.get(name)", workflow)
+        self.assertIn("candidates[0].get(\"conclusion\") == \"success\"", workflow)
         self.assertIn("steps.readiness.outputs.channel == 'stable'", workflow)
         self.assertIn("steps.readiness.outputs.base_ready == 'true'", workflow)
         self.assertIn("base_ready={'true' if base_ready else 'false'}", workflow)

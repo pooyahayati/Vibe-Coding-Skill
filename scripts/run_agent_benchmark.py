@@ -455,6 +455,122 @@ def run_one(
         return envelope
 
 
+
+def record_runner_error(
+    agent: str,
+    spec: dict[str, Any],
+    scenario: dict[str, Any],
+    result_dir: Path,
+    model: str | None,
+    agent_version: str | None,
+    exc: Exception,
+) -> dict[str, Any]:
+    result_dir.mkdir(parents=True, exist_ok=True)
+    stem = str(scenario["id"])
+    prompt = blind_prompt(agent, scenario)
+    message = f"{type(exc).__name__}: {exc}"
+
+    (result_dir / f"{stem}.stdout.txt").write_text("", encoding="utf-8")
+    (result_dir / f"{stem}.stderr.txt").write_text(
+        "benchmark runner internal error: " + message + "\n",
+        encoding="utf-8",
+    )
+
+    envelope = {
+        "schema_version": 1,
+        "agent": agent,
+        "agent_display_name": spec.get("display_name"),
+        "agent_version": agent_version,
+        "model": model,
+        "skill_version": (ROOT / "VERSION").read_text(
+            encoding="utf-8"
+        ).strip(),
+        "scenario_id": scenario["id"],
+        "started_at": utc_now(),
+        "completed_at": utc_now(),
+        "runtime": {
+            "exit_code": 125,
+            "duration_ms": 0,
+            "timed_out": False,
+        },
+        "integrity": {
+            "blind": True,
+            "expected_contract_not_provided": True,
+            "workspace_clean_after": False,
+            "catalog_sha256": sha256_file(CATALOG_PATH),
+            "schema_sha256": sha256_file(SCHEMA_PATH),
+            "skill_tree_sha256": skill_tree_hash(PORTABLE_SKILL),
+            "prompt_sha256": sha256_bytes(prompt.encode("utf-8")),
+            "command_shape": [],
+        },
+        "contract": None,
+        "schema_failures": [
+            "runner_internal_error:" + message,
+        ],
+        "runner_error": {
+            "type": type(exc).__name__,
+            "message": str(exc),
+        },
+        "raw_files": {
+            "stdout": f"{stem}.stdout.txt",
+            "stderr": f"{stem}.stderr.txt",
+        },
+    }
+    (result_dir / f"{stem}.json").write_text(
+        json.dumps(envelope, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return envelope
+
+
+def run_scenarios(
+    agent: str,
+    spec: dict[str, Any],
+    scenarios: list[dict[str, Any]],
+    result_dir: Path,
+    model: str | None,
+    timeout: int,
+    max_turns: int,
+    max_budget_usd: float | None,
+    agent_version: str | None,
+) -> tuple[list[dict[str, Any]], bool]:
+    rows: list[dict[str, Any]] = []
+    failed = False
+
+    for scenario in scenarios:
+        try:
+            row = run_one(
+                agent,
+                spec,
+                scenario,
+                result_dir,
+                model,
+                timeout,
+                max_turns,
+                max_budget_usd,
+            )
+        except Exception as exc:
+            row = record_runner_error(
+                agent,
+                spec,
+                scenario,
+                result_dir,
+                model,
+                agent_version,
+                exc,
+            )
+
+        rows.append(row)
+        if (
+            row["runtime"]["exit_code"] != 0
+            or row["schema_failures"]
+            or not row["integrity"]["workspace_clean_after"]
+        ):
+            failed = True
+
+    return rows, failed
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="command", required=True)
@@ -503,22 +619,17 @@ def main() -> int:
     result_dir = root / ns.agent
     scenarios = selected_scenarios(catalog, ns.scenario)
 
-    rows = []
-    failed = False
-    for scenario in scenarios:
-        row = run_one(
-            ns.agent,
-            spec,
-            scenario,
-            result_dir,
-            ns.model,
-            ns.timeout,
-            ns.max_turns,
-            ns.max_budget_usd,
-        )
-        rows.append(row)
-        if row["runtime"]["exit_code"] != 0 or row["schema_failures"] or not row["integrity"]["workspace_clean_after"]:
-            failed = True
+    rows, failed = run_scenarios(
+        ns.agent,
+        spec,
+        scenarios,
+        result_dir,
+        ns.model,
+        ns.timeout,
+        ns.max_turns,
+        ns.max_budget_usd,
+        pre.get("version"),
+    )
 
     summary = {
         "agent": ns.agent,
