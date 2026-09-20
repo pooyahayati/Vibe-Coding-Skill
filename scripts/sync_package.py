@@ -38,6 +38,7 @@ RUNTIME_FILES = [
     Path("scripts/evaluate_agent_output.py"),
     Path("scripts/benchmark_agent_outputs.py"),
     Path("scripts/run_agent_benchmark.py"),
+    Path("scripts/release_readiness.py"),
 ]
 
 RUNTIME_DIRS = [
