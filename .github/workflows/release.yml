@@ -5,6 +5,7 @@ on:
     workflows:
       - Validate Skill
       - Cross Platform Smoke
+      - Real Agent Benchmark
     types:
       - completed
 

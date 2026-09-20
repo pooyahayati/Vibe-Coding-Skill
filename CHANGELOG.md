@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.2 — Stable benchmark orchestration hotfix
+
+- Re-triggered validated release evaluation when the manual Real Agent Benchmark completes successfully, so stable readiness can advance after benchmark evidence arrives without requiring a redundant base-CI rerun.
+- Bound stable readiness to the exact current eval scenario ID list rather than accepting an arbitrary positive scenario count.
+- Required each stable Agent row to report expected, completed, and passed scenario counts equal to the current catalog size.
+- Added regression coverage for benchmark-triggered release orchestration, scenario-set mismatch, and per-Agent scenario-count mismatch.
+
 ## 0.9.1 — Evidence correctness and release provenance hotfix
 
 - Rejected malformed acceptance-criteria entries instead of silently ignoring non-object or non-boolean completion claims.

@@ -61,6 +61,21 @@ def current_skill_version() -> str:
     return match.group(1).strip()
 
 
+def current_scenario_ids() -> list[str]:
+    catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+    scenarios = catalog.get("scenarios")
+    if not isinstance(scenarios, list):
+        raise RuntimeError("eval catalog scenarios must be an array")
+    ids = [
+        str(item.get("id") or "").strip()
+        for item in scenarios
+        if isinstance(item, dict)
+    ]
+    if not ids or any(not value for value in ids) or len(ids) != len(set(ids)):
+        raise RuntimeError("eval catalog scenario IDs must be non-empty and unique")
+    return ids
+
+
 def benchmark_identity() -> dict[str, str]:
     return {
         "skill_version": current_skill_version(),
@@ -133,6 +148,13 @@ def validate_stable_benchmark(
     if benchmark.get("evidence_complete") is not True:
         failures.append("stable requires complete real-agent benchmark evidence")
 
+    expected_ids = current_scenario_ids()
+    observed_ids = benchmark.get("expected_scenarios")
+    if observed_ids != expected_ids:
+        failures.append(
+            "stable benchmark scenario set does not match current eval catalog"
+        )
+
     required_agents = {
         str(value)
         for value in benchmark.get("required_agents", [])
@@ -166,12 +188,14 @@ def validate_stable_benchmark(
             continue
 
         expected_scenarios = row.get("expected_scenarios")
+        completed_scenarios = row.get("completed_scenarios")
         passed_scenarios = row.get("passed_scenarios")
         complete = row.get("complete") is True
+        expected_count = len(expected_ids)
         conformant = (
-            isinstance(expected_scenarios, int)
-            and expected_scenarios > 0
-            and passed_scenarios == expected_scenarios
+            expected_scenarios == expected_count
+            and completed_scenarios == expected_count
+            and passed_scenarios == expected_count
         )
 
         if not complete:
@@ -197,7 +221,9 @@ def validate_stable_benchmark(
         agent_summary[agent] = {
             "complete": complete,
             "expected_scenarios": expected_scenarios,
+            "completed_scenarios": completed_scenarios,
             "passed_scenarios": passed_scenarios,
+            "expected_catalog_scenarios": expected_count,
             "conformant": conformant,
             "identity_ok": identity_ok,
             "observed_identity": observed_identity,
