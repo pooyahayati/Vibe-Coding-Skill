@@ -25,6 +25,7 @@ RUNTIME_SCRIPTS = [
     "risk_classifier.py",
     "integration_guard.py",
     "completion_gate.py",
+    "release_readiness.py",
     "local_workspace.py",
     "repository_purity.py",
     "graph_provider.py",
@@ -42,13 +43,40 @@ REQUIRED_REFS = [
     "operating-model.md",
     "risk-and-autonomy.md",
     "project-intelligence.md",
+    "security-and-dependencies.md",
     "project-state-and-traceability.md",
+    "execution-and-verification.md",
+    "bootstrap-and-evals.md",
+    "risk-classifier-and-integrations.md",
+    "validation-and-benchmarking.md",
     "local-workspace-and-repository-purity.md",
     "graph-provider-contract.md",
     "github-traceability-automation.md",
     "project-state-automation.md",
     "recovery-and-resume.md",
     "installation-and-lifecycle.md",
+]
+
+REQUIRED_RUNTIME_FILES = [
+    "config/toolchain.json",
+    "config/agent-benchmarks.json",
+    "evals/scenarios.json",
+    "evals/agent-output.schema.json",
+    "evals/AGENT_OUTPUT_SCHEMA.md",
+    "agents/openai.yaml",
+    "assets/templates/AGENTS.md",
+    "assets/templates/ARCHITECTURE.md",
+    "assets/templates/PROJECT.md",
+    "assets/templates/PROJECT_GRAPH.md",
+    "assets/templates/ROADMAP.md",
+    "assets/templates/STATUS.md",
+]
+
+JSON_RUNTIME_FILES = [
+    "config/toolchain.json",
+    "config/agent-benchmarks.json",
+    "evals/scenarios.json",
+    "evals/agent-output.schema.json",
 ]
 
 
@@ -71,12 +99,43 @@ def skill_metadata(root: Path) -> dict[str, str]:
     return fields
 
 
-def run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> tuple[int, str]:
+def required_path_failures(root: Path) -> list[str]:
+    failures: list[str] = []
+
+    for name in RUNTIME_SCRIPTS:
+        path = root / "scripts" / name
+        if not path.exists():
+            failures.append(f"missing runtime script: scripts/{name}")
+
+    for name in REQUIRED_REFS:
+        path = root / "references" / name
+        if not path.exists():
+            failures.append(f"missing reference: references/{name}")
+
+    for rel in REQUIRED_RUNTIME_FILES:
+        path = root / rel
+        if not path.exists():
+            failures.append(f"missing runtime file: {rel}")
+
+    return failures
+
+
+def run(
+    cmd: list[str],
+    cwd: Path,
+    env: dict[str, str] | None = None,
+) -> tuple[int, str]:
     effective_env = os.environ.copy()
     if env:
         effective_env.update(env)
     effective_env["PYTHONDONTWRITEBYTECODE"] = "1"
-    p = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True, env=effective_env)
+    p = subprocess.run(
+        cmd,
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        env=effective_env,
+    )
     return p.returncode, ((p.stdout or "") + "\n" + (p.stderr or "")).strip()
 
 
@@ -87,7 +146,9 @@ def validate(root: Path) -> dict[str, Any]:
 
     python_ok = sys.version_info >= MIN_PYTHON
     if not python_ok:
-        failures.append(f"Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ is required")
+        failures.append(
+            f"Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ is required"
+        )
     if not shutil.which("git"):
         failures.append("Git is required")
 
@@ -103,38 +164,54 @@ def validate(root: Path) -> dict[str, Any]:
         parts = skill_text.split("---", 2)
         body = parts[2] if len(parts) == 3 else ""
         if "\\n" in body:
-            failures.append("SKILL.md contains literal escaped newline sequences")
+            failures.append(
+                "SKILL.md contains literal escaped newline sequences"
+            )
 
     version_path = root / "VERSION"
     if version_path.exists() and metadata.get("version"):
         declared = version_path.read_text(encoding="utf-8").strip()
         if declared != metadata["version"]:
-            failures.append(f"VERSION {declared!r} does not match SKILL.md {metadata['version']!r}")
+            failures.append(
+                f"VERSION {declared!r} does not match "
+                f"SKILL.md {metadata['version']!r}"
+            )
 
     plugin_path = root / "plugin.json"
     if plugin_path.exists() and metadata.get("version"):
         try:
             plugin = json.loads(plugin_path.read_text(encoding="utf-8"))
             if plugin.get("version") != metadata["version"]:
-                failures.append("plugin.json version does not match SKILL.md")
+                failures.append(
+                    "plugin.json version does not match SKILL.md"
+                )
             if plugin.get("name") != metadata.get("name"):
                 failures.append("plugin.json name does not match SKILL.md")
         except json.JSONDecodeError as exc:
             failures.append(f"plugin.json is invalid JSON: {exc}")
 
+    failures.extend(required_path_failures(root))
+
     for name in RUNTIME_SCRIPTS:
         path = root / "scripts" / name
         if not path.exists():
-            failures.append(f"missing runtime script: scripts/{name}")
             continue
         try:
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
         except Exception as exc:
             failures.append(f"cannot compile scripts/{name}: {exc}")
 
-    for name in REQUIRED_REFS:
-        if not (root / "references" / name).exists():
-            failures.append(f"missing reference: references/{name}")
+    for rel in JSON_RUNTIME_FILES:
+        path = root / rel
+        if not path.exists():
+            continue
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            failures.append(f"invalid runtime JSON {rel}: {exc}")
+            continue
+        if not isinstance(value, dict):
+            failures.append(f"runtime JSON must be an object: {rel}")
 
     for name in RUNTIME_SCRIPTS:
         path = root / "scripts" / name
@@ -142,35 +219,71 @@ def validate(root: Path) -> dict[str, Any]:
             continue
         rc, out = run([sys.executable, str(path), "--help"], root)
         if rc != 0:
-            failures.append(f"runtime import/help smoke failed: {name}: {out[-300:]}")
+            failures.append(
+                f"runtime import/help smoke failed: {name}: {out[-300:]}"
+            )
 
     workspace_smoke: dict[str, Any] = {"ok": False}
-    if shutil.which("git") and (root / "scripts" / "local_workspace.py").exists():
-        with tempfile.TemporaryDirectory(prefix="vibe-install-project-") as td, tempfile.TemporaryDirectory(prefix="vibe-install-home-") as hd:
+    if (
+        shutil.which("git")
+        and (root / "scripts" / "local_workspace.py").exists()
+        and (root / "scripts" / "repository_purity.py").exists()
+    ):
+        with (
+            tempfile.TemporaryDirectory(
+                prefix="vibe-install-project-"
+            ) as td,
+            tempfile.TemporaryDirectory(
+                prefix="vibe-install-home-"
+            ) as hd,
+        ):
             project = Path(td)
             env = os.environ.copy()
             env["VIBE_CODING_HOME"] = hd
             rc, out = run(["git", "init", "-q"], project)
             if rc == 0:
                 rc1, out1 = run(
-                    [sys.executable, str(root / "scripts" / "local_workspace.py"), "init", "--root", str(project), "--json"],
+                    [
+                        sys.executable,
+                        str(root / "scripts" / "local_workspace.py"),
+                        "init",
+                        "--root",
+                        str(project),
+                        "--json",
+                    ],
                     root,
                     env,
                 )
                 rc2, out2 = run(
-                    [sys.executable, str(root / "scripts" / "repository_purity.py"), "--root", str(project), "--strict-excludes", "--json"],
+                    [
+                        sys.executable,
+                        str(root / "scripts" / "repository_purity.py"),
+                        "--root",
+                        str(project),
+                        "--strict-excludes",
+                        "--json",
+                    ],
                     root,
                     env,
                 )
                 workspace_smoke = {
-                    "ok": rc1 == 0 and rc2 == 0 and not (project / ".gitignore").exists(),
+                    "ok": (
+                        rc1 == 0
+                        and rc2 == 0
+                        and not (project / ".gitignore").exists()
+                    ),
                     "workspace_output": out1[-1000:],
                     "purity_output": out2[-1000:],
                 }
                 if not workspace_smoke["ok"]:
-                    failures.append("local workspace/purity smoke test failed")
+                    failures.append(
+                        "local workspace/purity smoke test failed"
+                    )
             else:
-                failures.append(f"temporary Git repository initialization failed: {out}")
+                failures.append(
+                    "temporary Git repository initialization failed: "
+                    + out
+                )
 
     optional_tools = {
         "graphify": bool(shutil.which("graphify")),
@@ -182,7 +295,11 @@ def validate(root: Path) -> dict[str, Any]:
             warnings.append(f"optional tool not installed: {tool}")
 
     return {
-        "status": "BLOCK" if failures else ("WARN" if warnings else "PASS"),
+        "status": (
+            "BLOCK"
+            if failures
+            else ("WARN" if warnings else "PASS")
+        ),
         "offline": True,
         "platform": {
             "system": platform.system(),
@@ -202,7 +319,10 @@ def validate(root: Path) -> dict[str, Any]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--skill-root", default=str(Path(__file__).resolve().parents[1]))
+    ap.add_argument(
+        "--skill-root",
+        default=str(Path(__file__).resolve().parents[1]),
+    )
     ap.add_argument("--json", action="store_true")
     ns = ap.parse_args()
     result = validate(Path(ns.skill_root))
