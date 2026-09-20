@@ -87,7 +87,7 @@ Channels are evidence classes:
 - `rc`: requires both `Validate Skill` and `Cross Platform Smoke` for the target commit.
 - `stable`: requires RC evidence plus a complete, fully conformant real-agent aggregate for both `codex` and `claude-code`.
 
-Stable benchmark evidence must match the current Skill version and the exact portable Skill tree, eval catalog, and agent-output schema hashes. Release checks use the latest result for each required workflow on the target commit, and stable qualification considers the latest Real Agent Benchmark run rather than falling back to an older success. Missing, incomplete, stale, superseded-by-failure, or non-conformant evidence blocks readiness.
+Stable benchmark evidence must match the current Skill version and the exact portable Skill tree, eval catalog, and agent-output schema hashes. The aggregate's scenario ID list and each Agent's expected/completed/passed scenario counts must exactly match the current eval catalog. Release checks use the latest result for each required workflow on the target commit, and stable qualification considers the latest Real Agent Benchmark run rather than falling back to an older success. Completion of the Real Agent Benchmark itself re-triggers release evaluation, so a valid benchmark produced after the base CI checks can unlock a stable release without re-running those checks. Missing, incomplete, stale, superseded-by-failure, or non-conformant evidence blocks readiness.
 
 Repository branch protection is not part of this gate.
 
