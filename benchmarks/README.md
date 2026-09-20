@@ -43,7 +43,7 @@ python scripts/run_agent_benchmark.py preflight \
 python scripts/run_agent_benchmark.py run \
   --agent codex \
   --scenario all \
-  --results-dir ~/.vibe-coding/benchmarks/vibe-coding-skill/0.9.2/my-run \
+  --results-dir ~/.vibe-coding/benchmarks/vibe-coding-skill/0.9.3/my-run \
   --require-env-auth \
   --json
 ```

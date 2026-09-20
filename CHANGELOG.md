@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.3 — Installation completeness hardening
+
+- Expanded the offline installation check to require the complete portable runtime script set, including `release_readiness.py`.
+- Required every reference document directly used by the Skill to be present before installation can pass.
+- Added checks for runtime configuration, eval catalog/schema, Agent metadata, and project templates.
+- Added JSON parse validation for runtime config/eval files.
+- Added regression coverage so incomplete portable installations cannot silently pass installation validation.
+
 ## 0.9.2 — Stable benchmark orchestration hotfix
 
 - Re-triggered validated release evaluation when the manual Real Agent Benchmark completes successfully, so stable readiness can advance after benchmark evidence arrives without requiring a redundant base-CI rerun.

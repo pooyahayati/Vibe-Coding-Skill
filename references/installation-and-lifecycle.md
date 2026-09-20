@@ -23,7 +23,10 @@ The check is intentionally offline. It validates:
 - Python baseline;
 - Git availability;
 - Skill metadata;
-- required runtime scripts/references;
+- the complete portable runtime script set, including release readiness;
+- every reference document used by the Skill;
+- runtime configuration, eval catalog/schema, Agent metadata, and project templates;
+- JSON parseability for runtime config/eval files;
 - Python compilation and `--help` import smoke;
 - local workspace initialization;
 - repository purity behavior.
