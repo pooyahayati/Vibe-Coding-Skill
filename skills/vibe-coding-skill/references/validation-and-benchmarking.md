@@ -73,6 +73,24 @@ Example Tier 2 evidence item:
 
 Passing evidence that lacks the provenance required by the current tier is not counted toward completion. Missing provenance is missing evidence, not success.
 
+## Release readiness
+
+Use the deterministic release gate with evidence tied to the target commit:
+
+```bash
+python scripts/release_readiness.py readiness.json --channel <beta|rc|stable> --json
+```
+
+Channels are evidence classes:
+
+- `beta`: requires a successful `Validate Skill` run for the target commit.
+- `rc`: requires both `Validate Skill` and `Cross Platform Smoke` for the target commit.
+- `stable`: requires RC evidence plus a complete, fully conformant real-agent aggregate for both `codex` and `claude-code`.
+
+Stable benchmark evidence must match the current Skill version and the exact portable Skill tree, eval catalog, and agent-output schema hashes. Missing, incomplete, stale, or non-conformant real-agent evidence blocks stable readiness.
+
+Repository branch protection is not part of this gate.
+
 ## Agent benchmark
 
 Real agent outputs are scored separately from deterministic policy tests.
