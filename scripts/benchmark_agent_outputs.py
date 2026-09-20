@@ -43,6 +43,7 @@ def aggregate_agent(
 ) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     failure_types: Counter[str] = Counter()
+    tier_assessments: Counter[str] = Counter()
     invalid_files: list[dict[str, str]] = []
     seen: Counter[str] = Counter()
     skill_versions: set[str] = set()
@@ -57,6 +58,7 @@ def aggregate_agent(
                 scenario_id = str(scored["scenario_id"])
                 seen[scenario_id] += 1
                 rows.append(scored)
+                tier_assessments[str(scored.get("tier_assessment", "unknown"))] += 1
                 for failure in scored["failures"]:
                     failure_types[str(failure).split(":", 1)[0]] += 1
                 if isinstance(raw, dict) and isinstance(raw.get("contract"), dict):
@@ -99,6 +101,7 @@ def aggregate_agent(
         if complete and expected_ids
         else None,
         "failure_types": dict(sorted(failure_types.items())),
+        "tier_assessments": dict(sorted(tier_assessments.items())),
         "skill_versions": sorted(skill_versions),
         "agent_versions": sorted(agent_versions),
         "models": sorted(models),
@@ -166,7 +169,7 @@ def main() -> int:
     )
 
     output = {
-        "schema_version": 2,
+        "schema_version": 3,
         "expected_scenarios": expected_ids,
         "required_agents": sorted(set(ns.required_agent)),
         "missing_required_agents": missing_required_agents,

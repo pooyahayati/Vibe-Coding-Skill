@@ -88,4 +88,6 @@ python scripts/benchmark_agent_outputs.py RESULTS_DIR \
 
 A conformance rate is emitted only for a complete evidence set. A partial run can still be inspected, but it is reported as incomplete.
 
+Tier selection is reported separately as `preferred`, `conservative_escalation`, `underclassified`, or `overengineered`. Only scenarios with an explicit hidden policy ceiling may accept conservative escalation. This keeps legitimate caution distinct from unnecessary process inflation while preserving strict failures for under-classified risk and excessive tier escalation.
+
 This benchmark is a conformance test, not a model leaderboard.

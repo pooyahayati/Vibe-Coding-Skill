@@ -252,6 +252,66 @@ class BenchmarkScoringTests(unittest.TestCase):
         self.assertTrue(result["passed"])
 
 
+
+    def test_benchmark_allows_bounded_conservative_escalation(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
+        scenario = next(
+            s for s in catalog["scenarios"]
+            if s["id"] == "hallucinated-package"
+        )
+        result = mod.score_contract({
+            "scenario_id": scenario["id"],
+            "tier": 2,
+            "approval_required": scenario["approval_required"],
+            "controls": scenario["required_controls"],
+            "forbidden_actions": scenario["forbidden_controls"],
+        }, catalog)
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["tier_assessment"], "conservative_escalation")
+        self.assertEqual(result["max_acceptable_tier"], 2)
+
+    def test_benchmark_rejects_overengineering_above_policy_ceiling(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
+        scenario = next(
+            s for s in catalog["scenarios"]
+            if s["id"] == "tiny-copy-fix"
+        )
+        result = mod.score_contract({
+            "scenario_id": scenario["id"],
+            "tier": 1,
+            "approval_required": scenario["approval_required"],
+            "controls": scenario["required_controls"],
+            "forbidden_actions": scenario["forbidden_controls"],
+        }, catalog)
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["tier_assessment"], "overengineered")
+        self.assertTrue(
+            any(f.startswith("tier_overengineered:") for f in result["failures"])
+        )
+
+    def test_benchmark_rejects_underclassified_risk(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
+        scenario = next(
+            s for s in catalog["scenarios"]
+            if s["id"] == "new-payment-integration"
+        )
+        result = mod.score_contract({
+            "scenario_id": scenario["id"],
+            "tier": 1,
+            "approval_required": scenario["approval_required"],
+            "controls": scenario["required_controls"],
+            "forbidden_actions": scenario["forbidden_controls"],
+        }, catalog)
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["tier_assessment"], "underclassified")
+        self.assertTrue(
+            any(f.startswith("tier_underclassified:") for f in result["failures"])
+        )
+
+
     def test_benchmark_prompt_is_blind(self):
         runner = load_script("run_agent_benchmark.py")
         catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
@@ -349,6 +409,62 @@ class BenchmarkScoringTests(unittest.TestCase):
             codex = next(row for row in data["agents"] if row["agent"] == "codex")
             self.assertIsNone(codex["conformance_rate"])
             self.assertGreater(len(codex["missing_scenarios"]), 0)
+
+
+    def test_benchmark_aggregator_reports_tier_assessments(self):
+        catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
+        scenario = next(
+            s for s in catalog["scenarios"]
+            if s["id"] == "hallucinated-package"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            agent_dir = root / "codex"
+            agent_dir.mkdir()
+            envelope = {
+                "schema_version": 1,
+                "agent": "codex",
+                "agent_version": "test",
+                "model": "test",
+                "skill_version": "0.8.0",
+                "started_at": "2026-01-01T00:00:00Z",
+                "completed_at": "2026-01-01T00:00:01Z",
+                "runtime": {"exit_code": 0, "duration_ms": 1, "timed_out": False},
+                "integrity": {
+                    "blind": True,
+                    "expected_contract_not_provided": True,
+                    "workspace_clean_after": True,
+                },
+                "schema_failures": [],
+                "contract": {
+                    "scenario_id": scenario["id"],
+                    "tier": 2,
+                    "approval_required": scenario["approval_required"],
+                    "controls": scenario["required_controls"],
+                    "forbidden_actions": scenario["forbidden_controls"],
+                },
+            }
+            (agent_dir / f"{scenario['id']}.json").write_text(
+                json.dumps(envelope), encoding="utf-8"
+            )
+            out = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "benchmark_agent_outputs.py"),
+                    str(root),
+                    "--json",
+                ],
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+            data = json.loads(out.stdout)
+            codex = next(row for row in data["agents"] if row["agent"] == "codex")
+            self.assertEqual(
+                codex["tier_assessments"],
+                {"conservative_escalation": 1},
+            )
+
 
     def test_benchmark_preflight_does_not_expose_secret_values(self):
         runner = load_script("run_agent_benchmark.py")

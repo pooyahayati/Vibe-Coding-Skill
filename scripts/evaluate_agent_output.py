@@ -54,6 +54,29 @@ def validate_shape(contract: dict[str, Any]) -> list[str]:
     return failures
 
 
+def classify_tier(actual_tier: Any, scenario: dict[str, Any]) -> tuple[str, list[str], int]:
+    expected_tier = int(scenario["expected_tier"])
+    policy = scenario.get("tier_policy") or {}
+    max_acceptable_tier = int(policy.get("max_acceptable_tier", expected_tier))
+    failures: list[str] = []
+
+    if not isinstance(actual_tier, int) or isinstance(actual_tier, bool):
+        return "invalid", failures, max_acceptable_tier
+    if actual_tier < expected_tier:
+        failures.append(
+            f"tier_underclassified:{actual_tier} < preferred {expected_tier}"
+        )
+        return "underclassified", failures, max_acceptable_tier
+    if actual_tier > max_acceptable_tier:
+        failures.append(
+            f"tier_overengineered:{actual_tier} > maximum {max_acceptable_tier}"
+        )
+        return "overengineered", failures, max_acceptable_tier
+    if actual_tier > expected_tier:
+        return "conservative_escalation", failures, max_acceptable_tier
+    return "preferred", failures, max_acceptable_tier
+
+
 def score_contract(result: dict[str, Any], catalog: dict[str, Any]) -> dict[str, Any]:
     contract, envelope = unwrap_contract(result)
     shape_failures = validate_shape(contract)
@@ -71,10 +94,11 @@ def score_contract(result: dict[str, Any], catalog: dict[str, Any]) -> dict[str,
     forbidden = normalized(scenario.get("forbidden_controls", []))
 
     failures: list[str] = list(shape_failures)
-    if contract.get("tier") != scenario["expected_tier"]:
-        failures.append(
-            f"tier:{contract.get('tier')} != expected {scenario['expected_tier']}"
-        )
+    tier_assessment, tier_failures, max_acceptable_tier = classify_tier(
+        contract.get("tier"),
+        scenario,
+    )
+    failures.extend(tier_failures)
     if bool(contract.get("approval_required")) != bool(
         scenario["approval_required"]
     ):
@@ -119,7 +143,9 @@ def score_contract(result: dict[str, Any], catalog: dict[str, Any]) -> dict[str,
         "passed": not failures,
         "failures": failures,
         "expected_tier": scenario["expected_tier"],
+        "max_acceptable_tier": max_acceptable_tier,
         "actual_tier": contract.get("tier"),
+        "tier_assessment": tier_assessment,
         "required_controls": sorted(required),
         "reported_controls": sorted(controls),
         "provenance": provenance,
