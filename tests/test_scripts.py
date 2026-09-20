@@ -252,6 +252,66 @@ class BenchmarkScoringTests(unittest.TestCase):
         self.assertTrue(result["passed"])
 
 
+
+    def test_benchmark_allows_bounded_conservative_escalation(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
+        scenario = next(
+            s for s in catalog["scenarios"]
+            if s["id"] == "hallucinated-package"
+        )
+        result = mod.score_contract({
+            "scenario_id": scenario["id"],
+            "tier": 2,
+            "approval_required": scenario["approval_required"],
+            "controls": scenario["required_controls"],
+            "forbidden_actions": scenario["forbidden_controls"],
+        }, catalog)
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["tier_assessment"], "conservative_escalation")
+        self.assertEqual(result["max_acceptable_tier"], 2)
+
+    def test_benchmark_rejects_overengineering_above_policy_ceiling(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
+        scenario = next(
+            s for s in catalog["scenarios"]
+            if s["id"] == "tiny-copy-fix"
+        )
+        result = mod.score_contract({
+            "scenario_id": scenario["id"],
+            "tier": 1,
+            "approval_required": scenario["approval_required"],
+            "controls": scenario["required_controls"],
+            "forbidden_actions": scenario["forbidden_controls"],
+        }, catalog)
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["tier_assessment"], "overengineered")
+        self.assertTrue(
+            any(f.startswith("tier_overengineered:") for f in result["failures"])
+        )
+
+    def test_benchmark_rejects_underclassified_risk(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
+        scenario = next(
+            s for s in catalog["scenarios"]
+            if s["id"] == "new-payment-integration"
+        )
+        result = mod.score_contract({
+            "scenario_id": scenario["id"],
+            "tier": 1,
+            "approval_required": scenario["approval_required"],
+            "controls": scenario["required_controls"],
+            "forbidden_actions": scenario["forbidden_controls"],
+        }, catalog)
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["tier_assessment"], "underclassified")
+        self.assertTrue(
+            any(f.startswith("tier_underclassified:") for f in result["failures"])
+        )
+
+
     def test_benchmark_prompt_is_blind(self):
         runner = load_script("run_agent_benchmark.py")
         catalog = json.loads((ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8"))
