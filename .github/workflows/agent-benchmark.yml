@@ -60,27 +60,30 @@ jobs:
         shell: bash
         run: echo "RESULTS_DIR=$RUNNER_TEMP/vibe-agent-benchmark" >> "$GITHUB_ENV"
 
-      - name: Require benchmark credentials
-        shell: bash
-        run: |
-          test -n "$OPENAI_API_KEY" || { echo "OPENAI_API_KEY secret is required"; exit 2; }
-          test -n "$ANTHROPIC_API_KEY" || { echo "ANTHROPIC_API_KEY secret is required"; exit 2; }
-
-      - name: Install pinned-at-run agent CLIs
+      - name: Install Codex CLI
+        continue-on-error: true
         shell: bash
         run: |
           npm install -g "@openai/codex@${{ inputs.codex_cli_version }}"
-          npm install -g "@anthropic-ai/claude-code@${{ inputs.claude_cli_version }}"
           codex --version
+
+      - name: Install Claude Code CLI
+        continue-on-error: true
+        shell: bash
+        run: |
+          npm install -g "@anthropic-ai/claude-code@${{ inputs.claude_cli_version }}"
           claude --version
 
       - name: Preflight Codex
+        continue-on-error: true
         run: python scripts/run_agent_benchmark.py preflight --agent codex --require-env-auth --json
 
       - name: Preflight Claude Code
+        continue-on-error: true
         run: python scripts/run_agent_benchmark.py preflight --agent claude-code --require-env-auth --json
 
       - name: Run Codex blind benchmark
+        continue-on-error: true
         shell: bash
         run: |
           args=(
@@ -98,6 +101,7 @@ jobs:
           python scripts/run_agent_benchmark.py "${args[@]}"
 
       - name: Run Claude Code blind benchmark
+        continue-on-error: true
         shell: bash
         run: |
           args=(
@@ -117,9 +121,16 @@ jobs:
           python scripts/run_agent_benchmark.py "${args[@]}"
 
       - name: Require complete evidence and aggregate
+        if: always()
         shell: bash
         run: |
-          python scripts/benchmark_agent_outputs.py "$RESULTS_DIR"             --required-agent codex             --required-agent claude-code             --require-complete             --json | tee "$RESULTS_DIR/aggregate.json"
+          set -o pipefail
+          mkdir -p "$RESULTS_DIR"
+          python scripts/benchmark_agent_outputs.py "$RESULTS_DIR" \
+            --required-agent codex \
+            --required-agent claude-code \
+            --require-complete \
+            --json | tee "$RESULTS_DIR/aggregate.json"
 
       - name: Upload raw benchmark evidence
         if: always()

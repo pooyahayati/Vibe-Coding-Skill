@@ -366,6 +366,71 @@ class BenchmarkScoringTests(unittest.TestCase):
                 os.environ["OPENAI_API_KEY"] = original
 
 
+    def test_benchmark_aggregator_reports_both_agents_missing_when_empty(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            out = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "benchmark_agent_outputs.py"),
+                    str(root),
+                    "--required-agent",
+                    "codex",
+                    "--required-agent",
+                    "claude-code",
+                    "--require-complete",
+                    "--json",
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(out.returncode, 2)
+            data = json.loads(out.stdout)
+            self.assertFalse(data["evidence_complete"])
+            self.assertEqual(
+                data["missing_required_agents"],
+                ["claude-code", "codex"],
+            )
+            self.assertEqual(
+                {row["agent"] for row in data["agents"]},
+                {"codex", "claude-code"},
+            )
+            self.assertTrue(
+                all(row["conformance_rate"] is None for row in data["agents"])
+            )
+
+    def test_real_agent_workflow_isolates_agent_failures(self):
+        workflow = (
+            ROOT / ".github" / "workflows" / "agent-benchmark.yml"
+        ).read_text(encoding="utf-8")
+
+        protected_steps = [
+            "Install Codex CLI",
+            "Install Claude Code CLI",
+            "Preflight Codex",
+            "Preflight Claude Code",
+            "Run Codex blind benchmark",
+            "Run Claude Code blind benchmark",
+        ]
+        for name in protected_steps:
+            marker = f"- name: {name}\n        continue-on-error: true"
+            self.assertIn(marker, workflow)
+
+        aggregate_marker = (
+            "- name: Require complete evidence and aggregate\n"
+            "        if: always()"
+        )
+        upload_marker = (
+            "- name: Upload raw benchmark evidence\n"
+            "        if: always()"
+        )
+        self.assertIn(aggregate_marker, workflow)
+        self.assertIn(upload_marker, workflow)
+        self.assertIn("set -o pipefail", workflow)
+        self.assertIn('mkdir -p "$RESULTS_DIR"', workflow)
+        self.assertNotIn("- name: Require benchmark credentials", workflow)
+
+
 class BootstrapTests(unittest.TestCase):
     def test_bootstrap_does_not_overwrite_existing_status(self):
         with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd:
