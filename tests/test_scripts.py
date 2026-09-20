@@ -669,6 +669,7 @@ class BenchmarkScoringTests(unittest.TestCase):
                 "agent_version": "test",
                 "model": "test",
                 "skill_version": (ROOT / "VERSION").read_text(encoding="utf-8").strip(),
+                "scenario_id": scenario["id"],
                 "started_at": "2026-01-01T00:00:00Z",
                 "completed_at": "2026-01-01T00:00:01Z",
                 "runtime": {"exit_code": 0, "duration_ms": 1, "timed_out": False},
@@ -676,6 +677,9 @@ class BenchmarkScoringTests(unittest.TestCase):
                     "blind": True,
                     "expected_contract_not_provided": True,
                     "workspace_clean_after": True,
+                    "skill_tree_sha256": "tree-hash",
+                    "catalog_sha256": "catalog-hash",
+                    "schema_sha256": "schema-hash",
                 },
                 "schema_failures": [],
                 "contract": {
@@ -772,6 +776,109 @@ class BenchmarkScoringTests(unittest.TestCase):
             self.assertEqual(codex["skill_tree_sha256s"], ["tree-hash"])
             self.assertEqual(codex["catalog_sha256s"], ["catalog-hash"])
             self.assertEqual(codex["schema_sha256s"], ["schema-hash"])
+
+
+    def test_benchmark_aggregator_rejects_missing_identity_metadata(self):
+        mod = load_script("benchmark_agent_outputs.py")
+        evaluator = mod.load_evaluator()
+        catalog = json.loads(
+            (ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8")
+        )
+        scenario = catalog["scenarios"][0]
+        with tempfile.TemporaryDirectory() as td:
+            agent_dir = Path(td) / "codex"
+            agent_dir.mkdir()
+            envelope = {
+                "schema_version": 1,
+                "agent": "codex",
+                "agent_version": "test",
+                "skill_version": (ROOT / "VERSION").read_text(
+                    encoding="utf-8"
+                ).strip(),
+                "scenario_id": scenario["id"],
+                "started_at": "2026-01-01T00:00:00Z",
+                "completed_at": "2026-01-01T00:00:01Z",
+                "integrity": {
+                    "blind": True,
+                    "expected_contract_not_provided": True,
+                    "workspace_clean_after": True,
+                },
+                "schema_failures": [],
+                "contract": {
+                    "scenario_id": scenario["id"],
+                    "tier": scenario["expected_tier"],
+                    "approval_required": scenario["approval_required"],
+                    "controls": scenario["required_controls"],
+                    "forbidden_actions": scenario["forbidden_controls"],
+                },
+            }
+            (agent_dir / f"{scenario['id']}.json").write_text(
+                json.dumps(envelope), encoding="utf-8"
+            )
+            row = mod.aggregate_agent(
+                "codex",
+                agent_dir,
+                [scenario["id"]],
+                catalog,
+                evaluator,
+            )
+            self.assertFalse(row["complete"])
+            self.assertTrue(row["invalid_files"])
+
+    def test_benchmark_aggregator_rejects_agent_directory_mismatch(self):
+        mod = load_script("benchmark_agent_outputs.py")
+        evaluator = mod.load_evaluator()
+        catalog = json.loads(
+            (ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8")
+        )
+        scenario = catalog["scenarios"][0]
+        with tempfile.TemporaryDirectory() as td:
+            agent_dir = Path(td) / "codex"
+            agent_dir.mkdir()
+            envelope = {
+                "schema_version": 1,
+                "agent": "claude-code",
+                "agent_version": "test",
+                "skill_version": (ROOT / "VERSION").read_text(
+                    encoding="utf-8"
+                ).strip(),
+                "scenario_id": scenario["id"],
+                "started_at": "2026-01-01T00:00:00Z",
+                "completed_at": "2026-01-01T00:00:01Z",
+                "integrity": {
+                    "blind": True,
+                    "expected_contract_not_provided": True,
+                    "workspace_clean_after": True,
+                    "skill_tree_sha256": "tree-hash",
+                    "catalog_sha256": "catalog-hash",
+                    "schema_sha256": "schema-hash",
+                },
+                "schema_failures": [],
+                "contract": {
+                    "scenario_id": scenario["id"],
+                    "tier": scenario["expected_tier"],
+                    "approval_required": scenario["approval_required"],
+                    "controls": scenario["required_controls"],
+                    "forbidden_actions": scenario["forbidden_controls"],
+                },
+            }
+            (agent_dir / f"{scenario['id']}.json").write_text(
+                json.dumps(envelope), encoding="utf-8"
+            )
+            row = mod.aggregate_agent(
+                "codex",
+                agent_dir,
+                [scenario["id"]],
+                catalog,
+                evaluator,
+            )
+            self.assertFalse(row["complete"])
+            self.assertTrue(
+                any(
+                    "agent does not match" in item["error"]
+                    for item in row["invalid_files"]
+                )
+            )
 
 
     def test_benchmark_preflight_does_not_expose_secret_values(self):
