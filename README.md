@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.9.1-blue)
+![Version](https://img.shields.io/badge/version-0.9.2-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -306,7 +306,7 @@ Execute real-agent scenarios only when the corresponding CLI and credentials are
 python scripts/run_agent_benchmark.py run \
   --agent codex \
   --scenario all \
-  --results-dir ~/.vibe-coding/benchmarks/vibe-coding-skill/0.9.1/run-001 \
+  --results-dir ~/.vibe-coding/benchmarks/vibe-coding-skill/0.9.2/run-001 \
   --require-env-auth \
   --json
 ```
@@ -393,7 +393,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.9.1`
+Current version: `0.9.2`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 
