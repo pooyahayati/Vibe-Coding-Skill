@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -21,6 +22,57 @@ def load_script(name: str):
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+class InstallCheckTests(unittest.TestCase):
+    def test_install_manifest_covers_runtime_release_gate_and_skill_references(self):
+        mod = load_script("install_check.py")
+        self.assertIn("release_readiness.py", mod.RUNTIME_SCRIPTS)
+
+        skill_text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        referenced = set(
+            re.findall(
+                r"references/([A-Za-z0-9_.-]+\.md)",
+                skill_text,
+            )
+        )
+        self.assertTrue(
+            referenced.issubset(set(mod.REQUIRED_REFS)),
+            sorted(referenced - set(mod.REQUIRED_REFS)),
+        )
+
+        required_runtime = {
+            "config/toolchain.json",
+            "config/agent-benchmarks.json",
+            "evals/scenarios.json",
+            "evals/agent-output.schema.json",
+            "agents/openai.yaml",
+            "assets/templates/PROJECT.md",
+        }
+        self.assertTrue(
+            required_runtime.issubset(set(mod.REQUIRED_RUNTIME_FILES))
+        )
+
+    def test_install_structure_reports_missing_runtime_contracts(self):
+        mod = load_script("install_check.py")
+        with tempfile.TemporaryDirectory() as td:
+            failures = mod.required_path_failures(Path(td))
+        self.assertIn(
+            "missing runtime script: scripts/release_readiness.py",
+            failures,
+        )
+        self.assertIn(
+            "missing runtime file: config/agent-benchmarks.json",
+            failures,
+        )
+        self.assertIn(
+            "missing runtime file: evals/agent-output.schema.json",
+            failures,
+        )
+        self.assertIn(
+            "missing reference: references/validation-and-benchmarking.md",
+            failures,
+        )
 
 
 class DependencyGuardTests(unittest.TestCase):
