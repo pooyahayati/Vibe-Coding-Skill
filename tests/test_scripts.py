@@ -834,6 +834,8 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.assertIn("Real Agent Benchmark", workflow)
         self.assertIn("gh run download", workflow)
         self.assertIn("steps.readiness.outputs.channel == 'stable'", workflow)
+        self.assertIn("steps.readiness.outputs.base_ready == 'true'", workflow)
+        self.assertIn("base_ready={'true' if base_ready else 'false'}", workflow)
         self.assertIn('CHANNEL="beta"', workflow)
         self.assertIn('CHANNEL="rc"', workflow)
         self.assertIn('CHANNEL="stable"', workflow)
