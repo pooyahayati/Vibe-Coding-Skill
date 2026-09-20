@@ -252,6 +252,35 @@ class CompletionGateTests(unittest.TestCase):
             result["failures"],
         )
 
+    def test_done_rejects_malformed_acceptance_criteria(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 0,
+            "acceptance_criteria": ["not-a-criterion-object"],
+            "evidence": [{"kind": "test", "result": "pass"}],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any("must be an object" in failure for failure in result["failures"])
+        )
+
+    def test_done_rejects_non_boolean_acceptance_state(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 0,
+            "acceptance_criteria": [{"id": "AC-1", "met": "yes"}],
+            "evidence": [{"kind": "test", "result": "pass"}],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any("requires boolean met" in failure for failure in result["failures"])
+        )
+
+
     def test_tier1_requires_source_and_reference_provenance(self):
         mod = load_script("completion_gate.py")
         missing = mod.evaluate({
@@ -286,6 +315,7 @@ class CompletionGateTests(unittest.TestCase):
         report = {
             "status": "Done",
             "risk_tier": 2,
+            "commit": "abc1234",
             "acceptance_criteria": [{"id": "AC-1", "met": True}],
             "evidence": [
                 {
@@ -317,11 +347,84 @@ class CompletionGateTests(unittest.TestCase):
         result = mod.evaluate(report)
         self.assertEqual(result["gate"], "BLOCK")
 
+    def test_tier2_rejects_evidence_from_different_revision(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 2,
+            "commit": "final-commit",
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [
+                {
+                    "kind": "test",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "ci",
+                        "reference": "run-1",
+                        "commit": "old-commit",
+                    },
+                },
+                {
+                    "kind": "review",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "review",
+                        "reference": "review-1",
+                        "commit": "final-commit",
+                    },
+                },
+            ],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "commit_mismatch" in row["issues"]
+                for row in result["evidence_provenance_issues"]
+            )
+        )
+
+    def test_tier2_requires_target_commit(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 2,
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [
+                {
+                    "kind": "test",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "ci",
+                        "reference": "run-1",
+                        "commit": "abc1234",
+                    },
+                },
+                {
+                    "kind": "review",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "review",
+                        "reference": "review-1",
+                        "commit": "abc1234",
+                    },
+                },
+            ],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertIn(
+            "Tier 2 Done requires target commit",
+            result["failures"],
+        )
+
+
     def test_tier3_requires_timestamped_revision_bound_provenance(self):
         mod = load_script("completion_gate.py")
         base = {
             "status": "Done",
             "risk_tier": 3,
+            "commit": "def5678",
             "acceptance_criteria": [{"id": "AC-1", "met": True}],
             "evidence": [
                 {
@@ -358,11 +461,52 @@ class CompletionGateTests(unittest.TestCase):
             ["source", "reference", "commit", "captured_at"],
         )
 
+    def test_tier3_requires_timezone_aware_timestamp(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 3,
+            "commit": "abc1234",
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [
+                {
+                    "kind": "test",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "ci",
+                        "reference": "run-a",
+                        "commit": "abc1234",
+                        "captured_at": "2026-09-20T07:30:00",
+                    },
+                },
+                {
+                    "kind": "review",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "review",
+                        "reference": "review-a",
+                        "commit": "abc1234",
+                        "captured_at": "2026-09-20T07:30:00Z",
+                    },
+                },
+            ],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "invalid_captured_at" in row["issues"]
+                for row in result["evidence_provenance_issues"]
+            )
+        )
+
+
     def test_tier3_rejects_invalid_provenance_timestamp(self):
         mod = load_script("completion_gate.py")
         result = mod.evaluate({
             "status": "Done",
             "risk_tier": 3,
+            "commit": "abc1234",
             "acceptance_criteria": [{"id": "AC-1", "met": True}],
             "evidence": [
                 {
