@@ -34,20 +34,26 @@ MIN_DISTINCT_EVIDENCE_KINDS_BY_TIER = {
 
 
 def valid_risk_tier(value: Any) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool) and value in {0, 1, 2, 3}
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and value in {0, 1, 2, 3}
+    )
 
 
 def valid_timestamp(value: Any) -> bool:
     if not isinstance(value, str) or not value.strip():
         return False
     text = value.strip()
+    if "T" not in text:
+        return False
     if text.endswith("Z"):
         text = text[:-1] + "+00:00"
     try:
-        datetime.fromisoformat(text)
+        parsed = datetime.fromisoformat(text)
     except ValueError:
         return False
-    return True
+    return parsed.tzinfo is not None and parsed.utcoffset() is not None
 
 
 def passing_evidence(evidence: list[Any]) -> list[dict[str, Any]]:
@@ -60,7 +66,11 @@ def passing_evidence(evidence: list[Any]) -> list[dict[str, Any]]:
     ]
 
 
-def provenance_issues(item: dict[str, Any], risk_tier: int) -> list[str]:
+def provenance_issues(
+    item: dict[str, Any],
+    risk_tier: int,
+    target_commit: str | None = None,
+) -> list[str]:
     required = PROVENANCE_FIELDS_BY_TIER[risk_tier]
     if not required:
         return []
@@ -75,6 +85,14 @@ def provenance_issues(item: dict[str, Any], risk_tier: int) -> list[str]:
         if not isinstance(value, str) or not value.strip():
             issues.append(f"missing_{key}")
 
+    if (
+        "commit" in required
+        and "missing_commit" not in issues
+        and target_commit
+        and str(provenance.get("commit") or "").strip() != target_commit
+    ):
+        issues.append("commit_mismatch")
+
     if "captured_at" in required and "missing_captured_at" not in issues:
         if not valid_timestamp(provenance.get("captured_at")):
             issues.append("invalid_captured_at")
@@ -82,12 +100,41 @@ def provenance_issues(item: dict[str, Any], risk_tier: int) -> list[str]:
     return issues
 
 
+def acceptance_criteria_failures(criteria: Any) -> list[str]:
+    if not isinstance(criteria, list):
+        return ["acceptance_criteria must be an array"]
+    if not criteria:
+        return ["Done requires explicit acceptance criteria"]
+
+    failures: list[str] = []
+    for index, item in enumerate(criteria):
+        if not isinstance(item, dict):
+            failures.append(
+                f"acceptance criterion {index} must be an object"
+            )
+            continue
+        if not isinstance(item.get("met"), bool):
+            failures.append(
+                f"acceptance criterion {index} requires boolean met"
+            )
+        elif item["met"] is not True:
+            failures.append(
+                f"acceptance criterion {index} is not met"
+            )
+    return failures
+
+
 def evaluate(report: dict[str, Any]) -> dict[str, Any]:
     status = str(report.get("status") or "").strip().lower()
-    criteria = report.get("acceptance_criteria") or []
-    evidence = report.get("evidence") or []
-    blockers = report.get("blockers") or []
+    raw_criteria = report.get("acceptance_criteria")
+    raw_evidence = report.get("evidence")
+    raw_blockers = report.get("blockers")
     risk_tier = report.get("risk_tier")
+    target_commit = str(report.get("commit") or "").strip()
+
+    criteria = raw_criteria if isinstance(raw_criteria, list) else []
+    evidence = raw_evidence if isinstance(raw_evidence, list) else []
+    blockers = raw_blockers if isinstance(raw_blockers, list) else []
 
     failures: list[str] = []
     warnings: list[str] = []
@@ -95,13 +142,28 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
     evidence_provenance_issues: list[dict[str, Any]] = []
 
     if status == "done":
+        failures.extend(acceptance_criteria_failures(raw_criteria))
+
+        if not isinstance(raw_evidence, list):
+            failures.append("evidence must be an array")
+        if raw_blockers is not None and not isinstance(raw_blockers, list):
+            failures.append("blockers must be an array")
+
         if not valid_risk_tier(risk_tier):
             failures.append("Done requires risk_tier 0, 1, 2, or 3")
         else:
-            required_fields = PROVENANCE_FIELDS_BY_TIER[risk_tier]
+            if risk_tier >= 2 and not target_commit:
+                failures.append(
+                    f"Tier {risk_tier} Done requires target commit"
+                )
+
             passed = passing_evidence(evidence)
             for index, item in enumerate(passed):
-                issues = provenance_issues(item, risk_tier)
+                issues = provenance_issues(
+                    item,
+                    risk_tier,
+                    target_commit or None,
+                )
                 if issues:
                     evidence_provenance_issues.append(
                         {
@@ -138,15 +200,6 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
                     "provenance did not meet the current risk tier"
                 )
 
-        if not criteria:
-            failures.append("Done requires explicit acceptance criteria")
-        elif any(
-            not bool(item.get("met"))
-            for item in criteria
-            if isinstance(item, dict)
-        ):
-            failures.append("one or more acceptance criteria are not met")
-
         if not passing_evidence(evidence):
             failures.append("Done requires at least one passing evidence item")
 
@@ -158,8 +211,16 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
             warnings.append("Blocked status should include a blocker")
         if risk_tier is not None and not valid_risk_tier(risk_tier):
             warnings.append("risk_tier should be 0, 1, 2, or 3 when provided")
+        if raw_criteria is not None and not isinstance(raw_criteria, list):
+            warnings.append("acceptance_criteria should be an array")
+        if raw_evidence is not None and not isinstance(raw_evidence, list):
+            warnings.append("evidence should be an array")
+        if raw_blockers is not None and not isinstance(raw_blockers, list):
+            warnings.append("blockers should be an array")
     else:
-        failures.append("status must be Done, Blocked, Unverified, or In Progress")
+        failures.append(
+            "status must be Done, Blocked, Unverified, or In Progress"
+        )
 
     required_fields = (
         list(PROVENANCE_FIELDS_BY_TIER[risk_tier])
@@ -171,6 +232,7 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
         "gate": "BLOCK" if failures else ("WARN" if warnings else "PASS"),
         "status": report.get("status"),
         "risk_tier": risk_tier,
+        "commit": target_commit or None,
         "failures": failures,
         "warnings": warnings,
         "evidence_count": len(evidence),
