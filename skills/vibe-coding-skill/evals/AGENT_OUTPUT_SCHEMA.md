@@ -49,7 +49,7 @@ Run one or all scenarios:
 python scripts/run_agent_benchmark.py run \
   --agent codex \
   --scenario all \
-  --results-dir ~/.vibe-coding/benchmarks/vibe-coding-skill/0.8.0/run-001 \
+  --results-dir ~/.vibe-coding/benchmarks/vibe-coding-skill/0.9.0/run-001 \
   --require-env-auth \
   --json
 ```

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.0 — Adaptive evidence and release readiness
+
+- Hardened the real-agent benchmark workflow so Codex and Claude Code failure paths are isolated, aggregation still runs, raw evidence is preserved, and aggregate failures cannot be masked by `tee`.
+- Added bounded benchmark tier policies that distinguish preferred behavior, legitimate conservative escalation, under-classification, and over-engineering.
+- Added per-scenario tier ceilings with explicit rationale where conservative escalation is permitted.
+- Added risk-aware completion evidence provenance: higher-risk Done claims require stronger, revision-bound, and timestamped evidence.
+- Added deterministic beta, RC, and stable release-readiness gates.
+- Required stable releases to have complete, fully conformant real Codex and Claude Code benchmark evidence.
+- Bound stable benchmark evidence to the current Skill version, portable Skill tree, eval catalog, and output-schema hashes.
+- Wired the validated release workflow to the release-readiness gate while keeping repository branch protection outside the release criteria by project decision.
+- Extended regression, failure-injection, portable-package, Agent Skills compatibility, and cross-platform coverage for the new policies.
+- Kept missing real-agent runs as missing evidence rather than treating them as success; the remaining real-agent evidence requirement stays tracked separately for 1.0 readiness.
+
 ## 0.8.0 — Real-agent benchmark execution and evidence hardening
 
 - Added strict machine JSON Schema for live-agent behavior contracts.

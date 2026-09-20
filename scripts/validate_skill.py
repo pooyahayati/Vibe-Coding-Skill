@@ -46,6 +46,7 @@ REQUIRED_SCRIPTS = [
     "run_failure_injections.py",
     "benchmark_agent_outputs.py",
     "run_agent_benchmark.py",
+    "release_readiness.py",
     "local_workspace.py",
     "repository_purity.py",
     "graph_provider.py",

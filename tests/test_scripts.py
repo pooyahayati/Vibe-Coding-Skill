@@ -488,7 +488,7 @@ class BenchmarkScoringTests(unittest.TestCase):
             "agent": "codex",
             "agent_version": "test",
             "model": "test",
-            "skill_version": "0.8.0",
+            "skill_version": (ROOT / "VERSION").read_text(encoding="utf-8").strip(),
             "started_at": "2026-01-01T00:00:00Z",
             "completed_at": "2026-01-01T00:00:01Z",
             "integrity": {
@@ -524,7 +524,7 @@ class BenchmarkScoringTests(unittest.TestCase):
                 "agent": "codex",
                 "agent_version": "test",
                 "model": "test",
-                "skill_version": "0.8.0",
+                "skill_version": (ROOT / "VERSION").read_text(encoding="utf-8").strip(),
                 "started_at": "2026-01-01T00:00:00Z",
                 "completed_at": "2026-01-01T00:00:01Z",
                 "runtime": {"exit_code": 0, "duration_ms": 1, "timed_out": False},
@@ -584,7 +584,7 @@ class BenchmarkScoringTests(unittest.TestCase):
                 "agent": "codex",
                 "agent_version": "test",
                 "model": "test",
-                "skill_version": "0.8.0",
+                "skill_version": (ROOT / "VERSION").read_text(encoding="utf-8").strip(),
                 "started_at": "2026-01-01T00:00:00Z",
                 "completed_at": "2026-01-01T00:00:01Z",
                 "runtime": {"exit_code": 0, "duration_ms": 1, "timed_out": False},
@@ -834,6 +834,8 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.assertIn("Real Agent Benchmark", workflow)
         self.assertIn("gh run download", workflow)
         self.assertIn("steps.readiness.outputs.channel == 'stable'", workflow)
+        self.assertIn("steps.readiness.outputs.base_ready == 'true'", workflow)
+        self.assertIn("base_ready={'true' if base_ready else 'false'}", workflow)
         self.assertIn('CHANNEL="beta"', workflow)
         self.assertIn('CHANNEL="rc"', workflow)
         self.assertIn('CHANNEL="stable"', workflow)
