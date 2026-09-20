@@ -826,6 +826,19 @@ class ReleaseReadinessTests(unittest.TestCase):
             )
         )
 
+    def test_release_workflow_enforces_release_readiness_gate(self):
+        workflow = (
+            ROOT / ".github" / "workflows" / "release.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("python scripts/release_readiness.py", workflow)
+        self.assertIn("Real Agent Benchmark", workflow)
+        self.assertIn("gh run download", workflow)
+        self.assertIn("steps.readiness.outputs.channel == 'stable'", workflow)
+        self.assertIn('CHANNEL="beta"', workflow)
+        self.assertIn('CHANNEL="rc"', workflow)
+        self.assertIn('CHANNEL="stable"', workflow)
+
+
     def test_stable_rejects_complete_but_nonconformant_agent(self):
         mod = load_script("release_readiness.py")
         benchmark = self._stable_benchmark(mod)
