@@ -426,6 +426,7 @@ class BenchmarkScoringTests(unittest.TestCase):
         )
         self.assertIn(aggregate_marker, workflow)
         self.assertIn(upload_marker, workflow)
+        self.assertIn("set -o pipefail", workflow)
         self.assertIn('mkdir -p "$RESULTS_DIR"', workflow)
         self.assertNotIn("- name: Require benchmark credentials", workflow)
 
