@@ -118,11 +118,29 @@ def main() -> int:
 
     no_evidence = completion.evaluate({
         "status": "Done",
+        "risk_tier": 0,
         "acceptance_criteria": [{"id": "AC-1", "met": True}],
         "evidence": [],
         "blockers": [],
     })
     checks.append({"id": "done-without-evidence", "passed": no_evidence["gate"] == "BLOCK", "detail": no_evidence})
+
+    weak_critical_evidence = completion.evaluate({
+        "status": "Done",
+        "risk_tier": 3,
+        "acceptance_criteria": [{"id": "AC-1", "met": True}],
+        "evidence": [
+            {"kind": "test", "result": "pass"},
+            {"kind": "review", "result": "pass"},
+        ],
+        "blockers": [],
+    })
+    checks.append({
+        "id": "critical-done-without-provenance",
+        "passed": weak_critical_evidence["gate"] == "BLOCK"
+        and weak_critical_evidence["qualified_evidence_count"] == 0,
+        "detail": weak_critical_evidence,
+    })
 
     with tempfile.TemporaryDirectory(prefix="vibe-stale-") as td, tempfile.TemporaryDirectory(prefix="vibe-bin-") as bd, tempfile.TemporaryDirectory(prefix="vibe-home-") as hd:
         project = Path(td)

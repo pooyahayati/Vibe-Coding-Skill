@@ -297,7 +297,9 @@ For a structured completion report, use:
 
 `python scripts/completion_gate.py report.json --json`
 
-A Done report with missing acceptance criteria, no passing evidence, or active blockers must be blocked.
+Every Done report must declare `risk_tier`. Evidence provenance scales with risk: Tier 1 requires source/reference, Tier 2 adds revision binding and two distinct evidence kinds, and Tier 3 adds timestamped provenance. Tier 0 keeps the light path.
+
+A Done report with missing acceptance criteria, insufficient risk-appropriate evidence, missing required provenance, or active blockers must be blocked.
 
 If evidence is unavailable, report the task as unverified rather than complete.
 

@@ -44,13 +44,34 @@ A new safety mechanism should normally receive at least one failure-injection ca
 
 ## Completion evidence gate
 
-A meaningful task reported as Done should provide explicit acceptance criteria and passing evidence.
+A meaningful task reported as Done should provide an explicit risk tier, acceptance criteria, and passing evidence.
 
 ```bash
 python scripts/completion_gate.py report.json --json
 ```
 
-This gate prevents unsupported Done claims but does not attempt to judge whether a test itself is sufficient for every risk tier.
+The gate does not try to infer whether a particular test semantically proves the whole change. It enforces increasingly traceable evidence as risk rises:
+
+- Tier 0: at least one passing evidence item; provenance metadata is optional.
+- Tier 1: at least one passing item with `source` and `reference`.
+- Tier 2: at least two passing evidence kinds; each counted item needs `source`, `reference`, and the Git `commit` it verifies.
+- Tier 3: at least two passing evidence kinds with the Tier 2 fields plus an ISO-8601 `captured_at` timestamp.
+
+Example Tier 2 evidence item:
+
+```json
+{
+  "kind": "test",
+  "result": "pass",
+  "provenance": {
+    "source": "ci",
+    "reference": "validate-skill/run-123",
+    "commit": "abc1234"
+  }
+}
+```
+
+Passing evidence that lacks the provenance required by the current tier is not counted toward completion. Missing provenance is missing evidence, not success.
 
 ## Agent benchmark
 

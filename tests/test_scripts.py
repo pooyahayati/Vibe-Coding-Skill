@@ -230,11 +230,169 @@ class CompletionGateTests(unittest.TestCase):
         mod = load_script("completion_gate.py")
         result = mod.evaluate({
             "status": "Done",
+            "risk_tier": 0,
             "acceptance_criteria": [{"id": "AC-1", "met": True}],
             "evidence": [{"kind": "test", "result": "pass"}],
             "blockers": [],
         })
         self.assertEqual(result["gate"], "PASS")
+
+
+    def test_done_requires_explicit_risk_tier(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [{"kind": "test", "result": "pass"}],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertIn(
+            "Done requires risk_tier 0, 1, 2, or 3",
+            result["failures"],
+        )
+
+    def test_tier1_requires_source_and_reference_provenance(self):
+        mod = load_script("completion_gate.py")
+        missing = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 1,
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [{"kind": "test", "result": "pass"}],
+            "blockers": [],
+        })
+        self.assertEqual(missing["gate"], "BLOCK")
+        self.assertEqual(missing["qualified_evidence_count"], 0)
+
+        complete = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 1,
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [{
+                "kind": "test",
+                "result": "pass",
+                "provenance": {
+                    "source": "local",
+                    "reference": "python -m unittest",
+                },
+            }],
+            "blockers": [],
+        })
+        self.assertEqual(complete["gate"], "PASS")
+        self.assertEqual(complete["qualified_evidence_count"], 1)
+
+    def test_tier2_requires_two_distinct_revision_bound_evidence_kinds(self):
+        mod = load_script("completion_gate.py")
+        report = {
+            "status": "Done",
+            "risk_tier": 2,
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [
+                {
+                    "kind": "test",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "ci",
+                        "reference": "validate-skill/run-123",
+                        "commit": "abc1234",
+                    },
+                },
+                {
+                    "kind": "review",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "review",
+                        "reference": "pr-42",
+                        "commit": "abc1234",
+                    },
+                },
+            ],
+            "blockers": [],
+        }
+        result = mod.evaluate(report)
+        self.assertEqual(result["gate"], "PASS")
+        self.assertEqual(result["qualified_evidence_count"], 2)
+
+        report["evidence"] = [report["evidence"][0]]
+        result = mod.evaluate(report)
+        self.assertEqual(result["gate"], "BLOCK")
+
+    def test_tier3_requires_timestamped_revision_bound_provenance(self):
+        mod = load_script("completion_gate.py")
+        base = {
+            "status": "Done",
+            "risk_tier": 3,
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [
+                {
+                    "kind": "test",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "ci",
+                        "reference": "critical-suite/run-7",
+                        "commit": "def5678",
+                    },
+                },
+                {
+                    "kind": "recovery",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "runtime",
+                        "reference": "rollback-drill/run-7",
+                        "commit": "def5678",
+                        "captured_at": "2026-09-20T07:30:00Z",
+                    },
+                },
+            ],
+            "blockers": [],
+        }
+        result = mod.evaluate(base)
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(result["evidence_provenance_issues"])
+
+        base["evidence"][0]["provenance"]["captured_at"] = "2026-09-20T07:29:00Z"
+        result = mod.evaluate(base)
+        self.assertEqual(result["gate"], "PASS")
+        self.assertEqual(
+            result["required_provenance_fields"],
+            ["source", "reference", "commit", "captured_at"],
+        )
+
+    def test_tier3_rejects_invalid_provenance_timestamp(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 3,
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [
+                {
+                    "kind": "test",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "ci",
+                        "reference": "run-a",
+                        "commit": "abc1234",
+                        "captured_at": "not-a-time",
+                    },
+                },
+                {
+                    "kind": "review",
+                    "result": "pass",
+                    "provenance": {
+                        "source": "review",
+                        "reference": "review-a",
+                        "commit": "abc1234",
+                        "captured_at": "2026-09-20T07:30:00Z",
+                    },
+                },
+            ],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        issues = result["evidence_provenance_issues"]
+        self.assertTrue(
+            any("invalid_captured_at" in row["issues"] for row in issues)
+        )
 
 
 class BenchmarkScoringTests(unittest.TestCase):
