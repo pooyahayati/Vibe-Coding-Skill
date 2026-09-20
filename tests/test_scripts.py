@@ -733,6 +733,7 @@ class BenchmarkScoringTests(unittest.TestCase):
                 "agent_version": "test",
                 "model": "test",
                 "skill_version": (ROOT / "VERSION").read_text(encoding="utf-8").strip(),
+                "scenario_id": scenario["id"],
                 "started_at": "2026-01-01T00:00:00Z",
                 "completed_at": "2026-01-01T00:00:01Z",
                 "runtime": {"exit_code": 0, "duration_ms": 1, "timed_out": False},
@@ -881,6 +882,64 @@ class BenchmarkScoringTests(unittest.TestCase):
             )
 
 
+    def test_benchmark_runner_continues_after_internal_scenario_error(self):
+        runner = load_script("run_agent_benchmark.py")
+        catalog = json.loads(
+            (ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8")
+        )
+        scenarios = catalog["scenarios"][:2]
+        original = runner.run_one
+        calls = []
+
+        def fake_run_one(
+            agent,
+            spec,
+            scenario,
+            result_dir,
+            model,
+            timeout,
+            max_turns,
+            max_budget_usd,
+        ):
+            calls.append(scenario["id"])
+            if len(calls) == 1:
+                raise RuntimeError("synthetic runner failure")
+            return {
+                "runtime": {
+                    "exit_code": 0,
+                    "duration_ms": 1,
+                    "timed_out": False,
+                },
+                "schema_failures": [],
+                "integrity": {
+                    "workspace_clean_after": True,
+                },
+            }
+
+        runner.run_one = fake_run_one
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                rows, failed = runner.run_scenarios(
+                    "codex",
+                    {"display_name": "Codex"},
+                    scenarios,
+                    Path(td),
+                    None,
+                    1,
+                    1,
+                    None,
+                    "test-version",
+                )
+                self.assertTrue(failed)
+                self.assertEqual(calls, [s["id"] for s in scenarios])
+                self.assertEqual(len(rows), 2)
+                self.assertEqual(rows[0]["runtime"]["exit_code"], 125)
+                self.assertIn("runner_error", rows[0])
+                self.assertEqual(rows[1]["runtime"]["exit_code"], 0)
+        finally:
+            runner.run_one = original
+
+
     def test_benchmark_preflight_does_not_expose_secret_values(self):
         runner = load_script("run_agent_benchmark.py")
         original = os.environ.get("OPENAI_API_KEY")
@@ -969,6 +1028,7 @@ class ReleaseReadinessTests(unittest.TestCase):
                 "name": "Validate Skill",
                 "conclusion": "success",
                 "commit": commit,
+                "run_id": 100,
             },
         ]
         if include_cross:
@@ -976,6 +1036,7 @@ class ReleaseReadinessTests(unittest.TestCase):
                 "name": "Cross Platform Smoke",
                 "conclusion": "success",
                 "commit": commit,
+                "run_id": 200,
             })
         return {
             "version": mod.current_skill_version(),
@@ -1020,6 +1081,24 @@ class ReleaseReadinessTests(unittest.TestCase):
         result = mod.evaluate(report, "beta")
         self.assertEqual(result["gate"], "BLOCK")
         self.assertIn("Validate Skill", result["missing_checks"])
+
+    def test_release_readiness_uses_latest_check_result(self):
+        mod = load_script("release_readiness.py")
+        report = self._report(mod, include_cross=False)
+        report["checks"].append({
+            "name": "Validate Skill",
+            "conclusion": "failure",
+            "commit": report["commit"],
+            "run_id": 300,
+        })
+        result = mod.evaluate(report, "beta")
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertIn("Validate Skill", result["missing_checks"])
+        self.assertEqual(
+            result["latest_check_conclusions"]["Validate Skill"],
+            "failure",
+        )
+
 
     def test_rc_requires_cross_platform_on_same_commit(self):
         mod = load_script("release_readiness.py")
@@ -1084,6 +1163,8 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.assertIn("python scripts/release_readiness.py", workflow)
         self.assertIn("Real Agent Benchmark", workflow)
         self.assertIn("gh run download", workflow)
+        self.assertIn("current = latest.get(name)", workflow)
+        self.assertIn("candidates[0].get(\"conclusion\") == \"success\"", workflow)
         self.assertIn("steps.readiness.outputs.channel == 'stable'", workflow)
         self.assertIn("steps.readiness.outputs.base_ready == 'true'", workflow)
         self.assertIn("base_ready={'true' if base_ready else 'false'}", workflow)
