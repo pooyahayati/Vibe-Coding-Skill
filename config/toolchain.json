@@ -3,9 +3,9 @@
   "graphify": {
     "package": "graphifyy",
     "channel": "stable",
-    "approved": "0.9.64",
-    "last_known_good": "0.9.64",
-    "latest_seen": "0.9.64",
+    "approved": "0.9.65",
+    "last_known_good": "0.9.65",
+    "latest_seen": "0.9.65",
     "policy": "latest stable release after compatibility contract tests"
   },
   "trivy": {
