@@ -245,7 +245,7 @@ python scripts/context_router.py \
 
 The router keeps project complexity separate from task risk, preserves large-project intelligence, and composes only relevant capability packs. Initial packs cover PHP, WordPress, WooCommerce, browser JavaScript, WordPress REST, external HTTP, payments, web security, and web performance.
 
-For medium/large projects, Tier 2/3 work, or tasks with several integration boundaries:
+For medium/large projects or Tier 2/3 work:
 
 ```bash
 python scripts/execution_plan.py draft \
@@ -254,7 +254,7 @@ python scripts/execution_plan.py draft \
   --json
 ```
 
-The default remains one implementation agent. Parallel work requires explicit ownership/dependencies, and completion is tracked separately at Task, Workstream, and Objective levels.
+The generated plan is a coordination skeleton: confirm integration contracts/evidence, validate it, then parallelize only when ownership and dependencies are explicit. Completion is tracked separately at Task, Workstream, and Objective levels.
 
 ### Dependency Intelligence
 
