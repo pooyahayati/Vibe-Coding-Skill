@@ -120,7 +120,7 @@
     "browser-js": {
       "path": "packs/browser-js.md",
       "category": "runtime",
-      "scope": "project",
+      "scope": "task",
       "extensions": [
         ".jsx",
         ".tsx"
