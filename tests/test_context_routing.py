@@ -382,6 +382,42 @@ class ContextRouterTests(unittest.TestCase):
             )
         )
 
+    def test_explicit_pack_include_is_additive_and_explainable(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "src/app.py", "VALUE = 1\n")
+
+            result = self.router.plan(
+                root,
+                "Refactor report helper",
+                ["src/app.py"],
+                include_packs=["security-web"],
+            )
+
+        rows = {row["name"]: row for row in result["packs"]}
+        self.assertIn("security-web", rows)
+        self.assertIn(
+            "explicit-include",
+            rows["security-web"]["evidence"],
+        )
+        self.assertEqual(
+            result["task"]["explicit_pack_includes"],
+            ["security-web"],
+        )
+
+    def test_unknown_explicit_pack_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            with self.assertRaises(ValueError):
+                self.router.plan(
+                    root,
+                    "Refactor report helper",
+                    [],
+                    include_packs=["does-not-exist"],
+                )
+
     def test_browser_pack_can_overlap_wordpress_without_becoming_wordpress_only(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
