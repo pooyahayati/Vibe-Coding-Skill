@@ -389,8 +389,8 @@
       "add_packs": [
         "security-web"
       ],
-      "minimum_tier": 2,
-      "reason": "state-changing REST routes require explicit permission and input/output security review"
+      "minimum_tier": 1,
+      "reason": "REST routes require explicit permission and input/output security review; mutation/auth/external concerns raise risk separately"
     }
   ]
 }
