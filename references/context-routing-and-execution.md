@@ -23,9 +23,9 @@ python scripts/context_router.py \
   --json
 ```
 
-The router uses repository/file/task evidence. It reports confidence and reasons; it does not claim semantic certainty. Re-run it after impact analysis when touched paths were initially unknown.
+The router uses repository/file/task evidence. It reports confidence and reasons; it does not claim semantic certainty. Project scanning is bounded and its file/byte cost is reported in metrics. Re-run routing after impact analysis when touched paths were initially unknown.
 
-For large repositories, context reduction means **read more selectively**, not skip project intelligence. Project-wide invariants from project rules/state remain active even when a domain pack is not loaded.
+For large repositories, context reduction means **read more selectively**, not skip project intelligence. The router extracts explicit invariant/constraint bullets from existing project documents when present, carries them in the Context Plan, and keeps large-project project-intelligence policy active even for a low-risk domain task.
 
 ## Capability packs
 
@@ -49,7 +49,7 @@ The target is **minimum sufficient context**, not minimum context.
 
 ## Execution planning
 
-For medium/large projects, Tier 2/3 tasks, or tasks with several integration boundaries:
+For medium/large projects or Tier 2/3 tasks:
 
 ```bash
 python scripts/execution_plan.py draft \
@@ -58,7 +58,9 @@ python scripts/execution_plan.py draft \
   --json
 ```
 
-The default remains one lead implementation agent. Add parallel agents only after explicit workstreams have disjoint ownership or stable producer/consumer contracts. Shared schemas, auth, manifests, central configuration, and shared contracts keep one writer.
+The draft is a **coordination skeleton**, not an approved architecture. Candidate integration boundaries must be confirmed, assigned a concrete contract/evidence expectation, and the edited plan should pass `execution_plan.py validate` before parallel execution or shared-contract changes.
+
+The default remains one lead implementation agent. Add parallel agents only after explicit workstreams have disjoint ownership or stable producer/consumer contracts. Validation rejects dependency cycles, conflicting ownership scopes, and incomplete integration contracts. Shared schemas, auth, manifests, central configuration, and shared contracts keep one writer.
 
 A plan distinguishes:
 
@@ -78,7 +80,7 @@ Check material drift:
 python scripts/execution_plan.py drift plan.json change.json --json
 ```
 
-Scope, architecture, data semantics, public API, security posture, and significant recurring-cost changes require re-planning/approval rather than silent execution drift.
+Scope, architecture, data semantics, public API, security posture, and significant recurring-cost changes require re-planning/approval rather than silent execution drift. Changed paths outside declared workstream ownership are also treated as scope drift.
 
 ## WordPress / WooCommerce
 
