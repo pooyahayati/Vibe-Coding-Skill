@@ -37,6 +37,63 @@ def slug(value: str) -> str:
     return text or "integration"
 
 
+def dependency_cycles(workstreams: list[dict[str, Any]]) -> list[list[str]]:
+    graph = {
+        str(row.get("id") or "").strip(): [
+            str(dep).strip()
+            for dep in row.get("depends_on", [])
+            if str(dep).strip()
+        ]
+        for row in workstreams
+        if isinstance(row, dict) and str(row.get("id") or "").strip()
+    }
+    cycles: list[list[str]] = []
+    visiting: list[str] = []
+    visited: set[str] = set()
+
+    def walk(node: str) -> None:
+        if node in visiting:
+            start = visiting.index(node)
+            cycle = visiting[start:] + [node]
+            if cycle not in cycles:
+                cycles.append(cycle)
+            return
+        if node in visited:
+            return
+        visiting.append(node)
+        for dep in graph.get(node, []):
+            if dep in graph:
+                walk(dep)
+        visiting.pop()
+        visited.add(node)
+
+    for node in graph:
+        walk(node)
+    return cycles
+
+
+def normalize_scope(value: str) -> str:
+    return value.replace("\\", "/").strip().strip("/").removesuffix("/*")
+
+
+def scope_overlap(left: str, right: str) -> bool:
+    a = normalize_scope(left)
+    b = normalize_scope(right)
+    if not a or not b or "refine after impact analysis" in a or "refine after impact analysis" in b:
+        return False
+    return a == b or a.startswith(b + "/") or b.startswith(a + "/")
+
+
+def path_covered(path: str, scopes: list[str]) -> bool:
+    value = normalize_scope(path)
+    return any(
+        value == normalize_scope(scope)
+        or value.startswith(normalize_scope(scope) + "/")
+        for scope in scopes
+        if normalize_scope(scope)
+    )
+
+
 def draft(
     root: Path,
     task: str,
@@ -82,9 +139,10 @@ def draft(
             "id": slug(value),
             "boundary": value,
             "owner": "lead-agent",
+            "status": "candidate",
             "producers": [],
             "consumers": [],
-            "contract": "identify/verify the shared contract before changing it",
+            "contract": "",
             "required_evidence": [
                 "focused integration/regression check for the changed boundary"
             ],
@@ -95,6 +153,7 @@ def draft(
     return {
         "schema_version": 1,
         "mode": "execution-plan" if required else "light-task",
+        "draft_status": "needs-refinement" if required else "light-task-ready",
         "execution_plan_required": required,
         "objective": task,
         "context_plan": route,
@@ -112,6 +171,7 @@ def draft(
         "integration_points": integrations,
         "project_invariants": {
             "sources": route["project"]["invariant_sources"],
+            "detected": route["project"].get("detected_invariants", []),
             "explicit": route["project"]["explicit_invariants"],
             "rule": "project-wide invariants survive context reduction",
         },
@@ -167,6 +227,11 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
         deps = row.get("depends_on", [])
         if not isinstance(deps, list):
             failures.append(f"workstream {wid or index} depends_on must be an array")
+        scope = row.get("scope")
+        if not isinstance(scope, list) or not any(
+            isinstance(value, str) and value.strip() for value in (scope or [])
+        ):
+            failures.append(f"workstream {wid or index} requires non-empty scope")
 
     if len(ids) != len(set(ids)):
         failures.append("workstream ids must be unique")
@@ -185,6 +250,44 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
             elif dep not in id_set:
                 failures.append(f"workstream {wid} has unknown dependency {dep}")
 
+    cycles = dependency_cycles(
+        [row for row in workstreams if isinstance(row, dict)]
+    )
+    for cycle in cycles:
+        failures.append(
+            "workstream dependency cycle: " + " -> ".join(cycle)
+        )
+
+    for left_index, left in enumerate(workstreams):
+        if not isinstance(left, dict):
+            continue
+        left_owner = str(left.get("owner") or "").strip()
+        left_scope = [
+            str(value)
+            for value in left.get("scope", [])
+            if isinstance(value, str)
+        ]
+        for right in workstreams[left_index + 1:]:
+            if not isinstance(right, dict):
+                continue
+            right_owner = str(right.get("owner") or "").strip()
+            if not left_owner or not right_owner or left_owner == right_owner:
+                continue
+            right_scope = [
+                str(value)
+                for value in right.get("scope", [])
+                if isinstance(value, str)
+            ]
+            if any(
+                scope_overlap(a, b)
+                for a in left_scope
+                for b in right_scope
+            ):
+                failures.append(
+                    "workstream ownership scopes overlap across different owners: "
+                    f"{left.get('id')} ↔ {right.get('id')}"
+                )
+
     integrations = plan.get("integration_points", [])
     if not isinstance(integrations, list):
         failures.append("integration_points must be an array")
@@ -201,6 +304,33 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
             failures.append(f"integration point {index} requires id and boundary")
         if not owner:
             failures.append(f"integration point {iid or index} requires owner")
+        contract = str(row.get("contract") or "").strip()
+        if not contract:
+            failures.append(
+                f"integration point {iid or index} requires verified contract description"
+            )
+        evidence = row.get("required_evidence")
+        if not isinstance(evidence, list) or not any(
+            isinstance(value, str) and value.strip()
+            for value in (evidence or [])
+        ):
+            failures.append(
+                f"integration point {iid or index} requires evidence expectations"
+            )
+        producers = row.get("producers", [])
+        consumers = row.get("consumers", [])
+        if not isinstance(producers, list) or not isinstance(consumers, list):
+            failures.append(
+                f"integration point {iid or index} producers/consumers must be arrays"
+            )
+        elif not producers and not consumers:
+            warnings.append(
+                f"integration point {iid or index} is not yet connected to producer/consumer ownership"
+            )
+        if row.get("status") == "candidate":
+            warnings.append(
+                f"integration point {iid or index} remains a candidate and must be confirmed"
+            )
         if iid in seen_integrations:
             failures.append(f"duplicate integration point id: {iid}")
         seen_integrations.add(iid)
@@ -239,6 +369,25 @@ def evaluate_drift(
         elif value:
             triggered.append(key)
 
+    changed_paths = change.get("changed_paths", [])
+    if changed_paths is not None and not isinstance(changed_paths, list):
+        invalid.append("changed_paths")
+    elif isinstance(changed_paths, list) and changed_paths:
+        scopes = [
+            str(scope)
+            for row in plan.get("workstreams", [])
+            if isinstance(row, dict)
+            for scope in row.get("scope", [])
+            if isinstance(scope, str)
+        ]
+        uncovered = [
+            str(path)
+            for path in changed_paths
+            if isinstance(path, str) and not path_covered(path, scopes)
+        ]
+        if uncovered and "scope" not in triggered:
+            triggered.append("scope")
+
     if invalid:
         return {
             "gate": "BLOCK",
@@ -259,6 +408,9 @@ def evaluate_drift(
             else "change stays within approved execution detail"
         ),
         "plan_objective": plan.get("objective"),
+        "changed_paths": (
+            changed_paths if isinstance(changed_paths, list) else []
+        ),
     }
 
 
