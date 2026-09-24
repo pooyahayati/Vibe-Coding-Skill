@@ -200,9 +200,14 @@ def project_complexity(
             "file_count": len(files),
         }
 
-    manifests = [
+    analysis_files = [
         rel
         for rel in files
+        if not any(part in EXCLUDED_DIRS for part in Path(rel).parts)
+    ]
+    manifests = [
+        rel
+        for rel in analysis_files
         if Path(rel).name
         in {
             "composer.json",
@@ -214,24 +219,24 @@ def project_complexity(
     ]
     top_roots = {
         Path(rel).parts[0]
-        for rel in files
+        for rel in analysis_files
         if len(Path(rel).parts) > 1
         and Path(rel).parts[0] not in EXCLUDED_DIRS
         and not Path(rel).parts[0].startswith(".")
     }
     rules = config["complexity"]
     evidence = [
-        f"tracked/project files:{len(files)}",
+        f"relevant project files:{len(analysis_files)}",
         f"manifests:{len(manifests)}",
         f"top-level roots:{len(top_roots)}",
     ]
     if (
-        len(files) > rules["medium_max_files"]
+        len(analysis_files) > rules["medium_max_files"]
         or len(manifests) >= rules["large_manifest_threshold"]
         or len(top_roots) >= rules["large_source_root_threshold"]
     ):
         level = "large"
-    elif len(files) > rules["small_max_files"] or len(manifests) > 1:
+    elif len(analysis_files) > rules["small_max_files"] or len(manifests) > 1:
         level = "medium"
     else:
         level = "small"
@@ -239,7 +244,8 @@ def project_complexity(
         "level": level,
         "confidence": "medium",
         "evidence": evidence,
-        "file_count": len(files),
+        "file_count": len(analysis_files),
+        "raw_file_count": len(files),
         "manifest_count": len(manifests),
         "top_level_root_count": len(top_roots),
     }
@@ -335,6 +341,8 @@ INVARIANT_HEADINGS = {
     "constraints",
     "non-negotiable",
     "non-negotiables",
+    "non-negotiable rules",
+    "critical constraints",
     "guardrails",
 }
 
@@ -478,7 +486,14 @@ def plan(
             else task_ev[name]
         )
         if not ev:
-            ev = [f"required-by:{','.join(pack.get('requires', [])) or 'interaction'}"]
+            parents = sorted(
+                parent
+                for parent in selected
+                if name in packs[parent].get("requires", [])
+            )
+            ev = [
+                "required-by:" + ",".join(parents or ["interaction-rule"])
+            ]
         row = {
             "name": name,
             "category": pack["category"],
