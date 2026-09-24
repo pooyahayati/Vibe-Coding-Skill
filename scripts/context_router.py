@@ -489,7 +489,7 @@ def plan(
             parents = sorted(
                 parent
                 for parent in selected
-                if name in packs[parent].get("requires", [])
+                if name in config["packs"][parent].get("requires", [])
             )
             ev = [
                 "required-by:" + ",".join(parents or ["interaction-rule"])
