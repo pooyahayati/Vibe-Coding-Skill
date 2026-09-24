@@ -25,6 +25,7 @@ REQUIRED_REFS = [
     "references/project-state-automation.md",
     "references/recovery-and-resume.md",
     "references/installation-and-lifecycle.md",
+    "references/context-routing-and-execution.md",
 ]
 REQUIRED_SCRIPTS = [
     "doctor.py",
@@ -35,6 +36,8 @@ REQUIRED_SCRIPTS = [
     "dependency_guard.py",
     "risk_classifier.py",
     "integration_guard.py",
+    "context_router.py",
+    "execution_plan.py",
     "validate_evals.py",
     "run_evals.py",
     "evaluate_agent_output.py",
@@ -155,6 +158,25 @@ def main() -> int:
             fail(f"invalid benchmark contract JSON {path.relative_to(ROOT)}: {exc}")
         if not isinstance(value, dict):
             fail(f"benchmark contract must be a JSON object: {path.relative_to(ROOT)}")
+
+    routing_config = ROOT / "config" / "context-routing.json"
+    if not routing_config.exists():
+        fail("config/context-routing.json is missing")
+    try:
+        routing = json.loads(routing_config.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        fail(f"invalid context routing JSON: {exc}")
+    if routing.get("schema_version") != 1:
+        fail("context routing schema_version must be 1")
+    packs = routing.get("packs")
+    if not isinstance(packs, dict) or not packs:
+        fail("context routing must define capability packs")
+    for pack_name, pack in packs.items():
+        if not isinstance(pack, dict) or not pack.get("path"):
+            fail(f"invalid capability pack config: {pack_name}")
+        pack_path = ROOT / str(pack["path"])
+        if not pack_path.exists():
+            fail(f"missing capability pack: {pack['path']}")
 
     agents_config = json.loads(benchmark_agents.read_text(encoding="utf-8"))
     if set((agents_config.get("agents") or {}).keys()) != {"codex", "claude-code"}:
