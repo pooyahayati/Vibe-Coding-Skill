@@ -15,6 +15,7 @@ RUNTIME_FILES = [
     Path("SKILL.md"),
     Path("config/toolchain.json"),
     Path("config/agent-benchmarks.json"),
+    Path("config/context-routing.json"),
     Path("evals/scenarios.json"),
     Path("evals/agent-output.schema.json"),
     Path("evals/AGENT_OUTPUT_SCHEMA.md"),
@@ -25,6 +26,8 @@ RUNTIME_FILES = [
     Path("scripts/dependency_guard.py"),
     Path("scripts/risk_classifier.py"),
     Path("scripts/integration_guard.py"),
+    Path("scripts/context_router.py"),
+    Path("scripts/execution_plan.py"),
     Path("scripts/completion_gate.py"),
     Path("scripts/local_workspace.py"),
     Path("scripts/repository_purity.py"),
@@ -44,6 +47,7 @@ RUNTIME_FILES = [
 RUNTIME_DIRS = [
     Path("references"),
     Path("assets/templates"),
+    Path("packs"),
 ]
 
 
