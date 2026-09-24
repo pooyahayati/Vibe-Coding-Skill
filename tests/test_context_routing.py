@@ -262,6 +262,47 @@ class ContextRouterTests(unittest.TestCase):
         self.assertIn("external-http", names)
         self.assertEqual(result["task"]["risk"]["tier"], 3)
 
+    def test_read_only_wordpress_rest_task_stays_standard_but_loads_security(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(
+                root,
+                "rest.php",
+                "<?php\n/* Plugin Name: REST Test */\n"
+                "register_rest_route('demo/v1', '/items', ["
+                "'methods' => 'GET', 'permission_callback' => '__return_true']);\n",
+            )
+            result = self.router.plan(
+                root,
+                "Add a read-only REST endpoint for public catalog data",
+                ["rest.php"],
+            )
+
+        names = {row["name"] for row in result["packs"]}
+        self.assertIn("wordpress-rest", names)
+        self.assertIn("security-web", names)
+        self.assertEqual(result["task"]["risk"]["tier"], 1)
+
+    def test_generated_dist_files_do_not_make_project_large(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "src/app.php", "<?php\n")
+            for index in range(350):
+                write(root, f"dist/chunk_{index}.js", "compiled = true;\n")
+            result = self.router.plan(
+                root,
+                "Refactor PHP helper",
+                ["src/app.php"],
+            )
+
+        self.assertEqual(result["project"]["complexity"]["level"], "small")
+        self.assertGreater(
+            result["project"]["complexity"]["raw_file_count"],
+            result["project"]["complexity"]["file_count"],
+        )
+
     def test_browser_pack_can_overlap_wordpress_without_becoming_wordpress_only(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -425,6 +466,41 @@ class ExecutionPlanTests(unittest.TestCase):
         self.assertTrue(
             any("requires verified contract description" in failure for failure in result["failures"])
         )
+
+    def test_valid_multi_workstream_plan_passes(self):
+        result = self.planner.validate_plan({
+            "objective": "Deliver checkout integration",
+            "coordination": {"recommended_parallelism": 2},
+            "workstreams": [
+                {
+                    "id": "backend",
+                    "owner": "agent-a",
+                    "scope": ["src/backend"],
+                    "depends_on": [],
+                    "completion": ["backend tests pass"],
+                },
+                {
+                    "id": "frontend",
+                    "owner": "agent-b",
+                    "scope": ["src/frontend"],
+                    "depends_on": ["backend"],
+                    "completion": ["frontend tests pass"],
+                },
+            ],
+            "integration_points": [
+                {
+                    "id": "checkout-api",
+                    "boundary": "frontend ↔ backend checkout API",
+                    "owner": "lead-agent",
+                    "status": "confirmed",
+                    "producers": ["backend"],
+                    "consumers": ["frontend"],
+                    "contract": "versioned request/response schema",
+                    "required_evidence": ["contract integration test"],
+                }
+            ],
+        })
+        self.assertEqual(result["gate"], "PASS")
 
     def test_plan_drift_detects_changed_path_outside_owned_scope(self):
         plan = {
