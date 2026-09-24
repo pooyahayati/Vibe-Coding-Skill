@@ -122,18 +122,16 @@
       "category": "runtime",
       "scope": "project",
       "extensions": [
-        ".js",
         ".jsx",
-        ".ts",
         ".tsx"
       ],
-      "files": [
-        "package.json"
-      ],
+      "files": [],
       "project_markers": [
         "@wordpress/",
         "wp.element",
-        "wp.data"
+        "wp.data",
+        "document.",
+        "window."
       ],
       "task_keywords": [
         "javascript",
@@ -236,18 +234,20 @@
         "refund"
       ],
       "task_keywords": [
-        "payment",
-        "gateway",
-        "checkout",
-        "refund",
+        "payment gateway",
+        "payment method",
+        "process payment",
         "charge",
+        "refund",
+        "payment webhook",
+        "payment callback",
+        "payment status",
         "stripe",
         "paypal"
       ],
       "path_keywords": [
         "payment",
         "gateway",
-        "checkout",
         "refund"
       ],
       "requires": [],
@@ -338,7 +338,16 @@
         "performance-web"
       ],
       "minimum_tier": 3,
-      "reason": "payment/order-state interaction is financially sensitive and crosses remote/state boundaries"
+      "reason": "payment/order-state interaction is financially sensitive and crosses remote/state boundaries",
+      "skip_if_task_matches": [
+        "label",
+        "copy",
+        "text only",
+        "typo",
+        "styling",
+        "css only",
+        "rename"
+      ]
     },
     {
       "when_all": [
@@ -362,7 +371,16 @@
         "performance-web"
       ],
       "minimum_tier": 3,
-      "reason": "remote payment operations require idempotency, authorization, failure handling, and latency control"
+      "reason": "remote payment operations require idempotency, authorization, failure handling, and latency control",
+      "skip_if_task_matches": [
+        "label",
+        "copy",
+        "text only",
+        "typo",
+        "styling",
+        "css only",
+        "rename"
+      ]
     },
     {
       "when_all": [
