@@ -235,6 +235,14 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
             isinstance(value, str) and value.strip() for value in (scope or [])
         ):
             failures.append(f"workstream {wid or index} requires non-empty scope")
+        completion = row.get("completion")
+        if not isinstance(completion, list) or not any(
+            isinstance(value, str) and value.strip()
+            for value in (completion or [])
+        ):
+            failures.append(
+                f"workstream {wid or index} requires completion criteria"
+            )
 
     if len(ids) != len(set(ids)):
         failures.append("workstream ids must be unique")
