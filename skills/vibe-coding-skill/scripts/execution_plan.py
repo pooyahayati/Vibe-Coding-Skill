@@ -115,7 +115,6 @@ def draft(
     required = (
         complexity in {"medium", "large"}
         or tier >= 2
-        or len(integration_points) >= 2
     )
 
     workstream = {
@@ -205,6 +204,10 @@ def draft(
 def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
     failures: list[str] = []
     warnings: list[str] = []
+
+    objective = str(plan.get("objective") or "").strip()
+    if not objective:
+        failures.append("execution plan requires objective")
 
     workstreams = plan.get("workstreams")
     if not isinstance(workstreams, list) or not workstreams:
@@ -394,7 +397,7 @@ def evaluate_drift(
             "approval_required": True,
             "triggered": triggered,
             "failures": [
-                "drift flags must be boolean: " + ", ".join(sorted(invalid))
+                "invalid drift fields: " + ", ".join(sorted(invalid))
             ],
         }
 
