@@ -491,11 +491,20 @@ def plan(
     paths: list[str] | None = None,
     complexity_override: str = "auto",
     invariants: list[str] | None = None,
+    include_packs: list[str] | None = None,
 ) -> dict[str, Any]:
     root = root.resolve()
     paths = paths or []
     invariants = invariants or []
+    include_packs = include_packs or []
     config = load_config()
+    unknown_includes = sorted(
+        set(include_packs) - set(config["packs"])
+    )
+    if unknown_includes:
+        raise ValueError(
+            "unknown capability pack(s): " + ", ".join(unknown_includes)
+        )
     files = project_files(root)
     texts = candidate_texts(root, files)
     touched = touched_texts(root, paths)
@@ -505,6 +514,10 @@ def plan(
     for name, pack in config["packs"].items():
         project_ev[name] = pack_project_evidence(pack, files, texts)
         task_ev[name] = pack_task_evidence(pack, task, paths, touched)
+        if name in include_packs:
+            task_ev[name] = list(
+                dict.fromkeys(task_ev[name] + ["explicit-include"])
+            )
 
     risk = load_risk_classifier().classify(task, paths)
     complexity = project_complexity(files, config, complexity_override)
@@ -599,6 +612,7 @@ def plan(
         "task": {
             "text": task,
             "paths": paths,
+            "explicit_pack_includes": sorted(set(include_packs)),
             "risk": risk,
             "routing_note": (
                 "Re-run routing when touched paths become known if the task "
@@ -664,6 +678,7 @@ def main() -> int:
         default="auto",
     )
     ap.add_argument("--invariant", action="append", default=[])
+    ap.add_argument("--include-pack", action="append", default=[])
     ap.add_argument("--json", action="store_true")
     ns = ap.parse_args()
 
@@ -673,6 +688,7 @@ def main() -> int:
         ns.path,
         ns.complexity,
         ns.invariant,
+        ns.include_pack,
     )
     if ns.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
