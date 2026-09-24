@@ -100,6 +100,7 @@ def draft(
     paths: list[str] | None = None,
     complexity_override: str = "auto",
     invariants: list[str] | None = None,
+    include_packs: list[str] | None = None,
 ) -> dict[str, Any]:
     router = load_context_router()
     route = router.plan(
@@ -108,6 +109,7 @@ def draft(
         paths or [],
         complexity_override,
         invariants or [],
+        include_packs or [],
     )
     complexity = route["project"]["complexity"]["level"]
     tier = int(route["task"]["risk"]["tier"])
@@ -485,6 +487,7 @@ def main() -> int:
         default="auto",
     )
     draft_cmd.add_argument("--invariant", action="append", default=[])
+    draft_cmd.add_argument("--include-pack", action="append", default=[])
     draft_cmd.add_argument("--json", action="store_true")
 
     validate_cmd = sub.add_parser("validate")
@@ -505,6 +508,7 @@ def main() -> int:
             ns.path,
             ns.complexity,
             ns.invariant,
+            ns.include_pack,
         )
         exit_code = 0
     elif ns.command == "validate":
