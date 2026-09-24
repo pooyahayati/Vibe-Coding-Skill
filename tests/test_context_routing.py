@@ -303,6 +303,85 @@ class ContextRouterTests(unittest.TestCase):
             result["project"]["complexity"]["file_count"],
         )
 
+    def test_large_mixed_monorepo_does_not_load_wordpress_for_unrelated_service(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(
+                root,
+                "apps/store/plugin.php",
+                WORDPRESS_WOO,
+            )
+            for index in range(305):
+                write(
+                    root,
+                    f"services/api/module_{index}.py",
+                    "VALUE = 1\n",
+                )
+
+            result = self.router.plan(
+                root,
+                "Refactor report export service",
+                ["services/api/module_1.py"],
+            )
+
+        names = {row["name"] for row in result["packs"]}
+        self.assertEqual(
+            result["project"]["complexity"]["level"],
+            "large",
+        )
+        self.assertNotIn("wordpress", names)
+        self.assertNotIn("woocommerce", names)
+        self.assertNotIn("php", names)
+        self.assertTrue(result["core"]["large_project_awareness"])
+
+    def test_documentation_mentions_do_not_activate_platform_pack(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(
+                root,
+                "README.md",
+                "# Integration notes\nMentions WooCommerce and WC_Order for comparison.\n",
+            )
+            write(root, "src/app.py", "VALUE = 1\n")
+
+            result = self.router.plan(
+                root,
+                "Refactor Python report helper",
+                ["src/app.py"],
+            )
+
+        names = {row["name"] for row in result["packs"]}
+        self.assertNotIn("wordpress", names)
+        self.assertNotIn("woocommerce", names)
+
+    def test_interaction_added_pack_without_direct_evidence_is_explainable(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(
+                root,
+                "gateway.php",
+                WORDPRESS_WOO
+                + "\nclass Vibe_Gateway extends WC_Payment_Gateway {}\n",
+            )
+            result = self.router.plan(
+                root,
+                "Add payment method",
+                ["gateway.php"],
+            )
+
+        rows = {row["name"]: row for row in result["packs"]}
+        self.assertIn("security-web", rows)
+        self.assertTrue(rows["security-web"]["evidence"])
+        self.assertTrue(
+            any(
+                value.startswith("required-by:")
+                for value in rows["security-web"]["evidence"]
+            )
+        )
+
     def test_browser_pack_can_overlap_wordpress_without_becoming_wordpress_only(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -436,6 +515,92 @@ class ExecutionPlanTests(unittest.TestCase):
         self.assertEqual(result["gate"], "BLOCK")
         self.assertTrue(
             any("ownership scopes overlap" in failure for failure in result["failures"])
+        )
+
+    def test_plan_validation_rejects_unknown_integration_workstream(self):
+        result = self.planner.validate_plan({
+            "objective": "Coordinate API integration",
+            "workstreams": [
+                {
+                    "id": "backend",
+                    "owner": "agent-a",
+                    "scope": ["src/backend"],
+                    "depends_on": [],
+                    "completion": ["tests pass"],
+                }
+            ],
+            "integration_points": [
+                {
+                    "id": "api",
+                    "boundary": "backend ↔ client",
+                    "owner": "lead-agent",
+                    "status": "confirmed",
+                    "producers": ["backend"],
+                    "consumers": ["missing-client"],
+                    "contract": "versioned schema",
+                    "required_evidence": ["integration test"],
+                }
+            ],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "references unknown workstreams" in failure
+                for failure in result["failures"]
+            )
+        )
+
+    def test_plan_validation_enforces_single_writer_for_shared_contract(self):
+        result = self.planner.validate_plan({
+            "objective": "Coordinate shared API schema",
+            "coordination": {"recommended_parallelism": 2},
+            "workstreams": [
+                {
+                    "id": "backend",
+                    "owner": "agent-a",
+                    "scope": ["src/backend"],
+                    "depends_on": [],
+                    "shared_contracts": ["contracts/checkout.json"],
+                    "completion": ["backend tests pass"],
+                },
+                {
+                    "id": "frontend",
+                    "owner": "agent-b",
+                    "scope": ["src/frontend"],
+                    "depends_on": [],
+                    "shared_contracts": ["contracts/checkout.json"],
+                    "completion": ["frontend tests pass"],
+                },
+            ],
+            "integration_points": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "shared contract has multiple writers" in failure
+                for failure in result["failures"]
+            )
+        )
+
+    def test_plan_validation_rejects_invalid_parallelism(self):
+        result = self.planner.validate_plan({
+            "objective": "Coordinate work",
+            "coordination": {"recommended_parallelism": 0},
+            "workstreams": [
+                {
+                    "id": "implementation",
+                    "owner": "lead-agent",
+                    "scope": ["src"],
+                    "depends_on": [],
+                    "completion": ["tests pass"],
+                }
+            ],
+            "integration_points": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertIn(
+            "recommended_parallelism must be a positive integer",
+            result["failures"],
         )
 
     def test_plan_validation_requires_integration_contract(self):
