@@ -95,7 +95,9 @@ def safe_text(path: Path, max_bytes: int = 262_144) -> str:
 def candidate_texts(
     root: Path,
     files: list[str],
-    limit: int = 1200,
+    limit: int = 600,
+    max_file_bytes: int = 65_536,
+    max_total_bytes: int = 8_388_608,
 ) -> list[tuple[str, str]]:
     candidates: list[str] = []
     for rel in files:
@@ -109,10 +111,16 @@ def candidate_texts(
             rel,
         )
     )
-    return [
-        (rel, safe_text(root / rel))
-        for rel in candidates[:limit]
-    ]
+    result: list[tuple[str, str]] = []
+    total = 0
+    for rel in candidates[:limit]:
+        text = safe_text(root / rel, max_file_bytes)
+        size = len(text.encode("utf-8", "ignore"))
+        if total + size > max_total_bytes:
+            break
+        result.append((rel, text))
+        total += size
+    return result
 
 
 def touched_texts(root: Path, paths: list[str]) -> list[tuple[str, str]]:
@@ -253,7 +261,13 @@ def selected_core_mode(tier: int) -> str:
     return "significant"
 
 
-def interaction_skipped(rule: dict[str, Any], task: str) -> bool:
+def interaction_skipped(
+    rule: dict[str, Any],
+    task: str,
+    base_tier: int,
+) -> bool:
+    if base_tier != 0:
+        return False
     task_lower = task.lower()
     return any(
         marker.lower() in task_lower
@@ -274,7 +288,7 @@ def resolve_selection(
     for name, pack in packs.items():
         scope = pack.get("scope", "task")
         evidence = (
-            project_evidence[name]
+            list(dict.fromkeys(project_evidence[name] + task_evidence[name]))
             if scope == "project"
             else task_evidence[name]
         )
@@ -296,7 +310,7 @@ def resolve_selection(
             required = set(rule.get("when_all", []))
             if not required.issubset(selected):
                 continue
-            if interaction_skipped(rule, task):
+            if interaction_skipped(rule, task, base_tier):
                 continue
             for extra in rule.get("add_packs", []):
                 if extra not in selected:
@@ -315,6 +329,49 @@ def resolve_selection(
     return selected, tier, interaction_hits
 
 
+INVARIANT_HEADINGS = {
+    "invariants",
+    "project invariants",
+    "constraints",
+    "non-negotiable",
+    "non-negotiables",
+    "guardrails",
+}
+
+
+def extract_invariants(text: str) -> list[str]:
+    values: list[str] = []
+    active = False
+    active_level = 0
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line.startswith("#"):
+            level = len(line) - len(line.lstrip("#"))
+            heading = line[level:].strip().lower()
+            if heading in INVARIANT_HEADINGS:
+                active = True
+                active_level = level
+            elif active and level <= active_level:
+                active = False
+            continue
+        if active and line.startswith(("- ", "* ")):
+            value = line[2:].strip()
+            if value:
+                values.append(value)
+    return list(dict.fromkeys(values))
+
+
+def detected_project_invariants(root: Path) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for name in ("AGENTS.md", "PROJECT.md", "ARCHITECTURE.md", "STATUS.md"):
+        path = root / name
+        if not path.exists():
+            continue
+        for value in extract_invariants(safe_text(path)):
+            rows.append({"source": name, "text": value})
+    return rows
+
+
 def persistent_context(
     root: Path,
     complexity: str,
@@ -322,16 +379,17 @@ def persistent_context(
 ) -> list[dict[str, str]]:
     present = [name for name in PROJECT_DOCS if (root / name).exists()]
     selected: list[str] = []
-    for name in ("AGENTS.md", "STATUS.md", "PROJECT.md"):
-        if name in present:
-            selected.append(name)
+    if complexity in {"medium", "large"} or tier >= 2:
+        for name in ("STATUS.md", "PROJECT.md"):
+            if name in present:
+                selected.append(name)
     if complexity in {"medium", "large"}:
         for name in ("ARCHITECTURE.md", "PROJECT_GRAPH.md"):
             if name in present:
                 selected.append(name)
     if tier >= 2 and "ROADMAP.md" in present:
         selected.append("ROADMAP.md")
-    if not selected and "README.md" in present:
+    if not selected and tier >= 1 and "README.md" in present:
         selected.append("README.md")
     return [
         {
@@ -400,8 +458,14 @@ def plan(
         )
 
     complexity = project_complexity(files, config, complexity_override)
+    detected_invariants = detected_project_invariants(root)
     core_mode = selected_core_mode(int(risk["tier"]))
     core_refs = list(config["core_context"][core_mode])
+    if (
+        complexity["level"] == "large"
+        and "references/project-intelligence.md" not in core_refs
+    ):
+        core_refs.append("references/project-intelligence.md")
 
     selected_rows: list[dict[str, Any]] = []
     integrations: list[str] = []
@@ -409,7 +473,7 @@ def plan(
     for name in sorted(selected):
         pack = config["packs"][name]
         ev = (
-            project_ev[name]
+            list(dict.fromkeys(project_ev[name] + task_ev[name]))
             if pack.get("scope") == "project"
             else task_ev[name]
         )
@@ -449,11 +513,10 @@ def plan(
         "project": {
             "root": str(root),
             "complexity": complexity,
-            "invariant_sources": [
-                name
-                for name in ("AGENTS.md", "PROJECT.md", "ARCHITECTURE.md")
-                if (root / name).exists()
-            ],
+            "invariant_sources": sorted(
+                {row["source"] for row in detected_invariants}
+            ),
+            "detected_invariants": detected_invariants,
             "explicit_invariants": invariants,
         },
         "task": {
@@ -492,14 +555,16 @@ def plan(
                     core_refs + pack_paths
                 ),
                 "integration_points": len(set(integrations)),
+                "project_files_considered": len(files),
+                "project_text_files_scanned": len(texts),
+                "project_text_bytes_scanned": sum(
+                    len(text.encode("utf-8", "ignore"))
+                    for _, text in texts
+                ),
             },
             "coverage": {
                 "project_invariants_preserved": bool(
-                    invariants
-                    or any(
-                        (root / name).exists()
-                        for name in ("AGENTS.md", "PROJECT.md")
-                    )
+                    invariants or detected_invariants
                 ),
                 "risk_controls_preserved": True,
                 "project_intelligence_preserved": (
