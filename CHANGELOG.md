@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.0 — Composable context routing and execution coordination
+
+- Added an evidence-based Context Router that keeps project complexity separate from task risk and selects minimum sufficient context instead of loading broad references by default.
+- Added composable Capability Packs for PHP, WordPress, WooCommerce, browser JavaScript, WordPress REST, external HTTP, payments, web security, and web performance.
+- Kept Vibe Core authoritative for scope, risk, project intelligence, evidence, recovery, and delivery; domain packs only add relevant constraints, risks, integration points, and checks.
+- Added interaction rules so overlapping concerns can raise the workflow floor without making small UI/copy tasks inherit unnecessary payment/security ceremony.
+- Added Context Plan metrics for selected packs/references, approximate context bytes, integration points, and preserved invariant/risk/project-intelligence coverage.
+- Added lightweight Execution Planning for medium/large projects, Tier 2/3 work, or multi-boundary tasks with explicit workstreams, dependencies, integration ownership, completion levels, and plan-drift approval triggers.
+- Kept one implementation agent as the default and required explicit ownership/stable contracts before parallelization.
+- Changed the existing-project startup protocol to route context before broad architecture/domain loading while preserving project-wide invariants and large-project impact analysis.
+- Added WordPress/WooCommerce constraints for public platform APIs, HPOS/modern compatibility surfaces, plugin/theme interoperability, authorization/input/output boundaries, request/query cost, remote-call failure modes, and payment-state integrity.
+- Added deterministic regressions for tiny WooCommerce UI tasks, overlapping WooCommerce payment flows, WordPress REST plus external APIs, browser-JS overlap, large generic repositories, execution-plan dependency validation, and plan drift.
+- Added portable packaging and installation/structure validation for routing config, packs, router, planner, and routing reference documentation.
+
 ## 0.9.3 — Installation completeness hardening
 
 - Expanded the offline installation check to require the complete portable runtime script set, including `release_readiness.py`.
