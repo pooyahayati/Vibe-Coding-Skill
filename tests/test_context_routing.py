@@ -314,8 +314,24 @@ class ExecutionPlanTests(unittest.TestCase):
             result["completion_levels"],
         )
 
+    def test_tiny_wordpress_task_does_not_require_execution_plan(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "plugin.php", WORDPRESS_WOO)
+            result = self.planner.draft(
+                root,
+                "Change checkout button label text only",
+                ["plugin.php"],
+            )
+
+        self.assertFalse(result["execution_plan_required"])
+        self.assertEqual(result["mode"], "light-task")
+        self.assertEqual(result["draft_status"], "light-task-ready")
+
     def test_plan_validation_rejects_unknown_dependency_and_missing_owner(self):
         result = self.planner.validate_plan({
+            "objective": "Test execution coordination",
             "workstreams": [
                 {
                     "id": "backend",
@@ -335,6 +351,7 @@ class ExecutionPlanTests(unittest.TestCase):
 
     def test_plan_validation_rejects_dependency_cycle(self):
         result = self.planner.validate_plan({
+            "objective": "Test execution coordination",
             "workstreams": [
                 {
                     "id": "backend",
@@ -358,6 +375,7 @@ class ExecutionPlanTests(unittest.TestCase):
 
     def test_plan_validation_rejects_overlapping_multi_agent_ownership(self):
         result = self.planner.validate_plan({
+            "objective": "Test execution coordination",
             "workstreams": [
                 {
                     "id": "api",
@@ -381,6 +399,7 @@ class ExecutionPlanTests(unittest.TestCase):
 
     def test_plan_validation_requires_integration_contract(self):
         result = self.planner.validate_plan({
+            "objective": "Test execution coordination",
             "workstreams": [
                 {
                     "id": "backend",
