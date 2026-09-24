@@ -18,6 +18,9 @@ TEXT_SUFFIXES = {
     ".php", ".json", ".js", ".jsx", ".ts", ".tsx", ".md", ".txt",
     ".yml", ".yaml", ".xml", ".html", ".css",
 }
+SOURCE_MARKER_SUFFIXES = {
+    ".php", ".json", ".js", ".jsx", ".ts", ".tsx", ".yml", ".yaml", ".xml",
+}
 EXCLUDED_DIRS = {
     ".git", "node_modules", "vendor", "dist", "build", ".next",
     ".cache", ".venv", "venv", "__pycache__",
@@ -144,18 +147,21 @@ def pack_project_evidence(
     texts: list[tuple[str, str]],
 ) -> list[str]:
     evidence: list[str] = []
-    basenames = {Path(rel).name for rel in files}
     suffixes = {Path(rel).suffix.lower() for rel in files}
 
     for name in pack.get("files", []):
-        if name in basenames:
-            evidence.append(f"file:{name}")
+        for rel in files:
+            if Path(rel).name == name:
+                evidence.append(f"file:{rel}")
+                break
     for suffix in pack.get("extensions", []):
         if suffix.lower() in suffixes:
             evidence.append(f"extension:{suffix}")
     markers = pack.get("project_markers", [])
     if markers:
         for rel, text in texts:
+            if Path(rel).suffix.lower() not in SOURCE_MARKER_SUFFIXES:
+                continue
             hits = contains_any(text, markers)
             if hits:
                 evidence.append(f"marker:{hits[0]}@{rel}")
@@ -251,6 +257,55 @@ def project_complexity(
     }
 
 
+def evidence_location_roots(evidence: list[str]) -> set[str]:
+    roots: set[str] = set()
+    for item in evidence:
+        rel = ""
+        if item.startswith("marker:") and "@" in item:
+            rel = item.rsplit("@", 1)[1]
+        elif item.startswith("file:"):
+            rel = item.split(":", 1)[1]
+        if not rel:
+            continue
+        parts = Path(rel).parts
+        roots.add(parts[0] if len(parts) > 1 else "__root__")
+    return roots
+
+
+def task_path_roots(paths: list[str]) -> set[str]:
+    roots: set[str] = set()
+    for raw in paths:
+        rel = raw.replace("\\", "/").lstrip("./")
+        if not rel:
+            continue
+        parts = Path(rel).parts
+        roots.add(parts[0] if len(parts) > 1 else "__root__")
+    return roots
+
+
+def project_pack_relevant(
+    project_evidence: list[str],
+    task_evidence: list[str],
+    paths: list[str],
+    complexity_level: str,
+) -> bool:
+    if task_evidence:
+        return True
+    if not project_evidence:
+        return False
+    if not paths:
+        return True
+    if complexity_level != "large":
+        return True
+
+    evidence_roots = evidence_location_roots(project_evidence)
+    if "__root__" in evidence_roots:
+        return True
+    if not evidence_roots:
+        return False
+    return bool(evidence_roots & task_path_roots(paths))
+
+
 def confidence(evidence: list[str], explicit: bool = False) -> str:
     if explicit or len(evidence) >= 2:
         return "high"
@@ -287,18 +342,23 @@ def resolve_selection(
     task_evidence: dict[str, list[str]],
     task: str,
     base_tier: int,
+    paths: list[str],
+    complexity_level: str,
 ) -> tuple[set[str], int, list[dict[str, Any]]]:
     packs = config["packs"]
     selected: set[str] = set()
 
     for name, pack in packs.items():
         scope = pack.get("scope", "task")
-        evidence = (
-            list(dict.fromkeys(project_evidence[name] + task_evidence[name]))
-            if scope == "project"
-            else task_evidence[name]
-        )
-        if evidence:
+        if scope == "project":
+            if project_pack_relevant(
+                project_evidence[name],
+                task_evidence[name],
+                paths,
+                complexity_level,
+            ):
+                selected.add(name)
+        elif task_evidence[name]:
             selected.add(name)
 
     changed = True
@@ -447,12 +507,15 @@ def plan(
         task_ev[name] = pack_task_evidence(pack, task, paths, touched)
 
     risk = load_risk_classifier().classify(task, paths)
+    complexity = project_complexity(files, config, complexity_override)
     selected, effective_tier, interactions = resolve_selection(
         config,
         project_ev,
         task_ev,
         task,
         int(risk["tier"]),
+        paths,
+        str(complexity["level"]),
     )
     risk = dict(risk)
     if effective_tier > int(risk["tier"]):
@@ -465,7 +528,6 @@ def plan(
             bool(risk.get("approval_required")) or effective_tier >= 3
         )
 
-    complexity = project_complexity(files, config, complexity_override)
     detected_invariants = detected_project_invariants(root)
     core_mode = selected_core_mode(int(risk["tier"]))
     core_refs = list(config["core_context"][core_mode])
@@ -489,7 +551,7 @@ def plan(
             parents = sorted(
                 parent
                 for parent in selected
-                if name in packs[parent].get("requires", [])
+                if name in config["packs"][parent].get("requires", [])
             )
             ev = [
                 "required-by:" + ",".join(parents or ["interaction-rule"])
