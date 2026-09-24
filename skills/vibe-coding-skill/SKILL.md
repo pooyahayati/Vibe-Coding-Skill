@@ -86,14 +86,15 @@ Automated classification may raise the workflow floor. Do not use it to override
 
 Start with the smallest evidence needed to preserve project intent:
 
-1. read `AGENTS.md` when present for project-wide rules;
-2. read the current objective/state from `STATUS.md` or `PROJECT.md` when present;
-3. inspect repository structure/manifests and known affected paths;
-4. run the context router before loading broad architecture/domain references:
+1. read `AGENTS.md` when present for explicit project-wide instructions;
+2. inspect repository structure/manifests and any already-known affected paths;
+3. run the context router before loading broad project/domain references:
 
 `python scripts/context_router.py --root <project> --task "<current task>" --path <known-path> --json`
 
-Follow its Context Plan. Load only task-relevant sections from persistent project documents and only the selected capability packs. Project complexity and task risk are independent: a large repository can have a tiny task, while a small repository can contain a critical task.
+4. follow its Context Plan, then read only the relevant current-objective/state/architecture sections from `STATUS.md`, `PROJECT.md`, `ARCHITECTURE.md`, or `PROJECT_GRAPH.md` when selected.
+
+The router extracts explicit invariant/constraint bullets from existing project documents without requiring the agent to load those documents in full first. Load only task-relevant sections and selected capability packs. Project complexity and task risk are independent: a large repository can have a tiny task, while a small repository can contain a critical task.
 
 Do not let context reduction bypass project intelligence. Medium/large projects and Tier 2/3 tasks retain architecture/impact/integration coverage even when domain-specific packs are active.
 
