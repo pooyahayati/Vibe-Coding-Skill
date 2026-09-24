@@ -8,6 +8,7 @@ import importlib.util
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,7 @@ def load_risk_classifier():
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load risk classifier")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
