@@ -25,6 +25,10 @@ python scripts/context_router.py \
 
 The router uses repository/file/task evidence. It reports confidence and reasons; it does not claim semantic certainty. Project scanning is bounded and its file/byte cost is reported in metrics. Re-run routing after impact analysis when touched paths were initially unknown.
 
+For large mixed/monorepo projects, project-scoped platform/runtime packs are kept local to the task area when path evidence is available; the presence of an unrelated WordPress/PHP subproject must not pollute another service's task context. Documentation mentions alone are not treated as source-level platform evidence.
+
+When deterministic evidence is incomplete but a developer/agent has explicit semantic evidence, add a pack with `--include-pack <name>`. This override is additive only: routing may add missing relevant context, but there is no symmetric command for silently suppressing detected risk/domain packs.
+
 For large repositories, context reduction means **read more selectively**, not skip project intelligence. The router extracts explicit invariant/constraint bullets from existing project documents when present, carries them in the Context Plan, and keeps large-project project-intelligence policy active even for a low-risk domain task.
 
 ## Capability packs
