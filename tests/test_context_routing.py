@@ -162,6 +162,106 @@ class ContextRouterTests(unittest.TestCase):
         self.assertNotIn("wordpress", names)
         self.assertNotIn("woocommerce", names)
 
+    def test_new_wordpress_project_can_route_from_task_evidence_before_files_exist(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            result = self.router.plan(
+                root,
+                "Create a new WooCommerce plugin for order exports",
+                [],
+            )
+
+        names = {row["name"] for row in result["packs"]}
+        self.assertIn("wordpress", names)
+        self.assertIn("woocommerce", names)
+        self.assertIn("php", names)
+
+    def test_unrelated_backend_task_does_not_load_browser_pack_just_because_tsx_exists(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "plugin.php", WORDPRESS_WOO)
+            write(root, "src/admin.tsx", "window.wp = window.wp || {};\n")
+            write(root, "src/service.php", "<?php function service_change() {}\n")
+
+            result = self.router.plan(
+                root,
+                "Refactor PHP order service helper",
+                ["src/service.php"],
+            )
+
+        names = {row["name"] for row in result["packs"]}
+        self.assertNotIn("browser-js", names)
+        self.assertIn("php", names)
+        self.assertIn("wordpress", names)
+
+    def test_project_invariants_are_extracted_without_loading_full_docs_for_tiny_task(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "plugin.php", WORDPRESS_WOO)
+            write(
+                root,
+                "PROJECT.md",
+                "# Project\n\n## Invariants\n"
+                "- Never write directly to WooCommerce internal order tables.\n"
+                "- Preserve backward-compatible public hooks.\n",
+            )
+            result = self.router.plan(
+                root,
+                "Change button label text only",
+                ["plugin.php"],
+            )
+
+        detected = result["project"]["detected_invariants"]
+        self.assertEqual(len(detected), 2)
+        self.assertTrue(
+            any("internal order tables" in row["text"] for row in detected)
+        )
+        self.assertTrue(
+            result["context_plan"]["coverage"]["project_invariants_preserved"]
+        )
+        self.assertNotIn("PROJECT.md", result["context_plan"]["load"])
+
+    def test_large_generic_project_always_loads_project_intelligence_policy(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            for index in range(305):
+                write(root, f"src/module_{index}.py", "VALUE = 1\n")
+            result = self.router.plan(
+                root,
+                "Update report copy",
+                ["src/module_1.py"],
+            )
+
+        self.assertIn(
+            "references/project-intelligence.md",
+            result["core"]["references"],
+        )
+
+    def test_tiny_wording_cannot_suppress_higher_risk_interaction(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(
+                root,
+                "gateway.php",
+                WORDPRESS_WOO
+                + "\nclass Vibe_Gateway extends WC_Payment_Gateway {}\n",
+            )
+            result = self.router.plan(
+                root,
+                "Rename payment webhook handler and change webhook state transition",
+                ["gateway.php"],
+            )
+
+        names = {row["name"] for row in result["packs"]}
+        self.assertIn("payments", names)
+        self.assertIn("external-http", names)
+        self.assertEqual(result["task"]["risk"]["tier"], 3)
+
     def test_browser_pack_can_overlap_wordpress_without_becoming_wordpress_only(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -232,6 +332,102 @@ class ExecutionPlanTests(unittest.TestCase):
         self.assertTrue(
             any("unknown dependency" in failure for failure in result["failures"])
         )
+
+    def test_plan_validation_rejects_dependency_cycle(self):
+        result = self.planner.validate_plan({
+            "workstreams": [
+                {
+                    "id": "backend",
+                    "owner": "agent-a",
+                    "scope": ["src/backend"],
+                    "depends_on": ["frontend"],
+                },
+                {
+                    "id": "frontend",
+                    "owner": "agent-b",
+                    "scope": ["src/frontend"],
+                    "depends_on": ["backend"],
+                },
+            ],
+            "integration_points": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any("dependency cycle" in failure for failure in result["failures"])
+        )
+
+    def test_plan_validation_rejects_overlapping_multi_agent_ownership(self):
+        result = self.planner.validate_plan({
+            "workstreams": [
+                {
+                    "id": "api",
+                    "owner": "agent-a",
+                    "scope": ["src"],
+                    "depends_on": [],
+                },
+                {
+                    "id": "payments",
+                    "owner": "agent-b",
+                    "scope": ["src/payments"],
+                    "depends_on": [],
+                },
+            ],
+            "integration_points": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any("ownership scopes overlap" in failure for failure in result["failures"])
+        )
+
+    def test_plan_validation_requires_integration_contract(self):
+        result = self.planner.validate_plan({
+            "workstreams": [
+                {
+                    "id": "backend",
+                    "owner": "lead-agent",
+                    "scope": ["src/backend"],
+                    "depends_on": [],
+                }
+            ],
+            "integration_points": [
+                {
+                    "id": "api-boundary",
+                    "boundary": "browser ↔ API",
+                    "owner": "lead-agent",
+                    "status": "candidate",
+                    "producers": [],
+                    "consumers": [],
+                    "contract": "",
+                    "required_evidence": ["integration test"],
+                }
+            ],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any("requires verified contract description" in failure for failure in result["failures"])
+        )
+
+    def test_plan_drift_detects_changed_path_outside_owned_scope(self):
+        plan = {
+            "objective": "Change checkout API",
+            "workstreams": [
+                {
+                    "id": "checkout",
+                    "owner": "lead-agent",
+                    "scope": ["src/checkout"],
+                    "depends_on": [],
+                }
+            ],
+        }
+        result = self.planner.evaluate_drift(
+            plan,
+            {
+                **{key: False for key in self.planner.APPROVAL_TRIGGERS},
+                "changed_paths": ["src/payments/gateway.php"],
+            },
+        )
+        self.assertEqual(result["gate"], "APPROVAL_REQUIRED")
+        self.assertIn("scope", result["triggered"])
 
     def test_plan_drift_requires_approval_for_architecture_or_security_change(self):
         plan = {"objective": "Add checkout integration"}
