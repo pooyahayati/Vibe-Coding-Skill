@@ -334,10 +334,23 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
             failures.append(
                 f"integration point {iid or index} producers/consumers must be arrays"
             )
-        elif not producers and not consumers:
-            warnings.append(
-                f"integration point {iid or index} is not yet connected to producer/consumer ownership"
+        else:
+            unknown_links = sorted(
+                {
+                    str(value)
+                    for value in producers + consumers
+                    if str(value) not in id_set
+                }
             )
+            if unknown_links:
+                failures.append(
+                    f"integration point {iid or index} references unknown workstreams: "
+                    + ", ".join(unknown_links)
+                )
+            if not producers and not consumers:
+                warnings.append(
+                    f"integration point {iid or index} is not yet connected to producer/consumer ownership"
+                )
         if row.get("status") == "candidate":
             warnings.append(
                 f"integration point {iid or index} remains a candidate and must be confirmed"
@@ -346,17 +359,50 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
             failures.append(f"duplicate integration point id: {iid}")
         seen_integrations.add(iid)
 
+    shared_contract_owners: dict[str, set[str]] = {}
+    for row in workstreams:
+        if not isinstance(row, dict):
+            continue
+        owner = str(row.get("owner") or "").strip()
+        shared = row.get("shared_contracts", [])
+        if shared is None:
+            shared = []
+        if not isinstance(shared, list):
+            failures.append(
+                f"workstream {row.get('id') or '?'} shared_contracts must be an array"
+            )
+            continue
+        for value in shared:
+            contract = str(value).strip()
+            if not contract or not owner:
+                continue
+            shared_contract_owners.setdefault(contract, set()).add(owner)
+
+    for contract, owners in sorted(shared_contract_owners.items()):
+        if len(owners) > 1:
+            failures.append(
+                "shared contract has multiple writers: "
+                f"{contract} -> {', '.join(sorted(owners))}"
+            )
+
     coordination = plan.get("coordination") or {}
     parallelism = coordination.get("recommended_parallelism", 1)
-    if (
-        isinstance(parallelism, int)
-        and not isinstance(parallelism, bool)
-        and parallelism > 1
-        and len(workstreams) < 2
-    ):
-        warnings.append(
-            "parallelism > 1 without multiple explicit workstreams/ownership"
-        )
+    if not isinstance(parallelism, int) or isinstance(parallelism, bool) or parallelism < 1:
+        failures.append("recommended_parallelism must be a positive integer")
+    elif parallelism > 1:
+        if len(workstreams) < 2:
+            warnings.append(
+                "parallelism > 1 without multiple explicit workstreams/ownership"
+            )
+        distinct_owners = {
+            str(row.get("owner") or "").strip()
+            for row in workstreams
+            if isinstance(row, dict) and str(row.get("owner") or "").strip()
+        }
+        if len(distinct_owners) < parallelism:
+            warnings.append(
+                "recommended parallelism exceeds distinct explicit owners"
+            )
 
     return {
         "gate": "BLOCK" if failures else ("WARN" if warnings else "PASS"),
