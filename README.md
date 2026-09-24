@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.9.3-blue)
+![Version](https://img.shields.io/badge/version-0.10.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill that turns AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -58,7 +58,9 @@ A typo should not need an architecture review. A destructive production migratio
 - Git/GitHub traceability;
 - deployment/recovery discipline;
 - persistent repository state and handoff;
-- controlled multi-agent execution only when it adds value.
+- controlled multi-agent execution only when it adds value;
+- composable context routing for large/mixed-stack projects;
+- domain capability packs that load only when relevant.
 
 ## Workflow tiers
 
@@ -153,6 +155,8 @@ scripts/
 ├── doctor.py
 ├── change_budget.py
 ├── integration_guard.py
+├── context_router.py
+├── execution_plan.py
 ├── completion_gate.py
 ├── graphify_compat.py
 └── validate_skill.py
@@ -226,6 +230,31 @@ python scripts/integration_guard.py --root /path/to/project --tier 2 --json
 ```
 
 The integration gate is read-only and checks Git/GitHub context, graph-provider freshness, and Trivy availability.
+
+### Context routing
+
+For an existing project, select the minimum sufficient context before loading broad references:
+
+```bash
+python scripts/context_router.py \
+  --root /path/to/project \
+  --task "Add a WooCommerce payment gateway" \
+  --path gateway.php \
+  --json
+```
+
+The router keeps project complexity separate from task risk, preserves large-project intelligence, and composes only relevant capability packs. Initial packs cover PHP, WordPress, WooCommerce, browser JavaScript, WordPress REST, external HTTP, payments, web security, and web performance.
+
+For medium/large projects or Tier 2/3 work:
+
+```bash
+python scripts/execution_plan.py draft \
+  --root /path/to/project \
+  --task "Add a WooCommerce payment gateway" \
+  --json
+```
+
+The generated plan is a coordination skeleton: confirm integration contracts/evidence, validate it, then parallelize only when ownership and dependencies are explicit. Completion is tracked separately at Task, Workstream, and Objective levels.
 
 ### Dependency Intelligence
 
@@ -306,7 +335,7 @@ Execute real-agent scenarios only when the corresponding CLI and credentials are
 python scripts/run_agent_benchmark.py run \
   --agent codex \
   --scenario all \
-  --results-dir ~/.vibe-coding/benchmarks/vibe-coding-skill/0.9.3/run-001 \
+  --results-dir ~/.vibe-coding/benchmarks/vibe-coding-skill/0.10.0/run-001 \
   --require-env-auth \
   --json
 ```
@@ -375,6 +404,7 @@ Vibe-Coding-Skill/
 ├── references/
 ├── scripts/
 ├── config/
+├── packs/                   # composable platform/runtime/concern constraints
 ├── assets/templates/
 ├── evals/
 ├── validation/
@@ -393,7 +423,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.9.3`
+Current version: `0.10.0`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 

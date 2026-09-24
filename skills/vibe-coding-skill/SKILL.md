@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Python 3.10+ and Git. Graphify and Trivy are recommended for medium/high-risk projects. Network access is needed only for package-registry, OSV, GitHub, or tool-update checks.
 metadata:
   author: "Pooya Hayati"
-  version: "0.9.3"
+  version: "0.10.0"
 ---
 
 # Vibe Coding Skill
@@ -84,17 +84,19 @@ Automated classification may raise the workflow floor. Do not use it to override
 
 ### Existing project
 
-Inspect, when present, in this order:
+Start with the smallest evidence needed to preserve project intent:
 
-1. `STATUS.md`
-2. `PROJECT.md`
-3. `ROADMAP.md`
-4. `ARCHITECTURE.md`
-5. `PROJECT_GRAPH.md`
-6. `AGENTS.md`
-7. `README.md`
+1. read `AGENTS.md` when present for explicit project-wide instructions;
+2. inspect repository structure/manifests and any already-known affected paths;
+3. run the context router before loading broad project/domain references:
 
-Then inspect repository structure, manifests, tests, CI, Docker/runtime configuration, Git state, and relevant GitHub state.
+`python scripts/context_router.py --root <project> --task "<current task>" --path <known-path> --json`
+
+4. follow its Context Plan, then read only the relevant current-objective/state/architecture sections from `STATUS.md`, `PROJECT.md`, `ARCHITECTURE.md`, or `PROJECT_GRAPH.md` when selected.
+
+The router extracts explicit invariant/constraint bullets from existing project documents without requiring the agent to load those documents in full first. Load only task-relevant sections and selected capability packs. Project complexity and task risk are independent: a large repository can have a tiny task, while a small repository can contain a critical task.
+
+Do not let context reduction bypass project intelligence. Medium/large projects and Tier 2/3 tasks retain architecture/impact/integration coverage even when domain-specific packs are active.
 
 Do not introduce a parallel convention when the project already has a good one.
 
@@ -277,9 +279,25 @@ Inspect or repair local state with `scripts/state_recovery.py`. Validate the ins
 
 Read `references/recovery-and-resume.md` and `references/installation-and-lifecycle.md`.
 
+## Context routing and execution planning
+
+Vibe Core remains authoritative for scope, risk, project intelligence, evidence, recovery, and delivery. Capability packs only add relevant platform/runtime/concern constraints.
+
+Use `scripts/context_router.py` to select minimum sufficient context. Packs may compose; overlapping packs must not duplicate or weaken project-wide invariants. The router carries detected invariant/constraint bullets forward and reports bounded detection/context metrics rather than treating repository size as permission to read everything.
+
+For medium/large projects or Tier 2/3 tasks, draft a lightweight execution plan:
+
+`python scripts/execution_plan.py draft --root <project> --task "<current task>" --json`
+
+The generated draft is only a coordination skeleton. Confirm candidate integration boundaries, fill their contracts/evidence expectations, and validate the edited plan before parallel execution or shared-contract changes. The plan keeps one lead implementation agent by default and separates Task Done, Workstream Done, and Objective Done. Add parallel agents only after ownership/dependencies are explicit.
+
+Material drift in scope, architecture, data semantics, public API, security posture, or significant recurring cost requires re-planning/approval rather than silent adaptation.
+
+Read `references/context-routing-and-execution.md`.
+
 ## Execution loop
 
-`Objective → Ready Check → Impact Analysis → Implement → Test → Review → Integrate → Regression Check → Update Repository State → Done`
+`Objective → Ready Check → Context/Impact Analysis → Plan if needed → Implement → Test → Review → Integrate → Regression Check → Update Repository State → Done`
 
 A task is ready when objective, scope, dependencies, acceptance criteria, blocking decisions, required tests, and expected output are clear enough to execute.
 
@@ -361,9 +379,9 @@ Read `references/project-state-and-traceability.md` and `references/local-worksp
 
 Default: one implementation agent.
 
-Add agents only when independent work has clear ownership, specialist knowledge materially reduces risk, context isolation helps, or independent review is required.
+Add agents only when independent work has clear ownership, specialist knowledge materially reduces risk, context isolation helps, or independent review is required. Use the execution plan to make workstream dependencies, integration points, and ownership explicit before parallelization.
 
-For shared schemas, auth, dependency manifests, central configuration, and shared contracts, prefer a single writer. The lead owns integration.
+For shared schemas, auth, dependency manifests, central configuration, and shared contracts, prefer a single writer. The lead owns integration and Objective-level completion.
 
 ## Circuit breaker
 
@@ -379,6 +397,8 @@ Stop and escalate when:
 ## Definition of Done
 
 A meaningful task is Done only when acceptance criteria are satisfied, relevant checks pass, critical regressions are absent, errors are diagnosable, risk-appropriate security checks are complete, repository state is updated, deployment/migration implications are handled, and another agent can resume without hidden context.
+
+Do not promote local completion upward automatically: Task Done requires task evidence; Workstream Done also requires its dependencies/integration points; Objective Done requires all required workstreams plus cross-workstream/end-to-end regression where applicable.
 
 ## Reference map
 
@@ -399,6 +419,7 @@ Load only what is needed:
 - `references/project-state-automation.md`
 - `references/recovery-and-resume.md`
 - `references/installation-and-lifecycle.md`
+- `references/context-routing-and-execution.md`
 
 ## Bundled utilities
 
@@ -410,6 +431,8 @@ Runtime utilities shipped with the portable skill:
 - `scripts/dependency_guard.py`
 - `scripts/risk_classifier.py`
 - `scripts/integration_guard.py`
+- `scripts/context_router.py`
+- `scripts/execution_plan.py`
 - `scripts/completion_gate.py`
 - `scripts/release_readiness.py`
 - `scripts/local_workspace.py`

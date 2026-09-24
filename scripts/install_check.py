@@ -24,6 +24,8 @@ RUNTIME_SCRIPTS = [
     "dependency_guard.py",
     "risk_classifier.py",
     "integration_guard.py",
+    "context_router.py",
+    "execution_plan.py",
     "completion_gate.py",
     "release_readiness.py",
     "local_workspace.py",
@@ -55,11 +57,13 @@ REQUIRED_REFS = [
     "project-state-automation.md",
     "recovery-and-resume.md",
     "installation-and-lifecycle.md",
+    "context-routing-and-execution.md",
 ]
 
 REQUIRED_RUNTIME_FILES = [
     "config/toolchain.json",
     "config/agent-benchmarks.json",
+    "config/context-routing.json",
     "evals/scenarios.json",
     "evals/agent-output.schema.json",
     "evals/AGENT_OUTPUT_SCHEMA.md",
@@ -70,11 +74,22 @@ REQUIRED_RUNTIME_FILES = [
     "assets/templates/PROJECT_GRAPH.md",
     "assets/templates/ROADMAP.md",
     "assets/templates/STATUS.md",
+    "packs/README.md",
+    "packs/php.md",
+    "packs/wordpress.md",
+    "packs/woocommerce.md",
+    "packs/browser-js.md",
+    "packs/wordpress-rest.md",
+    "packs/external-http.md",
+    "packs/payments.md",
+    "packs/security-web.md",
+    "packs/performance-web.md",
 ]
 
 JSON_RUNTIME_FILES = [
     "config/toolchain.json",
     "config/agent-benchmarks.json",
+    "config/context-routing.json",
     "evals/scenarios.json",
     "evals/agent-output.schema.json",
 ]
