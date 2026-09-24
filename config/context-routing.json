@@ -173,7 +173,7 @@
       ],
       "path_keywords": [
         "rest",
-        "api"
+        "wp-json"
       ],
       "requires": [
         "wordpress"
@@ -209,9 +209,8 @@
       ],
       "path_keywords": [
         "webhook",
-        "client",
-        "api",
-        "integration"
+        "integration",
+        "remote"
       ],
       "requires": [],
       "optional_specialists": [],
