@@ -282,13 +282,13 @@ Read `references/recovery-and-resume.md` and `references/installation-and-lifecy
 
 Vibe Core remains authoritative for scope, risk, project intelligence, evidence, recovery, and delivery. Capability packs only add relevant platform/runtime/concern constraints.
 
-Use `scripts/context_router.py` to select minimum sufficient context. Packs may compose; overlapping packs must not duplicate or weaken project-wide invariants.
+Use `scripts/context_router.py` to select minimum sufficient context. Packs may compose; overlapping packs must not duplicate or weaken project-wide invariants. The router carries detected invariant/constraint bullets forward and reports bounded detection/context metrics rather than treating repository size as permission to read everything.
 
-For medium/large projects, Tier 2/3 tasks, or tasks with several integration boundaries, draft a lightweight execution plan:
+For medium/large projects or Tier 2/3 tasks, draft a lightweight execution plan:
 
 `python scripts/execution_plan.py draft --root <project> --task "<current task>" --json`
 
-The plan keeps one lead implementation agent by default, makes integration boundaries visible, and separates Task Done, Workstream Done, and Objective Done. Add parallel agents only after ownership/dependencies are explicit.
+The generated draft is only a coordination skeleton. Confirm candidate integration boundaries, fill their contracts/evidence expectations, and validate the edited plan before parallel execution or shared-contract changes. The plan keeps one lead implementation agent by default and separates Task Done, Workstream Done, and Objective Done. Add parallel agents only after ownership/dependencies are explicit.
 
 Material drift in scope, architecture, data semantics, public API, security posture, or significant recurring cost requires re-planning/approval rather than silent adaptation.
 
