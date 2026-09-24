@@ -1,0 +1,396 @@
+{
+  "schema_version": 1,
+  "precedence": [
+    "safety-invariant",
+    "explicit-project-rule",
+    "platform-framework-pack",
+    "language-runtime-pack",
+    "generic-vibe-rule"
+  ],
+  "complexity": {
+    "small_max_files": 60,
+    "medium_max_files": 300,
+    "large_manifest_threshold": 4,
+    "large_source_root_threshold": 8
+  },
+  "core_context": {
+    "light": [],
+    "standard": [
+      "references/execution-and-verification.md"
+    ],
+    "significant": [
+      "references/risk-and-autonomy.md",
+      "references/project-intelligence.md",
+      "references/execution-and-verification.md"
+    ]
+  },
+  "packs": {
+    "php": {
+      "path": "packs/php.md",
+      "category": "runtime",
+      "scope": "project",
+      "extensions": [
+        ".php"
+      ],
+      "files": [
+        "composer.json"
+      ],
+      "project_markers": [
+        "<?php"
+      ],
+      "task_keywords": [
+        "php"
+      ],
+      "path_keywords": [
+        ".php"
+      ],
+      "requires": [],
+      "optional_specialists": [],
+      "integration_points": [
+        "PHP runtime ↔ WordPress/framework lifecycle"
+      ]
+    },
+    "wordpress": {
+      "path": "packs/wordpress.md",
+      "category": "platform",
+      "scope": "project",
+      "extensions": [],
+      "files": [],
+      "project_markers": [
+        "Plugin Name:",
+        "add_action(",
+        "add_filter(",
+        "register_activation_hook(",
+        "wp_enqueue_"
+      ],
+      "task_keywords": [
+        "wordpress",
+        "wp plugin",
+        "wp-admin"
+      ],
+      "path_keywords": [
+        "wp-content",
+        "wordpress"
+      ],
+      "requires": [
+        "php"
+      ],
+      "optional_specialists": [
+        "WordPress specialist skill when available"
+      ],
+      "integration_points": [
+        "plugin ↔ WordPress lifecycle",
+        "plugin ↔ other plugins/themes"
+      ]
+    },
+    "woocommerce": {
+      "path": "packs/woocommerce.md",
+      "category": "platform",
+      "scope": "project",
+      "extensions": [],
+      "files": [],
+      "project_markers": [
+        "WC_",
+        "woocommerce_",
+        "WooCommerce",
+        "wc_get_order(",
+        "WC_Payment_Gateway"
+      ],
+      "task_keywords": [
+        "woocommerce",
+        "woo commerce"
+      ],
+      "path_keywords": [
+        "woocommerce",
+        "woo-"
+      ],
+      "requires": [
+        "wordpress",
+        "php"
+      ],
+      "optional_specialists": [
+        "WooCommerce specialist skill when available"
+      ],
+      "integration_points": [
+        "extension ↔ WooCommerce public APIs",
+        "extension ↔ order/product storage",
+        "extension ↔ other WooCommerce extensions"
+      ]
+    },
+    "browser-js": {
+      "path": "packs/browser-js.md",
+      "category": "runtime",
+      "scope": "project",
+      "extensions": [
+        ".jsx",
+        ".tsx"
+      ],
+      "files": [],
+      "project_markers": [
+        "@wordpress/",
+        "wp.element",
+        "wp.data",
+        "document.",
+        "window."
+      ],
+      "task_keywords": [
+        "javascript",
+        "typescript",
+        "react",
+        "gutenberg",
+        "browser"
+      ],
+      "path_keywords": [
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        "assets",
+        "blocks"
+      ],
+      "requires": [],
+      "optional_specialists": [],
+      "integration_points": [
+        "browser UI ↔ server/API contract"
+      ]
+    },
+    "wordpress-rest": {
+      "path": "packs/wordpress-rest.md",
+      "category": "concern",
+      "scope": "task",
+      "extensions": [],
+      "files": [],
+      "project_markers": [
+        "register_rest_route",
+        "WP_REST_",
+        "permission_callback"
+      ],
+      "task_keywords": [
+        "rest endpoint",
+        "rest api",
+        "api route",
+        "permission_callback"
+      ],
+      "path_keywords": [
+        "rest",
+        "api"
+      ],
+      "requires": [
+        "wordpress"
+      ],
+      "optional_specialists": [],
+      "integration_points": [
+        "client ↔ WordPress REST route",
+        "REST permission callback ↔ domain mutation"
+      ]
+    },
+    "external-http": {
+      "path": "packs/external-http.md",
+      "category": "concern",
+      "scope": "task",
+      "extensions": [],
+      "files": [],
+      "project_markers": [
+        "wp_remote_get(",
+        "wp_remote_post(",
+        "wp_remote_request(",
+        "curl_exec(",
+        "axios.",
+        "fetch("
+      ],
+      "task_keywords": [
+        "external api",
+        "third-party",
+        "third party",
+        "remote api",
+        "webhook",
+        "saas",
+        "http request"
+      ],
+      "path_keywords": [
+        "webhook",
+        "client",
+        "api",
+        "integration"
+      ],
+      "requires": [],
+      "optional_specialists": [],
+      "integration_points": [
+        "application ↔ remote service",
+        "remote callback/webhook ↔ local state"
+      ]
+    },
+    "payments": {
+      "path": "packs/payments.md",
+      "category": "concern",
+      "scope": "task",
+      "extensions": [],
+      "files": [],
+      "project_markers": [
+        "WC_Payment_Gateway",
+        "payment_intent",
+        "Stripe",
+        "PayPal",
+        "refund"
+      ],
+      "task_keywords": [
+        "payment gateway",
+        "payment method",
+        "process payment",
+        "charge",
+        "refund",
+        "payment webhook",
+        "payment callback",
+        "payment status",
+        "stripe",
+        "paypal"
+      ],
+      "path_keywords": [
+        "payment",
+        "gateway",
+        "refund"
+      ],
+      "requires": [],
+      "optional_specialists": [],
+      "integration_points": [
+        "checkout ↔ payment adapter",
+        "gateway ↔ callback/webhook",
+        "payment state ↔ order/business state"
+      ]
+    },
+    "security-web": {
+      "path": "packs/security-web.md",
+      "category": "concern",
+      "scope": "task",
+      "extensions": [],
+      "files": [],
+      "project_markers": [],
+      "task_keywords": [
+        "auth",
+        "authorization",
+        "permission",
+        "nonce",
+        "capability",
+        "security",
+        "sanitize",
+        "escape",
+        "csrf",
+        "xss",
+        "sql injection"
+      ],
+      "path_keywords": [
+        "auth",
+        "security",
+        "permission"
+      ],
+      "requires": [],
+      "optional_specialists": [
+        "security specialist review for high-risk changes"
+      ],
+      "integration_points": [
+        "untrusted input ↔ privileged/state-changing operation"
+      ]
+    },
+    "performance-web": {
+      "path": "packs/performance-web.md",
+      "category": "concern",
+      "scope": "task",
+      "extensions": [],
+      "files": [],
+      "project_markers": [],
+      "task_keywords": [
+        "performance",
+        "slow",
+        "optimize",
+        "query",
+        "queries",
+        "request count",
+        "requests",
+        "cache",
+        "latency",
+        "speed",
+        "autoload",
+        "cron"
+      ],
+      "path_keywords": [
+        "performance",
+        "cache",
+        "query",
+        "cron"
+      ],
+      "requires": [],
+      "optional_specialists": [],
+      "integration_points": [
+        "request path ↔ database/cache",
+        "application ↔ external latency"
+      ]
+    }
+  },
+  "interaction_rules": [
+    {
+      "when_all": [
+        "woocommerce",
+        "payments"
+      ],
+      "add_packs": [
+        "security-web",
+        "external-http",
+        "performance-web"
+      ],
+      "minimum_tier": 3,
+      "reason": "payment/order-state interaction is financially sensitive and crosses remote/state boundaries",
+      "skip_if_task_matches": [
+        "label",
+        "copy",
+        "text only",
+        "typo",
+        "styling",
+        "css only",
+        "rename"
+      ]
+    },
+    {
+      "when_all": [
+        "wordpress-rest",
+        "external-http"
+      ],
+      "add_packs": [
+        "security-web",
+        "performance-web"
+      ],
+      "minimum_tier": 2,
+      "reason": "REST plus remote integration adds authorization, latency, and failure-mode concerns"
+    },
+    {
+      "when_all": [
+        "payments",
+        "external-http"
+      ],
+      "add_packs": [
+        "security-web",
+        "performance-web"
+      ],
+      "minimum_tier": 3,
+      "reason": "remote payment operations require idempotency, authorization, failure handling, and latency control",
+      "skip_if_task_matches": [
+        "label",
+        "copy",
+        "text only",
+        "typo",
+        "styling",
+        "css only",
+        "rename"
+      ]
+    },
+    {
+      "when_all": [
+        "wordpress-rest"
+      ],
+      "add_packs": [
+        "security-web"
+      ],
+      "minimum_tier": 2,
+      "reason": "state-changing REST routes require explicit permission and input/output security review"
+    }
+  ]
+}
