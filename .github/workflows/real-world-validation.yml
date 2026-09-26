@@ -11,6 +11,13 @@ on:
       - "scripts/resume_context.py"
       - "scripts/bootstrap_project.py"
       - "scripts/risk_classifier.py"
+      - "scripts/context_router.py"
+      - "scripts/execution_plan.py"
+      - "config/context-routing.json"
+      - "packs/**"
+      - "references/project-intelligence.md"
+      - "references/context-routing-and-execution.md"
+      - "tests/test_real_world_validation.py"
       - ".github/workflows/real-world-validation.yml"
   schedule:
     - cron: "7 6 * * 4"
@@ -18,10 +25,13 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
-      - name: Validate pinned real repositories
+      - name: Validate routing expectation logic
+        run: python -m unittest discover -s tests -p "test_real_world_validation.py"
+      - name: Validate pinned real repositories and v0.10 routing
         run: python scripts/run_real_world_validations.py

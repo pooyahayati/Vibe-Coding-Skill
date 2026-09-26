@@ -302,7 +302,7 @@ Pinned public repositories provide a separate real-world compatibility layer:
 python scripts/run_real_world_validations.py
 ```
 
-These checks use fixed commits from Python, Node, and Go projects and verify repository purity, resume behavior, dry-run bootstrap, and risk classification without modifying the product working tree.
+These checks use fixed commits from Python, Node, Go, a large Django repository, and the WooCommerce Stripe gateway. In addition to repository purity, resume behavior, dry-run bootstrap, and risk classification, the real-world suite now exercises the v0.10 Context Router and Execution Plan. It records candidate/loaded capability packs, pack-reduction ratio, selected context size, project complexity, integration points, project-intelligence preservation, and execution-plan requirements while ensuring the product working tree stays unchanged.
 
 ### Failure injection
 
