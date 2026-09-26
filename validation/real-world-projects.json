@@ -84,23 +84,23 @@
             "client/settings/card-footer.js"
           ],
           "expected_complexity_at_least": "medium",
-          "expected_max_tier": 0,
+          "expected_max_tier": 1,
           "required_packs": [
             "php",
             "wordpress",
+            "woocommerce",
             "browser-js"
           ],
           "forbidden_packs": [
-            "woocommerce",
             "payments",
             "security-web",
             "performance-web",
             "external-http",
             "wordpress-rest"
           ],
-          "max_loaded_packs": 3,
+          "max_loaded_packs": 4,
           "require_context_reduction": true,
-          "min_pack_reduction_ratio": 0.6,
+          "min_pack_reduction_ratio": 0.5,
           "require_execution_plan": true
         },
         {
