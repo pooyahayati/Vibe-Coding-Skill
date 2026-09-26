@@ -78,27 +78,29 @@
       "expected_min_tier": 2,
       "routing_checks": [
         {
-          "id": "tiny-payment-plugin-copy",
-          "task": "Change checkout button label text only.",
+          "id": "tiny-wordpress-ui-style",
+          "task": "Adjust the settings card footer padding only.",
           "paths": [
-            "woocommerce-gateway-stripe.php"
+            "client/settings/card-footer.js"
           ],
           "expected_complexity_at_least": "medium",
-          "expected_max_tier": 1,
+          "expected_max_tier": 0,
           "required_packs": [
             "php",
             "wordpress",
-            "woocommerce"
+            "browser-js"
           ],
           "forbidden_packs": [
+            "woocommerce",
+            "payments",
             "security-web",
             "performance-web",
             "external-http",
             "wordpress-rest"
           ],
-          "max_loaded_packs": 4,
+          "max_loaded_packs": 3,
           "require_context_reduction": true,
-          "min_pack_reduction_ratio": 0.5,
+          "min_pack_reduction_ratio": 0.6,
           "require_execution_plan": true
         },
         {
