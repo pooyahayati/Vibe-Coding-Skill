@@ -421,6 +421,10 @@ Vibe-Coding-Skill/
 └── VERSION
 ```
 
+## Future work
+
+- Run the blind real-agent benchmark against both `Codex` and `Claude Code` using the existing `Real Agent Benchmark` workflow when provider credentials are intentionally configured. This work remains tracked in Issue #12 and is deferred; deterministic and real-repository validation remain the active validation baseline for the current release.
+
 ## Status
 
 Current version: `0.10.0`
