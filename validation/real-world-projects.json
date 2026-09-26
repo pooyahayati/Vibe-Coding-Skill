@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "projects": [
     {
       "id": "python-itsdangerous",
@@ -30,6 +30,105 @@
         "middleware"
       ],
       "expected_min_tier": 1
+    },
+    {
+      "id": "large-django-routing",
+      "repository": "https://github.com/django/django.git",
+      "commit": "4fab678a0739d54401ccee7eb587553657c9f76e",
+      "task": "Add a contained reporting helper while preserving Django project architecture.",
+      "paths": [
+        "django/forms/models.py"
+      ],
+      "expected_min_tier": 1,
+      "routing_checks": [
+        {
+          "id": "large-generic-locality",
+          "task": "Add a contained reporting helper to Django forms while preserving the existing architecture.",
+          "paths": [
+            "django/forms/models.py"
+          ],
+          "expected_complexity_at_least": "large",
+          "expected_min_tier": 1,
+          "required_packs": [],
+          "forbidden_packs": [
+            "php",
+            "wordpress",
+            "woocommerce",
+            "wordpress-rest",
+            "payments",
+            "external-http"
+          ],
+          "max_loaded_packs": 1,
+          "require_context_reduction": true,
+          "min_pack_reduction_ratio": 0.75,
+          "require_project_intelligence": true,
+          "require_execution_plan": true,
+          "min_integration_points": 0
+        }
+      ]
+    },
+    {
+      "id": "woocommerce-stripe-routing",
+      "repository": "https://github.com/woocommerce/woocommerce-gateway-stripe.git",
+      "commit": "05c697a0e643883996c83f07f05d923dd42fbe0b",
+      "task": "Update the WooCommerce Stripe payment integration with safe webhook handling.",
+      "paths": [
+        "includes/class-wc-stripe-webhook-handler.php"
+      ],
+      "expected_min_tier": 2,
+      "routing_checks": [
+        {
+          "id": "tiny-payment-plugin-copy",
+          "task": "Change checkout button label text only.",
+          "paths": [
+            "woocommerce-gateway-stripe.php"
+          ],
+          "expected_complexity_at_least": "medium",
+          "expected_max_tier": 1,
+          "required_packs": [
+            "php",
+            "wordpress",
+            "woocommerce"
+          ],
+          "forbidden_packs": [
+            "security-web",
+            "performance-web",
+            "external-http",
+            "wordpress-rest"
+          ],
+          "max_loaded_packs": 4,
+          "require_context_reduction": true,
+          "min_pack_reduction_ratio": 0.5,
+          "require_execution_plan": true
+        },
+        {
+          "id": "payment-webhook-refund",
+          "task": "Add Stripe payment webhook refund handling and update payment state safely.",
+          "paths": [
+            "includes/class-wc-stripe-webhook-handler.php"
+          ],
+          "expected_complexity_at_least": "medium",
+          "expected_min_tier": 3,
+          "required_packs": [
+            "php",
+            "wordpress",
+            "woocommerce",
+            "payments",
+            "external-http",
+            "security-web",
+            "performance-web"
+          ],
+          "forbidden_packs": [
+            "wordpress-rest"
+          ],
+          "max_loaded_packs": 8,
+          "require_context_reduction": true,
+          "min_pack_reduction_ratio": 0.1,
+          "require_project_intelligence": true,
+          "require_execution_plan": true,
+          "min_integration_points": 5
+        }
+      ]
     }
   ]
 }
