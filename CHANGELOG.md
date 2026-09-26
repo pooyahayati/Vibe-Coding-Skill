@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.1 — Real-world routing validation hardening
+
+- Added pinned real-world routing validation against a large Django repository and the official WooCommerce Stripe gateway.
+- Extended real-world validation to execute the Context Router and Execution Plan and record project complexity, selected capability packs, pack-reduction ratio, selected context size, integration points, project-intelligence preservation, and execution-plan requirements.
+- Added selectivity regressions showing that small WooCommerce admin UI work avoids payment/security/external-HTTP concern packs while payment webhook/refund work composes the sensitive packs and escalates to Tier 3.
+- Expanded CI triggers so routing configuration, capability packs, execution planning, and project-intelligence changes automatically run the real-world validation suite.
+- Kept product repositories clean while validating pinned external repositories at exact commits.
+- Deferred the credentialed blind Codex and Claude Code benchmark to future work in Issue #12; it is not a blocker for the current pre-1.0 release path.
+
 ## 0.10.0 — Composable context routing and execution coordination
 
 - Added an evidence-based Context Router that keeps project complexity separate from task risk and selects minimum sufficient context instead of loading broad references by default.

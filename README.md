@@ -427,7 +427,7 @@ Vibe-Coding-Skill/
 
 ## Status
 
-Current version: `0.10.0`
+Current version: `0.10.1`
 
 This is the first implementation of the V11 direction derived from the Software Project Operating Protocol and the review of current vibe-coding failure modes.
 
