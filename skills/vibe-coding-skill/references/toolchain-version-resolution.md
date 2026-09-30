@@ -18,8 +18,10 @@ Use:
 1. Resolve the latest published release from the tool's authoritative stable distribution channel.
 2. Run the tool-specific compatibility contract against that exact release.
 3. If the contract passes, select that exact version for the current execution.
-4. If the contract fails, resolve the recorded `last_known_good` version and verify that fallback against the same contract.
-5. If both fail, stop and surface the tool as unavailable/incompatible rather than silently using an untested release.
+4. If the contract fails or the compatibility subprocess times out, convert that attempt into structured failure evidence, then resolve the recorded `last_known_good` version and verify that fallback against the same contract.
+5. Attempt the fallback once. If both attempts fail, stop and surface the tool as unavailable/incompatible rather than silently using an untested release.
+
+Compatibility subprocesses run with the current Python interpreter rather than assuming a platform-specific `python` command name.
 
 The exact selected version is a runtime/session pin. This preserves reproducibility without forcing the repository's public documentation to age behind current stable releases.
 
