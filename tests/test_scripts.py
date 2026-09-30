@@ -230,6 +230,35 @@ class RiskClassifierTests(unittest.TestCase):
         result = self.mod.classify("small refactor", ["src/auth/session.py"])
         self.assertGreaterEqual(result["tier"], 2)
 
+    def test_persian_production_destructive_request_is_critical(self):
+        result = self.mod.classify(
+            "همه داده‌های مشتری را از دیتابیس محیط تولید حذف کن."
+        )
+        self.assertEqual(result["tier"], 3)
+        self.assertTrue(result["approval_required"])
+
+    def test_drop_down_menu_is_not_destructive(self):
+        result = self.mod.classify("Add a drop-down menu to the settings page.")
+        self.assertLess(result["tier"], 3)
+        self.assertNotIn("destructive-data", result["matched_rules"])
+
+    def test_structured_facts_raise_risk_without_keyword_dependency(self):
+        result = self.mod.classify(
+            "Apply the requested data change.",
+            facts={
+                "operation": "destructive-data",
+                "environment": "production",
+                "data_sensitivity": "normal",
+                "change_boundary": "local",
+            },
+        )
+        self.assertEqual(result["tier"], 3)
+        self.assertTrue(result["approval_required"])
+
+    def test_unknown_non_english_wording_reports_uncertainty(self):
+        result = self.mod.classify("این تغییر را انجام بده")
+        self.assertTrue(result["uncertainty"])
+
 
 class LiveAgentEvalTests(unittest.TestCase):
     def test_valid_behavior_contract_passes(self):
@@ -590,6 +619,78 @@ class CompletionGateTests(unittest.TestCase):
             any("invalid_captured_at" in row["issues"] for row in issues)
         )
 
+
+
+    def test_done_rejects_unnamed_acceptance_criterion(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 0,
+            "acceptance_criteria": [{"met": True}],
+            "evidence": [{"kind": "test", "result": "pass"}],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any("requires non-empty id" in failure for failure in result["failures"])
+        )
+
+    def test_failed_required_evidence_blocks_done_even_with_other_passes(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 0,
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [
+                {"kind": "rendered-check", "result": "pass"},
+                {"kind": "review", "result": "pass"},
+                {"kind": "integration-test", "result": "fail", "required": True},
+            ],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any("required evidence" in failure for failure in result["failures"])
+        )
+
+    def test_optional_failed_evidence_requires_justification(self):
+        mod = load_script("completion_gate.py")
+        base = {
+            "status": "Done",
+            "risk_tier": 0,
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [
+                {"kind": "test", "result": "pass"},
+                {
+                    "kind": "review",
+                    "result": "fail",
+                    "required": False,
+                },
+            ],
+            "blockers": [],
+        }
+        missing = mod.evaluate(base)
+        self.assertEqual(missing["gate"], "BLOCK")
+
+        base["evidence"][1]["justification"] = (
+            "Optional exploratory review is outside the accepted scope."
+        )
+        complete = mod.evaluate(base)
+        self.assertEqual(complete["gate"], "PASS")
+
+    def test_unsupported_evidence_kind_does_not_satisfy_done(self):
+        mod = load_script("completion_gate.py")
+        result = mod.evaluate({
+            "status": "Done",
+            "risk_tier": 0,
+            "acceptance_criteria": [{"id": "AC-1", "met": True}],
+            "evidence": [{"kind": "style-score", "result": "pass"}],
+            "blockers": [],
+        })
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any("unsupported kind" in failure for failure in result["failures"])
+        )
 
 class BenchmarkScoringTests(unittest.TestCase):
     def test_reusable_agent_scorer(self):
