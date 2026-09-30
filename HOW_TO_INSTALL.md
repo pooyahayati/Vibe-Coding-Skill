@@ -1,6 +1,6 @@
 # How to Install
 
-Current Skill version: `0.10.3`
+Current Skill version: `0.10.4`
 
 Keep the Skill installation outside the repositories you use it on. Vibe Coding operational state is intentionally local-only.
 
