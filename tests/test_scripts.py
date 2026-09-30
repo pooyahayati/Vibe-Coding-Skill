@@ -1331,6 +1331,11 @@ class ReleaseReadinessTests(unittest.TestCase):
             self.assertIn("push:", workflow, rel)
             self.assertIn("branches:\n      - main", workflow, rel)
             self.assertIn('- "VERSION"', workflow, rel)
+            self.assertIn(
+                '- ".github/workflows/release.yml"',
+                workflow,
+                rel,
+            )
 
     def test_stable_blocks_without_real_agent_aggregate(self):
         mod = load_script("release_readiness.py")
@@ -1432,6 +1437,10 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.assertIn("candidates[0].get(\"conclusion\") == \"success\"", workflow)
         self.assertIn("steps.readiness.outputs.channel == 'stable'", workflow)
         self.assertIn("steps.readiness.outputs.base_ready == 'true'", workflow)
+        self.assertIn("TRIGGER_NAME:", workflow)
+        self.assertIn("TRIGGER_CONCLUSION:", workflow)
+        self.assertIn("TRIGGER_RUN_ID:", workflow)
+        self.assertIn("trigger_name in wanted", workflow)
         self.assertIn("base_ready={'true' if base_ready else 'false'}", workflow)
         self.assertIn('CHANNEL="beta"', workflow)
         self.assertIn('CHANNEL="rc"', workflow)
