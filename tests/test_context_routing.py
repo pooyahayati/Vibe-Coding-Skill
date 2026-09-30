@@ -688,6 +688,76 @@ class ContextRouterTests(unittest.TestCase):
         )
 
 
+    def test_structured_context_facts_make_greenfield_routing_language_independent(self):
+        facts = {
+            "runtime": "php",
+            "platform": "wordpress",
+            "capability": "woocommerce",
+            "concern": "payments",
+        }
+        expected = {
+            "php",
+            "wordpress",
+            "woocommerce",
+            "payments",
+            "external-http",
+            "security-web",
+            "performance-web",
+        }
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            english = self.router.plan(
+                root,
+                "Build a checkout extension.",
+                [],
+                context_facts=facts,
+            )
+            persian = self.router.plan(
+                root,
+                "یک افزونه درگاه پرداخت ووکامرس بساز.",
+                [],
+                context_facts=facts,
+            )
+
+        english_names = {row["name"] for row in english["packs"]}
+        persian_names = {row["name"] for row in persian["packs"]}
+        self.assertEqual(english_names, persian_names)
+        self.assertEqual(english_names, expected)
+        self.assertEqual(english["task"]["risk"]["tier"], 3)
+        self.assertEqual(persian["task"]["risk"]["tier"], 3)
+        self.assertEqual(
+            persian["task"]["structured_context_facts"],
+            {
+                "runtime": ["php"],
+                "platform": ["wordpress"],
+                "capability": ["woocommerce"],
+                "concern": ["payments"],
+            },
+        )
+        rows = {row["name"]: row for row in persian["packs"]}
+        self.assertIn(
+            "context-fact:platform=wordpress",
+            rows["wordpress"]["evidence"],
+        )
+        self.assertEqual(rows["wordpress"]["confidence"], "high")
+
+    def test_structured_context_facts_reject_unknown_values(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            with self.assertRaisesRegex(
+                ValueError,
+                "unsupported structured context fact",
+            ):
+                self.router.plan(
+                    root,
+                    "Build the feature.",
+                    [],
+                    context_facts={"platform": "unknown-cms"},
+                )
+
+
 class ExecutionPlanTests(unittest.TestCase):
     def setUp(self):
         self.planner = load_script("execution_plan.py")
@@ -794,6 +864,35 @@ class ExecutionPlanTests(unittest.TestCase):
         self.assertEqual(
             result["context_plan"]["task"]["scope"]["level"],
             "cross-boundary",
+        )
+        self.assertTrue(result["execution_plan_required"])
+
+
+    def test_execution_plan_preserves_structured_context_facts(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            result = self.planner.draft(
+                root,
+                "یک افزونه درگاه پرداخت ووکامرس بساز.",
+                [],
+                context_facts={
+                    "runtime": "php",
+                    "platform": "wordpress",
+                    "capability": "woocommerce",
+                    "concern": "payments",
+                },
+            )
+
+        names = {
+            row["name"]
+            for row in result["context_plan"]["packs"]
+        }
+        self.assertIn("woocommerce", names)
+        self.assertIn("payments", names)
+        self.assertEqual(
+            result["context_plan"]["task"]["risk"]["tier"],
+            3,
         )
         self.assertTrue(result["execution_plan_required"])
 
@@ -1076,6 +1175,26 @@ class ContextRoutingContractTests(unittest.TestCase):
         self.assertEqual(len(paths), len(set(paths)))
         for rel in paths:
             self.assertTrue((ROOT / rel).exists(), rel)
+
+
+    def test_structured_context_fact_values_are_unambiguous(self):
+        config = json.loads(
+            (ROOT / "config" / "context-routing.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        fields = set(config["structured_context_fields"])
+        owners = {}
+        for name, row in config["packs"].items():
+            for field, values in row.get("context_facts", {}).items():
+                self.assertIn(field, fields)
+                for value in values:
+                    key = (field, value.strip().lower().replace("_", "-"))
+                    self.assertNotIn(key, owners, key)
+                    owners[key] = name
+        self.assertIn(("platform", "wordpress"), owners)
+        self.assertIn(("capability", "woocommerce"), owners)
+        self.assertIn(("concern", "payments"), owners)
 
     def test_pack_contract_has_required_sections(self):
         config = json.loads(
