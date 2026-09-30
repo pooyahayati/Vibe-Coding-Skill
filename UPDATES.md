@@ -4,6 +4,10 @@ A short, human-readable summary of what changed in each release.
 
 For full technical details, see [CHANGELOG.md](CHANGELOG.md).
 
+## 0.10.4 — More reliable release automation
+- Release creation now handles GitHub Actions' short-lived workflow-status lag without skipping an otherwise complete validated release.
+- Live dependency checks now treat unavailable optional GitHub source-health as an explicit review state instead of a false pass or a flaky hard failure.
+
 ## 0.10.3 — More reliable decisions, lighter context, real WordPress delivery
 - Risk, completion, routing, and tool-version controls were tightened so the Skill's reported policy matches what it actually enforces.
 - Large projects now keep project intelligence without forcing heavy planning for small local work, and the core Skill instructions are much shorter.
