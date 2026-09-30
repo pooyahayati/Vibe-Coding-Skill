@@ -25,7 +25,7 @@ RULES = [
         3,
         re.compile(
             r"\b(truncate|delete all|wipe|destroy|purge)\b"
-            r"|\bdrop\s+(table|database|schema|collection|index)\b"
+            r"|\bdrop\s+(?:the\s+)?(?:[\w-]+\s+){0,2}(table|database|schema|collection|index)\b"
             r"|حذف\s+(همه|کامل)|پاک\s*کردن\s+(همه|کامل)|پاکسازی\s+کامل|از\s+بین\s+بردن",
             re.I,
         ),
@@ -249,9 +249,9 @@ def classify(
             value = normalize_fact(supplied_facts.get(field))
             if not value or value == "unknown":
                 uncertainties.append(f"structured fact unresolved: {field}")
-    elif any(ord(char) > 127 for char in text) and not matches:
+    elif not matches and not fact_signals and not TINY.search(normalized_text):
         uncertainties.append(
-            "non-English task wording produced no recognized risk signal; provide structured risk facts"
+            "no explicit risk signal was recognized; provide structured risk facts when operation, environment, data sensitivity, or change boundary may affect risk"
         )
 
     return {
