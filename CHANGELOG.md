@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.5 — Path-aware context routing for large and mixed repositories
+
+- Made capability routing project-area aware so platform evidence stays local to the affected application/package in common monorepo layouts such as `apps/`, `packages/`, `services/`, `plugins/`, `themes/`, and scoped WordPress plugin/theme directories.
+- Switched known-path routing to bounded path-scoped source scanning, added directory-level affected-path support, and kept the wider project scan only as the fallback when impact paths are still unknown.
+- Refined change-scope detection so sibling applications under the same top-level container can correctly become `cross-boundary` and trigger execution planning without making repository size itself a planning requirement.
+- Made repository-root and subtree-applicable `AGENTS.md` files explicit persistent instructions while excluding unrelated sibling agent instructions and preserving the standard `README.md` fallback context.
+- Expanded context observability with scan strategy/areas plus separate Skill core, selected reference, selected pack, persistent-context upper-bound, and combined context upper-bound byte metrics.
+- Added regressions for same-container mixed monorepos, directory-only paths, local platform evidence after more than 700 unrelated files, scoped `AGENTS.md`, and sibling-application execution planning.
+
 ## 0.10.4 — Release orchestration reliability
 
 - Fixed release orchestration for GitHub Actions eventual consistency by trusting the successful triggering `workflow_run` event when the runs API still reports that same run with a temporary null conclusion; release-gate workflow changes now retrigger the full path-filtered baseline.
