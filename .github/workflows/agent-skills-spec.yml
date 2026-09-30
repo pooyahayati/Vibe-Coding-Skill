@@ -2,8 +2,19 @@ name: Agent Skills Spec Compatibility
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "VERSION"
+      - "SKILL.md"
+      - "agents/openai.yaml"
+      - "plugin.json"
+      - "skills/vibe-coding-skill/**"
+      - ".github/workflows/agent-skills-spec.yml"
   pull_request:
     paths:
+      - "VERSION"
       - "SKILL.md"
       - "agents/openai.yaml"
       - "plugin.json"
