@@ -92,6 +92,44 @@ Do not add by default microservices, CQRS, event sourcing, Kafka/RabbitMQ, Elast
 
 Before adding complexity, answer: Which current requirement requires this?
 
+### Observable code-structure invariants
+
+Use a small set of observable rules instead of prescribing a universal architecture:
+
+1. **Clear responsibility** — a component/module should have one understandable reason to change at its current level of abstraction.
+2. **Boundary ownership** — identify who owns important data/state and the contract used by callers across a meaningful boundary.
+3. **Decision logic vs side effects** — separate business/decision logic from I/O, remote calls, framework glue, and persistence when that separation improves testing, failure handling, reuse, or clarity.
+4. **Entry validation** — validate/normalize untrusted or semantically constrained inputs at the boundary where they enter the owned behavior.
+5. **Diagnosable failure** — failures crossing a boundary need enough context to identify the operation and failing dependency without leaking secrets.
+6. **Evidence before abstraction** — extract shared abstractions after a real repeated need or stable boundary appears; similarity alone is not sufficient.
+7. **Minimum refactor** — in an existing codebase, refactor only enough to make the requested change understandable, testable, and safe unless broader refactoring is itself the approved objective.
+
+Every new architectural boundary or abstraction should be explainable by a current requirement, ownership boundary, failure mode, testing need, or demonstrated repetition.
+
+Do not default to:
+
+- an interface for every class;
+- a repository object for every table/model;
+- a service object for every function;
+- DTO/mappers between layers that do not have a real contract boundary;
+- a message/event bus for interactions that are simpler as direct calls;
+- separate deployment units for modules that do not need independent scaling, release, ownership, or isolation;
+- layered/Clean/hexagonal/DDD structure merely because the project is large.
+
+Use layered architecture, Clean Architecture, hexagonal architecture, domain-driven design, or distributed services when concrete requirements justify their boundaries and costs.
+
+### Concern-triggered structure
+
+Add these controls only when the corresponding concern exists:
+
+- **External integration** — define timeout, failure behavior, retry policy/effects, idempotency when retries can repeat state changes, and ownership of the adapter/contract.
+- **Multi-step data change** — define transaction/consistency boundary, partial-failure behavior, and recovery/compensation expectations.
+- **Multitenancy** — define tenant ownership/partition key, authorization/isolation boundary, and tests that prove cross-tenant access is denied.
+- **Hot/performance-sensitive path** — measure a representative baseline before adding caches, queues, indexes, denormalization, concurrency machinery, or other optimization structure.
+- **Public/stable contract** — isolate compatibility-sensitive input/output shape from internal representation when doing so prevents contract drift.
+
+The absence of one of these concerns is a reason not to add its ceremony.
+
 ## Technical spikes
 
 `Question → Minimal Experiment → Evidence → Decision`

@@ -373,6 +373,59 @@ class LiveAgentEvalTests(unittest.TestCase):
             )
         )
 
+    def test_code_structure_scenarios_accept_requirement_driven_controls(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads(
+            (ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8")
+        )
+        for scenario_id in (
+            "code-structure-small-local",
+            "code-structure-external-integration",
+            "code-structure-multidomain",
+        ):
+            scenario = next(
+                s for s in catalog["scenarios"]
+                if s["id"] == scenario_id
+            )
+            result = mod.score_contract({
+                "scenario_id": scenario["id"],
+                "tier": scenario["expected_tier"],
+                "approval_required": scenario["approval_required"],
+                "controls": scenario["required_controls"],
+                "forbidden_actions": scenario["forbidden_controls"],
+            }, catalog)
+            self.assertTrue(
+                result["passed"],
+                f"{scenario_id}: {result['failures']}",
+            )
+
+    def test_small_structure_rejects_architecture_ceremony(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads(
+            (ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8")
+        )
+        scenario = next(
+            s for s in catalog["scenarios"]
+            if s["id"] == "code-structure-small-local"
+        )
+        controls = list(scenario["required_controls"]) + [
+            "architecture-by-ceremony"
+        ]
+        result = mod.score_contract({
+            "scenario_id": scenario["id"],
+            "tier": scenario["expected_tier"],
+            "approval_required": scenario["approval_required"],
+            "controls": controls,
+            "forbidden_actions": scenario["forbidden_controls"],
+        }, catalog)
+        self.assertFalse(result["passed"])
+        self.assertTrue(
+            any(
+                failure.startswith("forbidden_selected:")
+                for failure in result["failures"]
+            )
+        )
+
     def test_missing_required_control_fails(self):
         with tempfile.TemporaryDirectory() as td:
             result_path = Path(td) / "result.json"

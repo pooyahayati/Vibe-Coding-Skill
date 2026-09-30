@@ -24,6 +24,10 @@
 - Added `wordpress_artifact.py` to build deterministic single-root plugin ZIPs, verify embedded slug/version and SHA-256, perform safe install-shape smoke checks, and drive WP-CLI install/upgrade/deactivate/reactivate checks against exact artifacts.
 - Added guarded uninstall execution for disposable environments and explicit project-specific data-retention verification; deactivation is never treated as uninstall.
 - Added a real WordPress CI contract that builds two fixture releases, installs the first exact ZIP, upgrades to the second exact ZIP, and verifies activation/version behavior in a disposable WordPress runtime.
+- Added observable code-structure invariants for clear responsibility, data/boundary ownership, entry validation, diagnosable failures, useful separation of decision logic from side effects, evidence-before-abstraction, and minimum safe refactoring in existing codebases.
+- Made advanced structure concern-triggered: external integrations require timeout/failure/retry effects, multi-step data changes require transaction/consistency boundaries, multitenancy requires ownership/isolation, and performance structure requires measurement before optimization.
+- Explicitly rejected interface-per-class, repository-per-table, service-per-function, DTO/layer ceremony, message/event buses, microservices, and Clean/DDD/layered architecture when no current requirement justifies them.
+- Added mandatory behavior-contract eval coverage for small local structure, external integration structure, and multidomain module boundaries, including anti-overengineering regressions.
 - Added proportional Plugin Check guidance, conditional HPOS/Cart-Checkout Blocks checks, and an explicit Composer/Packagist fallback because the bundled dependency guard does not claim Composer coverage.
 
 ## 0.10.2 — Latest-compatible-stable toolchain runtime binding

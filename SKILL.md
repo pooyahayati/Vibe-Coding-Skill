@@ -125,6 +125,8 @@ Execution loop:
 
 `Objective → Ready Check → Context/Impact → Plan if required → Implement → Focused Tests → Review → Integrate → Update State → Done`
 
+Keep code structure requirement-driven: clear responsibilities and ownership, explicit meaningful boundary contracts, entry validation, diagnosable failures, and abstractions only after a real shared need. Do not manufacture interfaces, repositories, services, message buses, or architectural layers by default.
+
 Choose tests from changed behavior, important failure modes, and integration boundaries. Do not select tests by file count, LOC, or a fixed coverage quota.
 
 A bug fix should add a regression scenario when it exposes a meaningful uncovered failure mode. Auth/persistence/integration/payment/migration work requires the relevant denial, integrity, failure, idempotency, or recovery cases. A visual/text correction may need no new automated test but still needs a focused check.

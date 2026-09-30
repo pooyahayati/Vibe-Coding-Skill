@@ -117,6 +117,16 @@ Evidence used for completion should link to the acceptance criterion it proves.
 
 For meaningful changes, review requirement fit, correctness, unintended scope, architecture fit, error handling, tests, security, maintainability, and operational impact.
 
+For code-structure review, check only observable properties relevant to the change:
+
+- responsibilities are understandable;
+- new boundaries/abstractions map to a real requirement, ownership boundary, failure mode, testing need, or established repetition;
+- important data/state ownership and cross-boundary contracts are explicit;
+- entry inputs are validated at the owning boundary;
+- boundary failures are diagnosable without secret leakage;
+- concern-specific controls (timeouts/retries, transactions, tenant isolation, performance structure) exist only when that concern is present;
+- no unused interface/repository/service/layer/message-bus/deployment abstraction was added for ceremony.
+
 For Tier 2/3 work, prefer an independent reviewer/agent when available.
 
 ## Change budget
