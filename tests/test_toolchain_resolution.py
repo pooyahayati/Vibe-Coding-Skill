@@ -72,3 +72,30 @@ def test_resolver_rejects_broken_fallback(monkeypatch):
         assert "last-known-good" in str(exc)
     else:
         raise AssertionError("resolver must fail when both candidate and fallback are incompatible")
+
+
+def test_runtime_command_uses_exact_graphify_version(monkeypatch):
+    import scripts.toolchain_runtime as runtime
+
+    monkeypatch.setattr(runtime.shutil, "which", lambda name: None if name == "graphify" else "/usr/bin/uvx")
+    cmd = runtime.graphify_command("1.2.3", ["--version"])
+    assert cmd[:4] == ["uvx", "--from", "graphifyy==1.2.3", "graphify"]
+
+
+def test_runtime_command_rejects_unverified_installed_graphify(monkeypatch):
+    import scripts.toolchain_runtime as runtime
+
+    monkeypatch.setattr(runtime.shutil, "which", lambda name: "/usr/bin/graphify" if name == "graphify" else None)
+
+    class Result:
+        returncode = 0
+        stdout = "Graphify 9.9.9"
+        stderr = ""
+
+    monkeypatch.setattr(runtime.subprocess, "run", lambda *args, **kwargs: Result())
+    try:
+        runtime.graphify_command("1.2.3", ["--version"])
+    except RuntimeError as exc:
+        assert "uvx runtime" in str(exc)
+    else:
+        raise AssertionError("runtime must not silently use a mismatched installed Graphify")
