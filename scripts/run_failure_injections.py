@@ -117,21 +117,36 @@ def main() -> int:
     })
 
     no_evidence = completion.evaluate({
+        "schema_version": 2,
         "status": "Done",
         "risk_tier": 0,
-        "acceptance_criteria": [{"id": "AC-1", "met": True}],
+        "acceptance_criteria": [{
+            "id": "AC-1",
+            "description": "Requested behavior is verified.",
+            "required": True,
+            "met": True,
+            "evidence_ids": ["E-1"],
+        }],
         "evidence": [],
         "blockers": [],
     })
     checks.append({"id": "done-without-evidence", "passed": no_evidence["gate"] == "BLOCK", "detail": no_evidence})
 
     weak_critical_evidence = completion.evaluate({
+        "schema_version": 2,
         "status": "Done",
         "risk_tier": 3,
-        "acceptance_criteria": [{"id": "AC-1", "met": True}],
+        "commit": "critical-commit",
+        "acceptance_criteria": [{
+            "id": "AC-1",
+            "description": "Critical behavior is verified.",
+            "required": True,
+            "met": True,
+            "evidence_ids": ["E-1", "E-2"],
+        }],
         "evidence": [
-            {"kind": "test", "result": "pass"},
-            {"kind": "review", "result": "pass"},
+            {"id": "E-1", "kind": "test", "result": "pass", "required": True},
+            {"id": "E-2", "kind": "review", "result": "pass", "required": True},
         ],
         "blockers": [],
     })
@@ -140,6 +155,43 @@ def main() -> int:
         "passed": weak_critical_evidence["gate"] == "BLOCK"
         and weak_critical_evidence["qualified_evidence_count"] == 0,
         "detail": weak_critical_evidence,
+    })
+
+    failed_required_check = completion.evaluate({
+        "schema_version": 2,
+        "status": "Done",
+        "risk_tier": 0,
+        "acceptance_criteria": [{
+            "id": "AC-1",
+            "description": "The requested behavior is verified.",
+            "required": True,
+            "met": True,
+            "evidence_ids": ["E-1"],
+        }],
+        "evidence": [
+            {
+                "id": "E-1",
+                "kind": "rendered-check",
+                "result": "pass",
+                "required": True,
+            },
+            {
+                "id": "E-2",
+                "kind": "integration",
+                "result": "fail",
+                "required": True,
+            },
+        ],
+        "blockers": [],
+    })
+    checks.append({
+        "id": "done-with-failed-required-check",
+        "passed": failed_required_check["gate"] == "BLOCK"
+        and any(
+            "required evidence E-2 did not pass" in failure
+            for failure in failed_required_check["failures"]
+        ),
+        "detail": failed_required_check,
     })
 
     with tempfile.TemporaryDirectory(prefix="vibe-stale-") as td, tempfile.TemporaryDirectory(prefix="vibe-bin-") as bd, tempfile.TemporaryDirectory(prefix="vibe-home-") as hd:

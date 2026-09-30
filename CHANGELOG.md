@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — Trustworthy controls remediation
+
+- Added structured risk facts for operation, environment, data sensitivity, and change boundary, with supplemental English/Persian text signals and safer destructive-operation matching.
+- Centralized tier policy generation so router escalation rebuilds the final tier, approval requirement, reasons, and required controls from one source of truth.
+- Upgraded completion reports to schema v2 with explicit criterion IDs/descriptions/required status/evidence links and required evidence that blocks completion when it fails.
+- Converted the toolchain resolver tests to discoverable `unittest` cases and added regressions for package imports, timeout fallback, and portable Graphify version lookup.
+- Made Graphify compatibility version detection work from the portable Skill without a root `VERSION` file.
+- Made toolchain compatibility timeouts structured failures so the resolver can attempt the verified last-known-good fallback, and switched child execution to the active Python interpreter.
+
 ## 0.10.2 — Latest-compatible-stable toolchain runtime binding
 
 - Replaced normal operating-version pins for Graphify and Trivy with latest-compatible-stable resolution.

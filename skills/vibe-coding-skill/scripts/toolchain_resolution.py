@@ -6,12 +6,14 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config" / "toolchain.json"
 SUPPORTED = {"graphify": "scripts/graphify_compat.py", "trivy": "scripts/trivy_compat.py"}
+CONTRACT_TIMEOUT_SECONDS = 900
 
 
 def load_config() -> dict[str, Any]:
@@ -32,14 +34,43 @@ def validate_config(config: dict[str, Any], tool: str) -> dict[str, Any]:
 
 
 def contract(tool: str, version: str | None = None) -> dict[str, Any]:
+    if tool not in SUPPORTED:
+        raise ValueError(f"unsupported managed tool: {tool}")
     script = ROOT / SUPPORTED[tool]
-    cmd = ["python", str(script)]
+    cmd = [sys.executable, str(script)]
     if version:
         cmd += ["--version", version]
     else:
         cmd += ["--latest"]
     cmd += ["--json"]
-    p = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True, timeout=900)
+
+    try:
+        p = subprocess.run(
+            cmd,
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            timeout=CONTRACT_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "version": version,
+            "ok": False,
+            "command_ok": False,
+            "timed_out": True,
+            "error": (
+                f"{tool} compatibility command timed out after "
+                f"{CONTRACT_TIMEOUT_SECONDS}s"
+            ),
+        }
+    except OSError as exc:
+        return {
+            "version": version,
+            "ok": False,
+            "command_ok": False,
+            "error": f"{tool} compatibility command failed to start: {exc}",
+        }
+
     output = (p.stdout or "").strip()
     if not output:
         return {

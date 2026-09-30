@@ -10,7 +10,10 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-import toolchain_resolution
+try:
+    from . import toolchain_resolution
+except ImportError:  # direct script execution from the portable package
+    import toolchain_resolution
 
 ROOT = Path(__file__).resolve().parents[1]
 

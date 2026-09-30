@@ -2,15 +2,30 @@
 
 ## Risk classifier
 
-The bundled classifier provides a conservative, deterministic workflow floor.
+The bundled classifier provides a deterministic workflow floor. It does not replace engineering judgment.
 
-Use:
+For ordinary tasks:
 
 ```bash
 python scripts/risk_classifier.py "Change authentication from sessions to JWTs" --json
 ```
 
-It must not replace engineering judgment. Context may raise a tier; automated classification should not silently lower an explicitly recognized risk.
+For ambiguous, multilingual, or sensitive work, provide structured facts when known:
+
+```bash
+python scripts/risk_classifier.py "Delete customer records" \
+  --operation delete-all \
+  --environment production \
+  --data-sensitivity personal \
+  --change-boundary system \
+  --json
+```
+
+Supported structured dimensions are operation, environment, data sensitivity, and change boundary. The agent should derive these facts from the request and relevant project evidence rather than asking the user for implementation details that can be inferred.
+
+Structured facts are authoritative inputs to the workflow floor. Text/keyword detection is supplemental and supports English plus selected Persian risk phrases. Unknown or unresolved facts must be surfaced as uncertainty; absence of a keyword is not evidence that a sensitive operation is low risk.
+
+Context routing may raise the tier. Whenever it does, the final tier, approval requirement, reasons, and required controls are rebuilt from the same risk-policy source of truth.
 
 ## Dependency adapters
 

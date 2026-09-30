@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -15,8 +16,23 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config" / "toolchain.json"
 
 
+def skill_version() -> str:
+    version_file = ROOT / "VERSION"
+    if version_file.exists():
+        return version_file.read_text(encoding="utf-8").strip()
+    skill_file = ROOT / "SKILL.md"
+    if skill_file.exists():
+        match = re.search(
+            r'(?m)^  version:\s*"([^"]+)"\s*$',
+            skill_file.read_text(encoding="utf-8"),
+        )
+        if match:
+            return match.group(1)
+    return "portable"
+
+
 def latest_pypi_version() -> str:
-    version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    version = skill_version()
     req = urllib.request.Request(
         "https://pypi.org/pypi/graphifyy/json",
         headers={"User-Agent": f"Vibe-Coding-Skill/{version}"},
@@ -58,12 +74,20 @@ def contract_test(version: str) -> dict[str, object]:
         candidates = [root / "graphify-out" / "graph.json", root / "graph.json"]
         graph_path = next((p for p in candidates if p.exists()), None)
         if graph_path is None:
-            checks.append({"command": "graph output", "ok": False, "output": "graph.json not found"})
+            checks.append({
+                "command": "graph output",
+                "ok": False,
+                "output": "graph.json not found",
+            })
             return {"version": version, "ok": False, "checks": checks}
 
         data = json.loads(graph_path.read_text(encoding="utf-8"))
         schema_ok = isinstance(data, (dict, list))
-        checks.append({"command": "graph schema smoke check", "ok": schema_ok, "output": str(graph_path)})
+        checks.append({
+            "command": "graph schema smoke check",
+            "ok": schema_ok,
+            "output": str(graph_path),
+        })
         if not schema_ok:
             return {"version": version, "ok": False, "checks": checks}
 
@@ -74,7 +98,11 @@ def contract_test(version: str) -> dict[str, object]:
             if isinstance(node, dict) and (node.get("label") or node.get("id"))
         ]
         if len(labels) < 2:
-            checks.append({"command": "graph node contract", "ok": False, "output": "expected at least two labeled nodes"})
+            checks.append({
+                "command": "graph node contract",
+                "ok": False,
+                "output": "expected at least two labeled nodes",
+            })
             return {"version": version, "ok": False, "checks": checks}
 
         graph_arg = str(graph_path.resolve())
@@ -120,7 +148,6 @@ def main() -> int:
     else:
         print(f"Graphify {version}: {'PASS' if result['ok'] else 'FAIL'}")
     return 0 if result["ok"] else 1
-
 
 
 if __name__ == "__main__":
