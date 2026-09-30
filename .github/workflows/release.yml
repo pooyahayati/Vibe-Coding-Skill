@@ -31,6 +31,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.workflow_run.head_sha }}
+          TRIGGER_NAME: ${{ github.event.workflow_run.name }}
+          TRIGGER_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         shell: bash
         run: |
           VERSION=$(tr -d '[:space:]' < VERSION)
@@ -87,6 +90,23 @@ jobs:
                       > int(current.get("run_id") or 0)
                   ):
                       latest[name] = item
+
+          trigger_name = os.environ.get("TRIGGER_NAME", "")
+          trigger_conclusion = os.environ.get("TRIGGER_CONCLUSION", "")
+          trigger_run_id = int(os.environ.get("TRIGGER_RUN_ID") or 0)
+          if trigger_name in wanted and trigger_conclusion:
+              current = latest.get(trigger_name)
+              trigger_item = {
+                  "name": trigger_name,
+                  "conclusion": trigger_conclusion,
+                  "commit": sha,
+                  "run_id": trigger_run_id,
+              }
+              if (
+                  current is None
+                  or trigger_run_id >= int(current.get("run_id") or 0)
+              ):
+                  latest[trigger_name] = trigger_item
 
           checks = list(latest.values())
           report = {
