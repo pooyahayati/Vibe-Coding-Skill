@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+REPORT_SCHEMA_VERSION = 2
 PASS_RESULTS = {"pass", "passed", "success", "ok"}
 
 PROVENANCE_FIELDS_BY_TIER = {
@@ -61,6 +62,7 @@ def passing_evidence(evidence: list[Any]) -> list[dict[str, Any]]:
         item
         for item in evidence
         if isinstance(item, dict)
+        and str(item.get("id") or "").strip()
         and str(item.get("kind") or "").strip()
         and str(item.get("result") or "").strip().lower() in PASS_RESULTS
     ]
@@ -100,26 +102,103 @@ def provenance_issues(
     return issues
 
 
-def acceptance_criteria_failures(criteria: Any) -> list[str]:
+def validate_evidence_shape(evidence: Any) -> tuple[list[str], list[str]]:
+    if not isinstance(evidence, list):
+        return ["evidence must be an array"], []
+    failures: list[str] = []
+    warnings: list[str] = []
+    seen: set[str] = set()
+    for index, item in enumerate(evidence):
+        if not isinstance(item, dict):
+            failures.append(f"evidence item {index} must be an object")
+            continue
+        evidence_id = str(item.get("id") or "").strip()
+        if not evidence_id:
+            failures.append(f"evidence item {index} requires id")
+        elif evidence_id in seen:
+            failures.append(f"duplicate evidence id: {evidence_id}")
+        else:
+            seen.add(evidence_id)
+        if not str(item.get("kind") or "").strip():
+            failures.append(f"evidence item {index} requires kind")
+        if not str(item.get("result") or "").strip():
+            failures.append(f"evidence item {index} requires result")
+        if not isinstance(item.get("required"), bool):
+            failures.append(f"evidence item {index} requires boolean required")
+            continue
+
+        passed = str(item.get("result") or "").strip().lower() in PASS_RESULTS
+        if item["required"] and not passed:
+            failures.append(
+                f"required evidence {evidence_id or index} did not pass"
+            )
+        elif not item["required"] and not passed:
+            justification = str(item.get("justification") or "").strip()
+            if not justification:
+                failures.append(
+                    f"optional failed evidence {evidence_id or index} requires justification"
+                )
+            else:
+                warnings.append(
+                    f"optional evidence {evidence_id or index} did not pass: {justification}"
+                )
+    return failures, warnings
+
+
+def acceptance_criteria_failures(
+    criteria: Any,
+    evidence_ids: set[str],
+) -> list[str]:
     if not isinstance(criteria, list):
         return ["acceptance_criteria must be an array"]
     if not criteria:
         return ["Done requires explicit acceptance criteria"]
 
     failures: list[str] = []
+    seen: set[str] = set()
     for index, item in enumerate(criteria):
         if not isinstance(item, dict):
-            failures.append(
-                f"acceptance criterion {index} must be an object"
-            )
+            failures.append(f"acceptance criterion {index} must be an object")
             continue
+
+        criterion_id = str(item.get("id") or "").strip()
+        description = str(item.get("description") or "").strip()
+        if not criterion_id:
+            failures.append(f"acceptance criterion {index} requires id")
+        elif criterion_id in seen:
+            failures.append(f"duplicate acceptance criterion id: {criterion_id}")
+        else:
+            seen.add(criterion_id)
+        if not description:
+            failures.append(
+                f"acceptance criterion {criterion_id or index} requires description"
+            )
+        if not isinstance(item.get("required"), bool):
+            failures.append(
+                f"acceptance criterion {criterion_id or index} requires boolean required"
+            )
         if not isinstance(item.get("met"), bool):
             failures.append(
-                f"acceptance criterion {index} requires boolean met"
+                f"acceptance criterion {criterion_id or index} requires boolean met"
             )
-        elif item["met"] is not True:
+        elif item.get("required") is True and item["met"] is not True:
             failures.append(
-                f"acceptance criterion {index} is not met"
+                f"required acceptance criterion {criterion_id or index} is not met"
+            )
+
+        linked = item.get("evidence_ids")
+        if not isinstance(linked, list) or not linked or not all(
+            isinstance(value, str) and value.strip() for value in linked
+        ):
+            failures.append(
+                f"acceptance criterion {criterion_id or index} requires evidence_ids"
+            )
+            continue
+        missing = sorted(set(linked) - evidence_ids)
+        if missing:
+            failures.append(
+                f"acceptance criterion {criterion_id or index} references unknown evidence: "
+                + ", ".join(missing)
             )
     return failures
 
@@ -131,6 +210,7 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
     raw_blockers = report.get("blockers")
     risk_tier = report.get("risk_tier")
     target_commit = str(report.get("commit") or "").strip()
+    schema_version = report.get("schema_version")
 
     criteria = raw_criteria if isinstance(raw_criteria, list) else []
     evidence = raw_evidence if isinstance(raw_evidence, list) else []
@@ -142,10 +222,26 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
     evidence_provenance_issues: list[dict[str, Any]] = []
 
     if status == "done":
-        failures.extend(acceptance_criteria_failures(raw_criteria))
+        if schema_version != REPORT_SCHEMA_VERSION:
+            failures.append(
+                f"Done reports require schema_version {REPORT_SCHEMA_VERSION}"
+            )
 
-        if not isinstance(raw_evidence, list):
-            failures.append("evidence must be an array")
+        evidence_shape_failures, evidence_shape_warnings = validate_evidence_shape(
+            raw_evidence
+        )
+        failures.extend(evidence_shape_failures)
+        warnings.extend(evidence_shape_warnings)
+
+        evidence_by_id = {
+            str(item.get("id")).strip(): item
+            for item in evidence
+            if isinstance(item, dict) and str(item.get("id") or "").strip()
+        }
+        failures.extend(
+            acceptance_criteria_failures(raw_criteria, set(evidence_by_id))
+        )
+
         if raw_blockers is not None and not isinstance(raw_blockers, list):
             failures.append("blockers must be an array")
 
@@ -153,27 +249,39 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
             failures.append("Done requires risk_tier 0, 1, 2, or 3")
         else:
             if risk_tier >= 2 and not target_commit:
-                failures.append(
-                    f"Tier {risk_tier} Done requires target commit"
-                )
+                failures.append(f"Tier {risk_tier} Done requires target commit")
 
             passed = passing_evidence(evidence)
+            qualified_ids: set[str] = set()
             for index, item in enumerate(passed):
-                issues = provenance_issues(
-                    item,
-                    risk_tier,
-                    target_commit or None,
-                )
+                issues = provenance_issues(item, risk_tier, target_commit or None)
                 if issues:
                     evidence_provenance_issues.append(
                         {
                             "index": index,
+                            "id": item.get("id"),
                             "kind": item.get("kind"),
                             "issues": issues,
                         }
                     )
                 else:
                     qualified_evidence.append(item)
+                    qualified_ids.add(str(item.get("id") or "").strip())
+
+            for criterion in criteria:
+                if not isinstance(criterion, dict):
+                    continue
+                if criterion.get("required") is not True:
+                    continue
+                criterion_id = str(criterion.get("id") or "").strip()
+                linked = criterion.get("evidence_ids")
+                if not isinstance(linked, list):
+                    continue
+                if not any(value in qualified_ids for value in linked):
+                    failures.append(
+                        f"required acceptance criterion {criterion_id or '?'} "
+                        "has no linked passing evidence with required provenance"
+                    )
 
             minimum = MIN_PASSING_EVIDENCE_BY_TIER[risk_tier]
             if len(qualified_evidence) < minimum:
@@ -229,6 +337,7 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
     )
 
     return {
+        "schema_version": schema_version,
         "gate": "BLOCK" if failures else ("WARN" if warnings else "PASS"),
         "status": report.get("status"),
         "risk_tier": risk_tier,
