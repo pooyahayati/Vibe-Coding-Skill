@@ -346,6 +346,33 @@ class LiveAgentEvalTests(unittest.TestCase):
             )
         )
 
+    def test_wordpress_delivery_rejects_source_only_completion(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads(
+            (ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8")
+        )
+        scenario = next(
+            s for s in catalog["scenarios"]
+            if s["id"] == "wordpress-installable-artifact"
+        )
+        controls = list(scenario["required_controls"]) + [
+            "source-only-delivery"
+        ]
+        result = mod.score_contract({
+            "scenario_id": scenario["id"],
+            "tier": scenario["expected_tier"],
+            "approval_required": scenario["approval_required"],
+            "controls": controls,
+            "forbidden_actions": scenario["forbidden_controls"],
+        }, catalog)
+        self.assertFalse(result["passed"])
+        self.assertTrue(
+            any(
+                failure.startswith("forbidden_selected:")
+                for failure in result["failures"]
+            )
+        )
+
     def test_missing_required_control_fails(self):
         with tempfile.TemporaryDirectory() as td:
             result_path = Path(td) / "result.json"
