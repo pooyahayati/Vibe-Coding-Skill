@@ -124,6 +124,11 @@ def graphify_command(version: str, args: list[str]) -> list[str]:
 
 def trivy_command(version: str, args: list[str]) -> list[str]:
     """Build a generic Trivy command for non-host-filesystem targets."""
+    if args and args[0] == "fs":
+        raise ValueError(
+            "host filesystem scans must use trivy_fs_command() so the target "
+            "is explicitly mapped into the container runtime"
+        )
     executable = matching_native("trivy", version)
     if executable:
         return [executable, *args]
