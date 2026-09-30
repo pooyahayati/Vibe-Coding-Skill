@@ -57,7 +57,7 @@ Example:
 ```json
 {
   "provider": "graphify",
-  "provider_version": "0.9.64",
+  "provider_version": "<installed-or-resolved-version>",
   "source_commit": "abc123",
   "generated_at": "2026-09-19T00:00:00Z",
   "schema_version": 1
@@ -70,15 +70,15 @@ Graphify-generated `graphify-out/` is also local-only. Prefer an external output
 
 ## Graphify update policy
 
-Do not blindly install the newest release in production workflows.
+Do not blindly install an untested release.
 
 Use:
 
-`Latest Stable Available → Compatibility Contract Tests → Approved Latest → Project`
+`Latest Stable Published → Compatibility Contract Tests → Use Exact Resolved Version`
 
-The repository's `config/toolchain.json` tracks the approved version.
+If the latest stable candidate fails the contract, use the recorded `last_known_good` fallback and surface the degraded resolution result. The exact resolved version is the pin for the current execution; public workflow guidance does not require a fixed Graphify version.
 
-The scheduled compatibility workflow tests newly released Graphify versions and proposes a pull request. Merging the PR makes the new version approved.
+Read `references/toolchain-version-resolution.md` for the shared external-tool policy.
 
 ## Contract expectations
 

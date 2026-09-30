@@ -62,9 +62,9 @@ def main() -> int:
             warnings.append("GitHub remote detected but gh authentication is unavailable")
 
     graph = graph_provider.status(root)
-    approved = cfg.get("graphify", {}).get("approved")
+    resolution = cfg.get("graphify", {}).get("resolution")
     installed = first_version(str(graph.get("provider_version") or ""))
-    graph["approved_version"] = approved
+    graph["resolution"] = resolution
     checks["graph_provider"] = graph
     checks["graph_state"] = {
         "present": graph.get("graph_exists"),
@@ -73,8 +73,8 @@ def main() -> int:
         "source_commit": graph.get("source_commit"),
         "graph_path": graph.get("graph_path"),
     }
-    if installed and approved and installed != approved:
-        warnings.append(f"Graphify {installed} differs from approved {approved}")
+    if installed:
+        checks["graph_provider"]["runtime_version_detected"] = installed
     if ns.tier >= 2:
         if not graph.get("available"):
             warnings.append("Graphify unavailable for a Tier 2+ change; use repository/source fallback impact analysis")

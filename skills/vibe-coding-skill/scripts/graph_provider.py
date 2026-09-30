@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import local_workspace
+import toolchain_runtime
 
 PROVIDER = "graphify"
 PROVIDER_OUTPUT = "graphify-out"
@@ -36,7 +37,9 @@ def head(root: Path) -> str | None:
     return out.strip() if rc == 0 else None
 
 
-def provider_version(root: Path) -> str | None:
+def provider_version(root: Path, version: str | None = None) -> str | None:
+    if version:
+        return version
     executable = shutil.which(PROVIDER)
     if not executable:
         return None
@@ -120,10 +123,12 @@ def status(root: Path) -> dict[str, Any]:
         and state_head == current_head
         and state_fingerprint == fingerprint
     )
+    selected_version = state.get("provider_version") if state else None
     return {
         "provider": PROVIDER,
-        "available": bool(shutil.which(PROVIDER)),
-        "provider_version": provider_version(root),
+        "available": bool(shutil.which(PROVIDER) or shutil.which("uvx")),
+        "provider_version": provider_version(root, selected_version),
+        "resolved_version": selected_version,
         "graph_exists": graph_path.exists(),
         "graph_path": str(graph_path),
         "state_path": str(graph_state_path(root, create=False)),
@@ -193,9 +198,8 @@ def persist_provider_output(root: Path, shadow: Path) -> Path:
 def refresh(root: Path, mode: str = "auto", keep_shadow: bool = False) -> dict[str, Any]:
     root = root.resolve()
     local_workspace.initialize(root)
-    executable = shutil.which(PROVIDER)
-    if not executable:
-        raise RuntimeError("Graphify is not installed")
+    resolved = toolchain_runtime.resolve(PROVIDER)
+    selected_version = str(resolved["selected_version"])
     previous = graph_root(root, create=False)
     if mode == "auto":
         mode = "incremental" if previous.exists() else "full"
@@ -204,10 +208,10 @@ def refresh(root: Path, mode: str = "auto", keep_shadow: bool = False) -> dict[s
     shadow = prepare_shadow(root, include_previous_graph=(mode == "incremental"))
     if mode == "incremental" and not (shadow / PROVIDER_OUTPUT / "graph.json").exists():
         mode = "full"
-    command = (
-        [executable, "update", "."]
-        if mode == "incremental"
-        else [executable, "extract", ".", "--code-only", "--no-viz"]
+    command = toolchain_runtime.command(
+        PROVIDER,
+        selected_version,
+        ["update", "."] if mode == "incremental" else ["extract", ".", "--code-only", "--no-viz"],
     )
     rc, out = run(command, shadow)
     if rc != 0:
@@ -221,7 +225,8 @@ def refresh(root: Path, mode: str = "auto", keep_shadow: bool = False) -> dict[s
     state = {
         "schema_version": 2,
         "provider": PROVIDER,
-        "provider_version": provider_version(root),
+        "provider_version": selected_version,
+        "resolution_source": resolved.get("source"),
         "source_commit": current_head,
         "working_tree_fingerprint": fingerprint,
         "source_dirty": bool(dirty_out.strip()) if dirty_rc == 0 else None,
@@ -256,10 +261,11 @@ def graph_command(
         raise RuntimeError("no local graph exists; run graph_provider.py refresh")
     if not current["fresh"] and not allow_stale:
         raise RuntimeError("local graph is stale; refresh it or pass --allow-stale")
-    executable = shutil.which(PROVIDER)
-    if not executable:
-        raise RuntimeError("Graphify is not installed")
-    cmd = [executable, operation, *values, "--graph", str(graph_json(root))]
+    state = load_state(root)
+    selected_version = str(state.get("provider_version")) if state and state.get("provider_version") else None
+    if not selected_version:
+        raise RuntimeError("graph runtime version is missing; refresh the project graph first")
+    cmd = toolchain_runtime.command(PROVIDER, selected_version, [operation, *values, "--graph", str(graph_json(root))])
     rc, out = run(cmd, root, timeout=180)
     if rc != 0:
         raise RuntimeError(f"Graphify {operation} failed: {out[-2000:]}")

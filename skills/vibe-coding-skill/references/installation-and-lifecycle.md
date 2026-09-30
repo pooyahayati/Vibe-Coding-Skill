@@ -95,3 +95,15 @@ User project state remains under `~/.vibe-coding/projects/` and is not coupled t
 Reinstalling or rolling back the skill must not delete user project local workspaces.
 
 Keep the Skill checkout outside product repositories. Global/user-level agent skill directories are preferred.
+
+## External tool version resolution
+
+Managed external tools such as Graphify and Trivy use a shared resolution policy:
+
+`Latest Stable Published → Compatibility Contract → Exact Runtime Resolution`
+
+Public instructions do not pin a normal operating version. At install or upgrade time, resolve the latest published stable release and run the tool-specific contract test. The exact version selected for that execution is treated as a runtime pin for reproducibility.
+
+If the latest candidate fails compatibility, use the recorded last-known-good fallback and surface that fallback in the evidence. Do not silently install an untested release.
+
+See `references/toolchain-version-resolution.md`.

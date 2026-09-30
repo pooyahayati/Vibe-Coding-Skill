@@ -39,7 +39,7 @@ The integration guard is read-only. It checks:
 
 - Git repository state;
 - GitHub remote and optional `gh` authentication;
-- Graphify availability/version against the approved toolchain version;
+- Graphify availability and the configured resolution policy;
 - graph-state freshness from the local Vibe Coding workspace;
 - Trivy availability.
 
@@ -59,7 +59,7 @@ When GitHub is detected and `gh` is authenticated, it may be used for issue/PR/r
 
 ## Graphify
 
-Use the approved Graphify version where reproducibility matters. If another version is installed, surface the difference rather than silently changing the user's environment.
+Use the latest published stable Graphify release only after its compatibility contract passes. The exact resolved version is pinned for the current execution; if the candidate fails, use `last_known_good` and surface the fallback.
 
 Do not refresh a graph simply to satisfy a check for Tier 0/1 work.
 

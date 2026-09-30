@@ -277,7 +277,7 @@ Update repository documents only when semantic project state changed. Read `refe
 
 Inspect or repair local state with `scripts/state_recovery.py`. Validate the installed skill offline with `scripts/install_check.py`. Before upgrading a Git-based skill install, record a last-known-good version with `scripts/skill_lifecycle.py record-good`; rollback is dry-run unless `--apply` is explicit.
 
-Read `references/recovery-and-resume.md` and `references/installation-and-lifecycle.md`.
+Read `references/recovery-and-resume.md`, `references/installation-and-lifecycle.md`, and `references/toolchain-version-resolution.md` when managing external tool versions.
 
 ## Context routing and execution planning
 

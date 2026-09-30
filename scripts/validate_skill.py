@@ -59,6 +59,7 @@ REQUIRED_SCRIPTS = [
     "state_recovery.py",
     "install_check.py",
     "skill_lifecycle.py",
+    "toolchain_runtime.py",
 ]
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
@@ -158,6 +159,28 @@ def main() -> int:
             fail(f"invalid benchmark contract JSON {path.relative_to(ROOT)}: {exc}")
         if not isinstance(value, dict):
             fail(f"benchmark contract must be a JSON object: {path.relative_to(ROOT)}")
+
+    toolchain_config = ROOT / "config" / "toolchain.json"
+    if not toolchain_config.exists():
+        fail("config/toolchain.json is missing")
+    try:
+        toolchain = json.loads(toolchain_config.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        fail(f"invalid toolchain JSON: {exc}")
+    if toolchain.get("schema_version") != 2:
+        fail("toolchain schema_version must be 2")
+    for tool_name in ("graphify", "trivy"):
+        entry = toolchain.get(tool_name)
+        if not isinstance(entry, dict):
+            fail(f"missing toolchain entry: {tool_name}")
+        if entry.get("channel") != "stable":
+            fail(f"{tool_name} toolchain channel must be stable")
+        if entry.get("resolution") != "latest-compatible-stable":
+            fail(f"{tool_name} toolchain resolution must be latest-compatible-stable")
+        if not entry.get("last_known_good"):
+            fail(f"{tool_name} toolchain last_known_good is missing")
+        if "approved" in entry or "latest_seen" in entry:
+            fail(f"{tool_name} toolchain must not use approved/latest_seen operating pins")
 
     routing_config = ROOT / "config" / "context-routing.json"
     if not routing_config.exists():
