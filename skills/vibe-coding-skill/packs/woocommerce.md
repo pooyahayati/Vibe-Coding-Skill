@@ -19,5 +19,7 @@ Extension ↔ WooCommerce public APIs; extension ↔ order/product storage; exte
 ## Required checks
 Relevant WooCommerce flow, public API use, compatibility surface touched by the change, and multi-plugin/theme regression where shared behavior is affected.
 
+For a release artifact, verify the affected WooCommerce compatibility surface against the exact packaged plugin; include HPOS or Cart/Checkout Blocks checks only when the feature actually intersects them.
+
 ## Avoid
 Direct assumptions about posts-based order storage, internal namespace APIs, bypassing CRUD for order mutations without a justified compatibility reason, and globally expensive hooks.
