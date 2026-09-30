@@ -1,4 +1,4 @@
-# Real Project Validation, Failure Injection, and Agent Benchmarking
+# Project Validation, Failure Injection, and Release Checks
 
 ## Purpose
 
@@ -121,107 +121,20 @@ Channels are evidence classes:
 
 - `beta`: requires a successful `Validate Skill` run for the target commit.
 - `rc`: requires the complete baseline on the target commit: `Validate Skill`, `Cross Platform Smoke`, `Real World Repository Validation`, `Agent Skills Spec Compatibility`, `Tool Contract Tests`, and `WordPress Artifact Contract`.
-- `stable`: requires the same baseline plus two independent real-Agent evidence classes on the exact target commit: a complete, fully conformant behavior aggregate and a complete Real Delivery aggregate for both `codex` and `claude-code`.
+- `stable`: requires the same complete baseline on the exact target commit.
 
-Stable behavior evidence must match the current Skill version and exact portable Skill tree, behavior eval catalog, and agent-output schema hashes. Stable delivery evidence must match the current Skill version/tree plus the delivery catalog/schema, contain the full control/treatment repetition matrix for both Agents, and contain no treatment regression. Each essential scenario must also meet the treatment success floor declared in the catalog before running the campaign. A neutral result is acceptable when both arms succeed; equal failure rates do not prove delivery readiness.
-
-Release checks use the latest result for each required workflow on the target commit. Stable qualification considers the latest `Real Agent Benchmark` and `Real Delivery Benchmark` runs rather than falling back to older successes. Completion of either benchmark re-triggers release evaluation. Missing, incomplete, stale, superseded-by-failure, identity-mismatched, non-conformant, or delivery-regressed evidence blocks readiness.
+For every channel, use the latest result for each required workflow. Missing, stale, failed, or different-commit checks block publication. Provider credentials, model versions, model comparison results, and real-agent benchmark aggregates are not release requirements. Credentialed automatic benchmark workflows have been removed.
 
 Repository branch protection is not part of this gate.
 
-## Agent benchmark
+## Deterministic delivery fixtures
 
-Real agent outputs are scored separately from deterministic policy tests.
+Maintainer-only fixtures under `evals/delivery/` test tiny changes, regressions, CSV output, monorepo locality, and installable WordPress artifacts without calling a model. They remain separate from the portable runtime. The WordPress grader executes behavior from the exact ZIP with a trusted PHP harness; real install/upgrade coverage is provided by `WordPress Artifact Contract` CI.
 
-The strict output schema is `evals/agent-output.schema.json`; human guidance is in `evals/AGENT_OUTPUT_SCHEMA.md`.
+## Release package
 
-Use `scripts/run_agent_benchmark.py` for blind Codex/Claude Code execution. The runner installs the Skill only inside a temporary benchmark Git repository, requests structured output from the real CLI, and records provenance/integrity metadata plus raw stdout/stderr outside the repository.
-
-Preflight:
-
-```bash
-python scripts/run_agent_benchmark.py preflight --agent codex --require-env-auth --json
-python scripts/run_agent_benchmark.py preflight --agent claude-code --require-env-auth --json
-```
-
-Complete evidence:
-
-```bash
-python scripts/benchmark_agent_outputs.py RESULTS_DIR \
-  --required-agent codex \
-  --required-agent claude-code \
-  --require-complete \
-  --json
-```
-
-A conformance rate is reported only when the expected scenario set is complete for that Agent.
-
-Benchmark completeness also requires a valid runner envelope: the envelope Agent must match its result directory, the envelope and contract scenario IDs must agree, and Skill version plus Skill-tree/catalog/schema identity hashes and Agent version must be present consistently. Raw contracts without that provenance cannot become complete benchmark evidence.
-
-An unexpected internal runner exception is recorded as failing raw evidence for that scenario and does not stop later selected scenarios from being attempted.
-
-Benchmark tier assessment distinguishes four outcomes: `preferred`, `conservative_escalation`, `underclassified`, and `overengineered`. Conservative escalation is allowed only when the hidden scenario policy explicitly defines a higher acceptable ceiling; it does not relax required controls, approval semantics, forbidden-action handling, or integrity checks. Aggregation reports the assessment counts so systematic over-engineering is visible instead of being merged into a generic tier mismatch.
-
-The manual GitHub Actions workflow `.github/workflows/agent-benchmark.yml` requires real provider credentials and uploads raw benchmark evidence as an Actions artifact. It is deliberately not an automatic PR workflow because it consumes provider usage.
-
-Do not commit benchmark output to the project repository.
-
-Do not publish or compare a Codex/Claude result unless that agent actually produced the stored raw contract under the stated Skill version. Missing runs are missing evidence, never success.
-
-## Real delivery benchmark
-
-The behavior benchmark above measures whether an Agent selects the expected risk/process contract. It intentionally does not prove that the Agent can implement a correct product change.
-
-The Real Delivery Benchmark is a separate evidence layer for implementation efficacy. Its contract lives in:
-
-- `evals/delivery/scenarios.json`;
-- `evals/delivery-result.schema.json`;
-- `scripts/run_delivery_benchmark.py`;
-- `scripts/benchmark_delivery_outputs.py`.
-
-The experimental unit is `Agent × scenario × arm × repetition`. Each scenario has two arms:
-
-- `control`: the Agent receives the same visible fixture/task without the Vibe Coding Skill;
-- `treatment`: the Agent receives the same visible fixture/task with the portable Skill installed.
-
-Compare the Skill against the same Agent, not one Agent against another. Delivery success is a hard correctness signal from required hidden-grader checks; duration, changed-file count, dependency-file changes, and provider usage/cost are observational metrics.
-
-The visible fixture and hidden grader are separate roots. Hidden graders are maintainer-only benchmark assets and MUST NOT be copied into the temporary Agent workspace or packaged inside the portable Skill. The runner records fixture/grader/catalog/schema/Skill hashes, baseline commit, final tree hash, diff hash, changed paths, and raw executor/grader output. Changed paths are compared with the immutable initial commit, including both sides of renames; an Agent's local commit cannot hide them. The diff hash represents canonical before/after path contents rather than Git's textual patch format. Missing runs are missing evidence, never success.
-
-These offline commands validate the framework with a fake executor and consume no provider credentials:
-
-```bash
-python scripts/run_delivery_benchmark.py validate --json
-python scripts/run_delivery_benchmark.py self-test --json
-```
-
-Five representative fixtures cover tiny local change, brownfield bug regression, contained feature, mixed-monorepo locality, and WordPress installable artifact. Graders execute against a snapshot copy so build artifacts cannot contaminate captured Agent changes. The WordPress grader executes a trusted PHP harness against files extracted from the exact ZIP, including registration, sanitization, and hostile-value output checks. PHP absence leaves those checks unverified/failed. This bounded fixture does not prove full WordPress installation, upgrade data preservation, or all platform behavior.
-
-Real Codex/Claude adapters use a credentialed GitHub Actions workflow. Codex places the global approval option before `exec` and uses `workspace-write`. Claude allows local shell checks only with an enabled, fail-closed sandbox; Web/MCP tools, unsandboxed commands, and arbitrary network destinations remain disabled. Restricted CLI parsing and isolation availability are preflighted without model execution. Native Windows is unsupported for Claude shell isolation; Linux requires working bubblewrap and socat. The adapter requires Claude CLI 2.1.260 or newer for this contract; parser and isolation checks remain decisive. Consult the official [CLI reference](https://code.claude.com/docs/en/cli-reference) and [sandboxing reference](https://code.claude.com/docs/en/sandboxing) when changing this contract.
-
-Configure `CODEX_BENCHMARK_CLI_VERSION`, `CLAUDE_BENCHMARK_CLI_VERSION`, `CODEX_BENCHMARK_MODEL`, and `CLAUDE_BENCHMARK_MODEL` repository variables explicitly. The workflow installs exact CLI versions and checks them against `--expected-version`; it does not install `@latest`. Each direct `run` also requires `--model`. Pin one model and CLI per Agent for the whole campaign. CLI/parser preflight is compatibility evidence, not a successful live run. Raw output is redacted against provider credential values, and writing such a value into the workspace blocks that run.
-
-Run `.github/workflows/real-delivery-benchmark.yml` only with real provider credentials. The workflow executes every catalog scenario in both control/treatment arms for the catalog repetition count, uploads per-Agent raw evidence, and requires a complete aggregate for `codex` and `claude-code`.
-
-Deterministic tests never qualify as real-Agent delivery evidence. Aggregation reports `framework_complete` separately from `evidence_complete` and `execution_class`; injected/fake executors cannot qualify for Stable. Envelopes must match schema types, recorded model/CLI identity, timestamps, SHA-256 formats, counts, trusted current fixture/grader hashes, and catalog-required check IDs. Delivery success is recomputed from executor, grader, required checks, and forbidden-path outcomes. JSON self-declarations are not authenticated provenance: release evidence must come from the trusted workflow/artifact source, not arbitrary uploaded JSON.
-
-Aggregate completed delivery runs with:
-
-```bash
-python scripts/benchmark_delivery_outputs.py RESULTS_DIR \
-  --catalog evals/delivery/scenarios.json \
-  --required-agent codex \
-  --required-agent claude-code \
-  --require-complete \
-  --json
-```
-
-The aggregate reports `improved`, `neutral`, `regressed`, or `incomplete` per Agent/scenario based on treatment-vs-control delivery success rate. Correctness is primary; efficiency metrics do not override failed required checks.
-
-The Stable gate requires complete exact-identity behavior and real-delivery evidence, no treatment regression, consistent counts/rates, and the catalog's `stable_readiness_profile`. The current five bounded essential scenarios require a treatment success rate of 1.0 at the declared repetitions for both Agents. This is a predefined correctness requirement for these deterministic fixtures, not a statistical claim about arbitrary software projects; change the profile only through reviewed catalog changes before a campaign.
-
-Both real benchmarks can be triggered on an exact `main` commit by changing `.github/benchmark-trigger`. This makes the evidence SHA identical to the candidate release SHA instead of relying on a manually dispatched run from a different revision.
+`scripts/build_release.py` builds the portable runtime, VERSION, and LICENSE into one installable ZIP, rejects unexpected/symlink paths, verifies the extracted package offline, and writes SHA-256 checksums. Source archives remain available separately on GitHub.
 
 ## Interpretation
 
-A deterministic validation PASS means the policy mechanisms behaved as specified. It does not prove that every coding agent will follow the skill or deliver a correct implementation. Live behavior-benchmark and real-delivery results are separate evidence classes.
+Passing software tests verifies the documented mechanisms and tested fixtures. It does not establish a model's coding quality or guarantee correct delivery for every project. Independent engineering judgment and task-specific evidence remain necessary.

@@ -43,6 +43,7 @@ REQUIRED_SCRIPTS = [
     "evaluate_agent_output.py",
     "live_dependency_evals.py",
     "sync_package.py",
+    "build_release.py",
     "completion_gate.py",
     "run_project_validations.py",
     "run_real_world_validations.py",
@@ -362,28 +363,6 @@ def main() -> int:
     agents_config = json.loads(benchmark_agents.read_text(encoding="utf-8"))
     if set((agents_config.get("agents") or {}).keys()) != {"codex", "claude-code"}:
         fail("config/agent-benchmarks.json must define codex and claude-code adapters")
-
-    workflow = ROOT / ".github" / "workflows" / "agent-benchmark.yml"
-    if not workflow.exists():
-        fail("missing .github/workflows/agent-benchmark.yml")
-
-    delivery_workflow = (
-        ROOT / ".github" / "workflows" / "real-delivery-benchmark.yml"
-    )
-    if not delivery_workflow.exists():
-        fail("missing .github/workflows/real-delivery-benchmark.yml")
-    delivery_workflow_text = delivery_workflow.read_text(encoding="utf-8")
-    for token in (
-        "workflow_dispatch:",
-        "run_delivery_benchmark.py",
-        "benchmark_delivery_outputs.py",
-        "vibe-real-delivery-benchmark-",
-    ):
-        if token not in delivery_workflow_text:
-            fail(
-                "real delivery benchmark workflow is missing expected token: "
-                + token
-            )
 
     real_world = ROOT / "validation" / "real-world-projects.json"
     if not real_world.exists():

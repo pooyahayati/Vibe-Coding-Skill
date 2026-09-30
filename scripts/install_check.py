@@ -42,8 +42,6 @@ RUNTIME_SCRIPTS = [
     "state_recovery.py",
     "skill_lifecycle.py",
     "evaluate_agent_output.py",
-    "benchmark_agent_outputs.py",
-    "run_agent_benchmark.py",
 ]
 
 REQUIRED_REFS = [
@@ -69,7 +67,6 @@ REQUIRED_REFS = [
 
 REQUIRED_RUNTIME_FILES = [
     "config/toolchain.json",
-    "config/agent-benchmarks.json",
     "config/context-routing.json",
     "evals/scenarios.json",
     "evals/agent-output.schema.json",
@@ -95,7 +92,6 @@ REQUIRED_RUNTIME_FILES = [
 
 JSON_RUNTIME_FILES = [
     "config/toolchain.json",
-    "config/agent-benchmarks.json",
     "config/context-routing.json",
     "evals/scenarios.json",
     "evals/agent-output.schema.json",
