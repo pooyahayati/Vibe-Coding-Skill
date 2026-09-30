@@ -38,5 +38,60 @@ jobs:
           - claude-code
     name: delivery (${{ matrix.agent }})
     runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      RESULTS_DIR: ${{ runner.temp }}/vibe-delivery-benchmark
     steps:
-      - run: echo "agent=${{ matrix.agent }}"
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+      - name: Install Codex CLI
+        if: ${{ matrix.agent == 'codex' }}
+        run: |
+          npm install -g @openai/codex@latest
+          codex --version
+      - name: Install Claude Code CLI
+        if: ${{ matrix.agent == 'claude-code' }}
+        run: |
+          npm install -g @anthropic-ai/claude-code@latest
+          claude --version
+      - name: Preflight real delivery adapter
+        run: |
+          python scripts/run_delivery_benchmark.py preflight \
+            --agent "${{ matrix.agent }}" \
+            --require-env-auth \
+            --json
+      - name: Run real delivery benchmark
+        shell: bash
+        run: |
+          args=(
+            run
+            --agent "${{ matrix.agent }}"
+            --scenario all
+            --arm all
+            --results-dir "$RESULTS_DIR"
+            --timeout 600
+            --grader-timeout 120
+            --max-turns 8
+            --require-env-auth
+            --json
+          )
+          if [ "${{ matrix.agent }}" = "claude-code" ]; then
+            args+=(--max-budget-usd 1.00)
+          fi
+          python scripts/run_delivery_benchmark.py "${args[@]}"
+      - name: Upload per-agent delivery evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vibe-delivery-agent-${{ matrix.agent }}-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ env.RESULTS_DIR }}
+          if-no-files-found: error
+          retention-days: 30
