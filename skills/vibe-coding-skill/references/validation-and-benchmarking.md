@@ -44,34 +44,70 @@ A new safety mechanism should normally receive at least one failure-injection ca
 
 ## Completion evidence gate
 
-A meaningful task reported as Done should provide an explicit risk tier, acceptance criteria, and passing evidence.
+A meaningful task reported as Done uses completion-report schema version 2. The report must explicitly connect acceptance criteria to the evidence that supports them.
 
 ```bash
 python scripts/completion_gate.py report.json --json
 ```
 
-The gate does not try to infer whether a particular test semantically proves the whole change. It enforces increasingly traceable evidence as risk rises:
+Each acceptance criterion must include:
 
-- Tier 0: at least one passing evidence item; provenance metadata is optional.
-- Tier 1: at least one passing item with `source` and `reference`.
-- Tier 2: the report must declare the target `commit`; at least two passing evidence kinds must each carry `source`, `reference`, and that exact same `commit`.
-- Tier 3: the Tier 2 revision binding remains mandatory and each counted item also needs a timezone-aware ISO-8601 `captured_at` timestamp.
+- a stable `id`;
+- a human-readable `description`;
+- boolean `required`;
+- boolean `met`;
+- one or more `evidence_ids`.
 
-Example Tier 2 evidence item:
+Each evidence item must include:
+
+- a stable `id`;
+- `kind`;
+- `result`;
+- boolean `required`;
+- risk-appropriate provenance when it is counted toward completion.
+
+A failed or not-run required evidence item blocks Done even when other checks pass. A failed optional item requires an explicit justification. Unrelated passing evidence does not satisfy a criterion unless that criterion links to it.
+
+Example Tier 1 report:
 
 ```json
 {
-  "kind": "test",
-  "result": "pass",
-  "provenance": {
-    "source": "ci",
-    "reference": "validate-skill/run-123",
-    "commit": "abc1234"
-  }
+  "schema_version": 2,
+  "status": "Done",
+  "risk_tier": 1,
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "description": "The requested behavior works for the supported path.",
+      "required": true,
+      "met": true,
+      "evidence_ids": ["E-1"]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E-1",
+      "kind": "test",
+      "result": "pass",
+      "required": true,
+      "provenance": {
+        "source": "local",
+        "reference": "python -m unittest"
+      }
+    }
+  ],
+  "blockers": []
 }
 ```
 
-Passing evidence that lacks the provenance required by the current tier, points at a different revision, or uses an ambiguous Tier 3 timestamp is not counted toward completion. Acceptance criteria must be structured objects with a boolean `met` value. Missing or malformed evidence is missing evidence, not success.
+Provenance requirements scale with risk:
+
+- Tier 0: provenance metadata is optional.
+- Tier 1: counted evidence needs `source` and `reference`.
+- Tier 2: the report declares the target `commit`; at least two distinct passing evidence kinds carry `source`, `reference`, and that exact `commit`.
+- Tier 3: Tier 2 revision binding plus timezone-aware ISO-8601 `captured_at` on every counted item.
+
+The gate validates structure, required failures, linkage, and provenance. It does not infer whether a test semantically proves a product requirement; evidence selection still requires engineering judgment.
 
 ## Release readiness
 
