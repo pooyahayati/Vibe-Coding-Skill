@@ -447,8 +447,19 @@ def run_one(
             product_paths,
             [str(value) for value in scenario.get("forbidden_paths", [])],
         )
+        excluded = {operational_root} if operational_root else set()
+        final_tree_sha256 = tree_hash(workspace, excluded)
+        product_diff_sha256 = diff_hash(workspace, product_paths)
+        dependency_changes = dependency_files_changed(product_paths)
+
+        grader_workspace = base / "grader-workspace"
+        shutil.copytree(
+            workspace,
+            grader_workspace,
+            ignore=shutil.ignore_patterns(".git"),
+        )
         grader = run_hidden_grader(
-            grader_path, workspace, timeout=grader_timeout, env=env
+            grader_path, grader_workspace, timeout=grader_timeout, env=env
         )
 
         failures = list(grader["failures"])
@@ -479,7 +490,6 @@ def run_one(
         for key, filename in raw_files.items():
             (result_dir / filename).write_text(raw_values[key], encoding="utf-8")
 
-        excluded = {operational_root} if operational_root else set()
         envelope = {
             "schema_version": 1,
             "benchmark": "real-delivery",
@@ -500,11 +510,11 @@ def run_one(
             },
             "workspace": {
                 "baseline_commit": info["baseline_commit"],
-                "final_tree_sha256": tree_hash(workspace, excluded),
-                "diff_sha256": diff_hash(workspace, product_paths),
+                "final_tree_sha256": final_tree_sha256,
+                "diff_sha256": product_diff_sha256,
                 "changed_paths": product_paths,
                 "changed_file_count": len(product_paths),
-                "dependency_files_changed": dependency_files_changed(product_paths),
+                "dependency_files_changed": dependency_changes,
                 "forbidden_path_hits": forbidden,
             },
             "grader": {

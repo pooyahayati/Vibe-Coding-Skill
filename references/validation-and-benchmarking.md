@@ -193,7 +193,9 @@ python scripts/run_delivery_benchmark.py validate --json
 python scripts/run_delivery_benchmark.py self-test --json
 ```
 
-Representative product fixtures/graders belong to Phase 9B. Real Codex/Claude workspace-write adapters, OS/network sandbox enforcement, and credentialed repetitions belong to Phase 9C. Do not describe Phase 9A as real-Agent delivery evidence.
+Phase 9B provides five representative product fixtures/graders: tiny local change, brownfield bug regression, contained feature, mixed-monorepo locality, and WordPress installable artifact. Every grader is deterministically proven to reject its broken baseline and accept a known-good implementation. Graders execute against a snapshot copy of the Agent workspace so grader-side build artifacts cannot contaminate captured final-tree/diff evidence.
+
+Real Codex/Claude workspace-write adapters, OS/network sandbox enforcement, and credentialed repetitions belong to Phase 9C. Do not describe Phase 9A or 9B as real-Agent delivery evidence.
 
 Aggregate completed delivery runs with:
 

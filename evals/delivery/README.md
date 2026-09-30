@@ -1,6 +1,6 @@
 # Real Delivery Benchmark Contract
 
-Phase 9A defines the benchmark contract only. Representative product scenarios are added in Phase 9B and real Codex/Claude execution adapters in Phase 9C.
+Phase 9A defines the benchmark contract. Phase 9B adds five representative product fixtures with hidden graders. Real Codex/Claude execution adapters remain Phase 9C work.
 
 ## Scenario catalog
 
@@ -80,7 +80,7 @@ Missing or duplicate repetitions are not success.
 
 Phase 9A contains no provider credentials and no real-agent delivery result. The deterministic self-test exercises the contract with a fake executor.
 
-Phase 9B adds representative fixtures and hidden graders.
+Phase 9B includes five representative deterministic scenarios: a tiny local copy fix, a brownfield duplicate-save regression, a contained CSV export feature, a mixed-monorepo API-only change with a protected sibling app, and a WordPress installable-artifact change. Each hidden grader is regression-tested so the baseline/broken fixture fails while a known-good implementation passes.
 
 Phase 9C adds real Codex/Claude workspace-write adapters plus enforceable OS/network sandbox behavior and credentialed repetitions.
 

@@ -2,5 +2,48 @@
   "schema_version": 1,
   "benchmark": "real-delivery",
   "default_repetitions": 3,
-  "scenarios": []
+  "scenarios": [
+    {
+      "id": "tiny-local-copy-fix",
+      "prompt": "Fix the footer typo so the rendered footer says \"Welcome to Acme.\" Keep the change local and run the focused tests.",
+      "fixture": "fixtures/tiny-local-copy-fix",
+      "grader": "graders/tiny-local-copy-fix.py",
+      "network_policy": "disabled",
+      "forbidden_paths": []
+    },
+    {
+      "id": "brownfield-duplicate-filter",
+      "prompt": "Fix the bug where saving the same admin filter twice creates a duplicate. Preserve the existing single-save behavior and add a focused regression test for the duplicate-save case.",
+      "fixture": "fixtures/brownfield-duplicate-filter",
+      "grader": "graders/brownfield-duplicate-filter.py",
+      "network_policy": "disabled",
+      "forbidden_paths": []
+    },
+    {
+      "id": "contained-csv-export",
+      "prompt": "Add a CSV export function to the existing reports module. It must produce the header id,name and correctly quote values containing commas or quotes. Preserve existing report behavior and tests.",
+      "fixture": "fixtures/contained-csv-export",
+      "grader": "graders/contained-csv-export.py",
+      "network_policy": "disabled",
+      "forbidden_paths": []
+    },
+    {
+      "id": "mixed-monorepo-api-normalization",
+      "prompt": "In apps/api only, normalize incoming customer email addresses by trimming surrounding whitespace and lowercasing before they are stored. Preserve the current API behavior otherwise. Do not modify the sibling store application.",
+      "fixture": "fixtures/mixed-monorepo-api-normalization",
+      "grader": "graders/mixed-monorepo-api-normalization.py",
+      "network_policy": "disabled",
+      "forbidden_paths": [
+        "apps/store/**"
+      ]
+    },
+    {
+      "id": "wordpress-installable-artifact",
+      "prompt": "Extend the sample WordPress plugin with a text setting named sample_label. Register it in admin, render an escaped text input, and keep the plugin buildable as an installable ZIP with exactly one top-level sample-plugin directory.",
+      "fixture": "fixtures/wordpress-installable-artifact",
+      "grader": "graders/wordpress-installable-artifact.py",
+      "network_policy": "disabled",
+      "forbidden_paths": []
+    }
+  ]
 }

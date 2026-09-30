@@ -389,6 +389,79 @@ class DeliveryRunnerTests(unittest.TestCase):
             )
         )
 
+    def test_grader_mutations_do_not_contaminate_agent_tree_hash(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            delivery_root = base / "delivery"
+            fixture = delivery_root / "fixtures" / "snapshot"
+            grader = delivery_root / "graders" / "snapshot.py"
+            fixture.mkdir(parents=True)
+            grader.parent.mkdir(parents=True)
+            (fixture / "message.txt").write_text(
+                "baseline\n",
+                encoding="utf-8",
+            )
+            grader.write_text(
+                "import argparse,json\n"
+                "from pathlib import Path\n"
+                "ap=argparse.ArgumentParser()\n"
+                "ap.add_argument('--workspace',required=True)\n"
+                "ap.add_argument('--json',action='store_true')\n"
+                "ns=ap.parse_args()\n"
+                "(Path(ns.workspace)/'grader-artifact.txt').write_text('built')\n"
+                "print(json.dumps({'schema_version':1,'checks':["
+                "{'id':'artifact','category':'artifact',"
+                "'required':True,'passed':True}],'metrics':{}}))\n",
+                encoding="utf-8",
+            )
+            scenario = {
+                "id": "snapshot",
+                "prompt": "Do nothing.",
+                "fixture": "fixtures/snapshot",
+                "grader": "graders/snapshot.py",
+                "network_policy": "disabled",
+                "forbidden_paths": [],
+            }
+            catalog_path = base / "scenarios.json"
+            catalog_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "benchmark": "real-delivery",
+                        "default_repetitions": 1,
+                        "scenarios": [scenario],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            schema_path = base / "schema.json"
+            schema_path.write_text("{}", encoding="utf-8")
+            portable = base / "portable"
+            portable.mkdir()
+            (portable / "SKILL.md").write_text("# test\n", encoding="utf-8")
+
+            row = self.runner.run_one(
+                agent="fake",
+                scenario=scenario,
+                arm="control",
+                repetition=1,
+                result_dir=base / "results",
+                executor=noop_executor,
+                timeout=5,
+                grader_timeout=5,
+                delivery_root=delivery_root,
+                portable_skill=portable,
+                catalog_path=catalog_path,
+                result_schema_path=schema_path,
+            )
+
+            self.assertEqual(row["workspace"]["changed_paths"], [])
+            self.assertEqual(
+                row["workspace"]["final_tree_sha256"],
+                self.runner.tree_hash(fixture),
+            )
+            self.assertTrue(row["grader"]["delivery_success"])
+
     def test_framework_self_test_passes(self):
         result = self.runner.self_test()
         self.assertTrue(
@@ -559,6 +632,191 @@ class DeliveryAggregatorTests(unittest.TestCase):
             ],
             1.0,
         )
+
+
+
+class RepresentativeDeliveryFixtureTests(unittest.TestCase):
+    def setUp(self):
+        self.runner = load_script("run_delivery_benchmark.py")
+        self.delivery_root = ROOT / "evals" / "delivery"
+        self.catalog = json.loads(
+            (self.delivery_root / "scenarios.json").read_text(encoding="utf-8")
+        )
+        self.scenarios = {
+            row["id"]: row
+            for row in self.catalog["scenarios"]
+        }
+
+    def grade(self, scenario_id, mutate=None):
+        import shutil
+
+        scenario = self.scenarios[scenario_id]
+        fixture, grader = self.runner.scenario_paths(
+            scenario,
+            self.delivery_root,
+        )
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            workspace = base / "workspace"
+            shutil.copytree(fixture, workspace)
+            if mutate is not None:
+                mutate(workspace)
+            result = self.runner.run_hidden_grader(
+                grader,
+                workspace,
+                timeout=10,
+                env=os.environ.copy(),
+            )
+        self.assertFalse(result["failures"], result)
+        return result["parsed"]["checks"]
+
+    @staticmethod
+    def required_passed(checks):
+        return all(
+            check["passed"]
+            for check in checks
+            if check["required"]
+        )
+
+    def test_catalog_contains_five_representative_scenarios(self):
+        self.assertEqual(
+            set(self.scenarios),
+            {
+                "tiny-local-copy-fix",
+                "brownfield-duplicate-filter",
+                "contained-csv-export",
+                "mixed-monorepo-api-normalization",
+                "wordpress-installable-artifact",
+            },
+        )
+        self.assertEqual(
+            self.runner.validate_catalog(self.catalog),
+            [],
+        )
+
+    def test_tiny_fixture_good_passes_and_baseline_fails(self):
+        broken = self.grade("tiny-local-copy-fix")
+        self.assertFalse(self.required_passed(broken))
+
+        def fix(workspace):
+            path = workspace / "app.py"
+            path.write_text(
+                path.read_text(encoding="utf-8").replace(
+                    "Welcomme",
+                    "Welcome",
+                ),
+                encoding="utf-8",
+            )
+
+        good = self.grade("tiny-local-copy-fix", fix)
+        self.assertTrue(self.required_passed(good))
+
+    def test_brownfield_fixture_good_passes_and_baseline_fails(self):
+        broken = self.grade("brownfield-duplicate-filter")
+        self.assertFalse(self.required_passed(broken))
+
+        def fix(workspace):
+            filters = workspace / "app" / "filters.py"
+            filters.write_text(
+                filters.read_text(encoding="utf-8").replace(
+                    "        self._filters.append(name)\n",
+                    "        if name not in self._filters:\n"
+                    "            self._filters.append(name)\n",
+                ),
+                encoding="utf-8",
+            )
+            tests = workspace / "tests" / "test_filters.py"
+            source = tests.read_text(encoding="utf-8")
+            source = source.replace(
+                "\n\nif __name__ == \"__main__\":\n",
+                "\n"
+                "    def test_duplicate_save_is_idempotent(self):\n"
+                "        store = FilterStore()\n"
+                "        store.save(\"open-orders\")\n"
+                "        store.save(\"open-orders\")\n"
+                "        self.assertEqual(store.all(), [\"open-orders\"])\n"
+                "\n\nif __name__ == \"__main__\":\n",
+            )
+            tests.write_text(source, encoding="utf-8")
+
+        good = self.grade("brownfield-duplicate-filter", fix)
+        self.assertTrue(self.required_passed(good))
+
+    def test_contained_feature_good_passes_and_baseline_fails(self):
+        broken = self.grade("contained-csv-export")
+        self.assertFalse(self.required_passed(broken))
+
+        def fix(workspace):
+            path = workspace / "reports.py"
+            path.write_text(
+                "import csv\n"
+                "import io\n\n"
+                "def summarize(rows: list[dict[str, str]]) -> int:\n"
+                "    return len(rows)\n\n"
+                "def export_csv(rows: list[dict[str, str]]) -> str:\n"
+                "    output = io.StringIO()\n"
+                "    writer = csv.writer(output)\n"
+                "    writer.writerow([\"id\", \"name\"])\n"
+                "    for row in rows:\n"
+                "        writer.writerow([row[\"id\"], row[\"name\"]])\n"
+                "    return output.getvalue()\n",
+                encoding="utf-8",
+            )
+
+        good = self.grade("contained-csv-export", fix)
+        self.assertTrue(self.required_passed(good))
+
+    def test_mixed_monorepo_good_passes_and_baseline_fails(self):
+        broken = self.grade("mixed-monorepo-api-normalization")
+        self.assertFalse(self.required_passed(broken))
+
+        def fix(workspace):
+            path = workspace / "apps" / "api" / "service.py"
+            path.write_text(
+                path.read_text(encoding="utf-8").replace(
+                    '    customer = {"email": email}\n',
+                    '    customer = {"email": email.strip().lower()}\n',
+                ),
+                encoding="utf-8",
+            )
+
+        good = self.grade("mixed-monorepo-api-normalization", fix)
+        self.assertTrue(self.required_passed(good))
+
+    def test_wordpress_artifact_good_passes_and_baseline_fails(self):
+        broken = self.grade("wordpress-installable-artifact")
+        self.assertFalse(self.required_passed(broken))
+
+        def fix(workspace):
+            path = (
+                workspace
+                / "sample-plugin"
+                / "includes"
+                / "admin.php"
+            )
+            path.write_text(
+                "<?php\n\n"
+                "if (!defined('ABSPATH')) { exit; }\n\n"
+                "function sample_plugin_register_settings(): void {\n"
+                "    register_setting('general', 'sample_label', [\n"
+                "        'type' => 'string',\n"
+                "        'sanitize_callback' => 'sanitize_text_field',\n"
+                "        'default' => '',\n"
+                "    ]);\n"
+                "}\n"
+                "add_action('admin_init', 'sample_plugin_register_settings');\n\n"
+                "function sample_plugin_render_label_field(): void {\n"
+                "    $value = get_option('sample_label', '');\n"
+                "    printf(\n"
+                "        '<input type=\"text\" name=\"sample_label\" value=\"%s\" />',\n"
+                "        esc_attr($value)\n"
+                "    );\n"
+                "}\n",
+                encoding="utf-8",
+            )
+
+        good = self.grade("wordpress-installable-artifact", fix)
+        self.assertTrue(self.required_passed(good))
 
 
 if __name__ == "__main__":
