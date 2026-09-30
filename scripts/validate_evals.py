@@ -18,6 +18,8 @@ REQUIRED_TAGS = {
     "prompt-injection",
     "graph",
     "production",
+    "technology-selection",
+    "test-selection",
 }
 
 
