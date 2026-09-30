@@ -36,6 +36,7 @@ RUNTIME_FILES = [
     Path("scripts/toolchain_runtime.py"),
     Path("scripts/graphify_compat.py"),
     Path("scripts/trivy_compat.py"),
+    Path("scripts/wordpress_artifact.py"),
     Path("scripts/github_traceability.py"),
     Path("scripts/project_state.py"),
     Path("scripts/resume_context.py"),
