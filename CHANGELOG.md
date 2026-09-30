@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.7 — Real-delivery benchmark framework and stable dual-evidence gate
+
+- Added the Real Delivery Benchmark as a second evidence class alongside the existing behavior-selection benchmark.
+- Added control/treatment benchmark arms so Skill impact is measured within the same Agent rather than by ranking Agents against one another.
+- Added provenance-bound delivery result envelopes with fixture, grader, catalog, schema, Skill-tree, baseline-commit, final-tree, diff, changed-path, dependency-change, and raw-output evidence.
+- Added hidden graders outside the Agent workspace and made grader execution operate on immutable snapshots so grader-side artifact generation cannot contaminate captured Agent changes.
+- Added five representative deterministic delivery scenarios: tiny local copy fix, brownfield duplicate-save regression, contained CSV export feature, mixed-monorepo API-only normalization with sibling protection, and a WordPress installable-artifact change.
+- Added deterministic tests proving each representative broken baseline fails and each known-good implementation passes its hidden grader.
+- Added real Codex and Claude Code delivery adapters with bounded workspace editing, provider credential redaction, credential-leak detection, timeout/error evidence, and strict missing-run handling.
+- Added a credentialed Real Delivery Benchmark GitHub Actions workflow and exact-SHA benchmark trigger path.
+- Hardened the stable release gate so stable releases require both complete real-agent behavior evidence and complete real-delivery evidence for the current Skill/catalog/schema identity, with no missing/duplicate/invalid delivery runs and no treatment regressions.
+- Aligned GitHub Release metadata with internal release governance: pre-1.0/RC releases are now published as prereleases.
+- Attempted the real behavior and real-delivery benchmarks on the exact Phase 9D main commit. Both provider credential preflights reported no configured non-interactive credentials, so no real-agent success is claimed and the stable gate remains correctly blocked until credentials are configured.
+
 ## 0.10.6 — Language-independent routing and semantic completion evidence
 
 - Added config-driven structured context facts for runtime, platform, capability, and concern routing so known semantics no longer depend on natural-language keywords.
