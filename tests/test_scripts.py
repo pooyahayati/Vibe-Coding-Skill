@@ -209,6 +209,52 @@ class DependencyGuardTests(unittest.TestCase):
         self.assertTrue(any(s["code"] == "provenance.attestation_missing" for s in signals))
 
 
+class LiveDependencyEvalTests(unittest.TestCase):
+    def setUp(self):
+        self.mod = load_script("live_dependency_evals.py")
+
+    def test_source_health_unavailable_is_safe_only_as_review_required(self):
+        signals = [{
+            "level": "review",
+            "code": "repository.health_unavailable",
+            "message": "rate limited",
+        }]
+        self.assertTrue(
+            self.mod.repository_health_contract_ok(
+                True,
+                {"checked": False},
+                "REVIEW REQUIRED",
+                signals,
+            )
+        )
+        self.assertFalse(
+            self.mod.repository_health_contract_ok(
+                True,
+                {"checked": False},
+                "ACCEPT",
+                signals,
+            )
+        )
+
+    def test_checked_or_non_github_source_health_is_acceptable(self):
+        self.assertTrue(
+            self.mod.repository_health_contract_ok(
+                True,
+                {"checked": True},
+                "ACCEPT",
+                [],
+            )
+        )
+        self.assertTrue(
+            self.mod.repository_health_contract_ok(
+                False,
+                {"checked": False},
+                "ACCEPT",
+                [],
+            )
+        )
+
+
 class RiskClassifierTests(unittest.TestCase):
     def setUp(self):
         self.mod = load_script("risk_classifier.py")
