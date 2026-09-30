@@ -21,6 +21,7 @@ REQUIRED_TAGS = {
     "technology-selection",
     "test-selection",
     "wordpress-delivery",
+    "code-structure",
 }
 
 
@@ -94,6 +95,18 @@ def main() -> int:
     missing = REQUIRED_TAGS - tags
     if missing:
         raise SystemExit(f"eval coverage missing tags: {sorted(missing)}")
+
+    required_structure_scenarios = {
+        "code-structure-small-local",
+        "code-structure-external-integration",
+        "code-structure-multidomain",
+    }
+    missing_structure = required_structure_scenarios - seen_ids
+    if missing_structure:
+        raise SystemExit(
+            "code-structure eval coverage missing scenarios: "
+            f"{sorted(missing_structure)}"
+        )
 
     print(f"Eval catalog validation passed: {len(scenarios)} scenarios.")
     return 0
