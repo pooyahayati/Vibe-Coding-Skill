@@ -9,6 +9,11 @@ on:
       - "evals/delivery/**"
       - "tests/test_delivery_benchmark.py"
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/benchmark-trigger"
 
 permissions:
   contents: read
@@ -30,7 +35,7 @@ jobs:
           python -m unittest tests.test_delivery_benchmark
 
   delivery:
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
     strategy:
       fail-fast: false
       matrix:
@@ -99,7 +104,7 @@ jobs:
           retention-days: 30
 
   aggregate:
-    if: ${{ always() && github.event_name == 'workflow_dispatch' }}
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.event_name == 'push') }}
     needs:
       - delivery
     runs-on: ubuntu-latest
