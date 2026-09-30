@@ -59,6 +59,7 @@ REQUIRED_SCRIPTS = [
     "state_recovery.py",
     "install_check.py",
     "skill_lifecycle.py",
+    "toolchain_runtime.py",
 ]
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
