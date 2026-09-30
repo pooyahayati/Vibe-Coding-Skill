@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — Trustworthy controls remediation
+## Unreleased — Independent review remediation
 
 - Added structured risk facts for operation, environment, data sensitivity, and change boundary, with supplemental English/Persian text signals and safer destructive-operation matching.
 - Centralized tier policy generation so router escalation rebuilds the final tier, approval requirement, reasons, and required controls from one source of truth.
@@ -8,6 +8,10 @@
 - Converted the toolchain resolver tests to discoverable `unittest` cases and added regressions for package imports, timeout fallback, and portable Graphify version lookup.
 - Made Graphify compatibility version detection work from the portable Skill without a root `VERSION` file.
 - Made toolchain compatibility timeouts structured failures so the resolver can attempt the verified last-known-good fallback, and switched child execution to the active Python interpreter.
+- Gated WordPress REST routing on actual WordPress platform evidence so generic REST/API terminology does not inject WordPress/PHP context into unrelated backends.
+- Added explicit task change-scope reporting and changed execution-plan requirements to depend on Tier 2/3 risk or demonstrated cross-boundary scope rather than repository size alone.
+- Kept large-repository project intelligence active while allowing local low-risk work to stay on the light route.
+- Reduced the canonical/portable `SKILL.md` entry point from roughly 480 lines to a 215-line routed core and added a 260-line validation guard against maintainer-detail creep.
 
 ## 0.10.2 — Latest-compatible-stable toolchain runtime binding
 

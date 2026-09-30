@@ -314,6 +314,46 @@ class ContextRouterTests(unittest.TestCase):
         self.assertIn("security-web", names)
         self.assertEqual(result["task"]["risk"]["tier"], 1)
 
+    def test_generic_fastapi_rest_task_does_not_activate_wordpress_packs(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(
+                root,
+                "pyproject.toml",
+                "[project]\nname = \"demo-api\"\nversion = \"0.1.0\"\n",
+            )
+            write(
+                root,
+                "app/api.py",
+                "from fastapi import FastAPI\napp = FastAPI()\n",
+            )
+            result = self.router.plan(
+                root,
+                "Add a REST API endpoint for report exports",
+                ["app/api.py"],
+            )
+
+        names = {row["name"] for row in result["packs"]}
+        self.assertNotIn("wordpress-rest", names)
+        self.assertNotIn("wordpress", names)
+        self.assertNotIn("php", names)
+
+    def test_cross_root_paths_are_reported_as_cross_boundary_scope(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "backend/report.py", "VALUE = 1\n")
+            write(root, "frontend/report.js", "export const value = 1;\n")
+            result = self.router.plan(
+                root,
+                "Update the report export behavior",
+                ["backend/report.py", "frontend/report.js"],
+            )
+
+        self.assertEqual(result["task"]["scope"]["level"], "cross-boundary")
+        self.assertEqual(result["task"]["scope"]["top_level_root_count"], 2)
+
     def test_generated_dist_files_do_not_make_project_large(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -514,6 +554,50 @@ class ExecutionPlanTests(unittest.TestCase):
         self.assertFalse(result["execution_plan_required"])
         self.assertEqual(result["mode"], "light-task")
         self.assertEqual(result["draft_status"], "light-task-ready")
+
+    def test_medium_project_local_tiny_change_stays_lightweight(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            for index in range(80):
+                write(root, f"src/module_{index}.py", "VALUE = 1\n")
+            result = self.planner.draft(
+                root,
+                "Change one typo in a local report label.",
+                ["src/module_1.py"],
+            )
+
+        self.assertEqual(
+            result["context_plan"]["project"]["complexity"]["level"],
+            "medium",
+        )
+        self.assertEqual(
+            result["context_plan"]["task"]["scope"]["level"],
+            "local",
+        )
+        self.assertFalse(result["execution_plan_required"])
+        self.assertEqual(result["mode"], "light-task")
+        self.assertEqual(result["planning_basis"]["reasons"], [])
+
+    def test_standard_cross_boundary_change_requires_execution_plan(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "backend/report.py", "VALUE = 1\n")
+            write(root, "frontend/report.js", "export const value = 1;\n")
+            result = self.planner.draft(
+                root,
+                "Update the report export behavior",
+                ["backend/report.py", "frontend/report.js"],
+            )
+
+        self.assertEqual(result["context_plan"]["task"]["risk"]["tier"], 1)
+        self.assertEqual(
+            result["context_plan"]["task"]["scope"]["level"],
+            "cross-boundary",
+        )
+        self.assertTrue(result["execution_plan_required"])
+        self.assertTrue(result["planning_basis"]["reasons"])
 
     def test_plan_validation_rejects_unknown_dependency_and_missing_owner(self):
         result = self.planner.validate_plan({

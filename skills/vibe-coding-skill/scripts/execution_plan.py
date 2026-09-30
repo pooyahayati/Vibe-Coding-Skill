@@ -113,11 +113,15 @@ def draft(
     )
     complexity = route["project"]["complexity"]["level"]
     tier = int(route["task"]["risk"]["tier"])
+    task_scope = str(route["task"].get("scope", {}).get("level") or "unknown")
     integration_points = route["integration_points"]
-    required = (
-        complexity in {"medium", "large"}
-        or tier >= 2
-    )
+
+    planning_reasons: list[str] = []
+    if tier >= 2:
+        planning_reasons.append(f"risk Tier {tier} requires explicit planning")
+    if task_scope == "cross-boundary":
+        planning_reasons.append("change scope crosses top-level project boundaries")
+    required = bool(planning_reasons)
 
     workstream = {
         "id": "implementation",
@@ -156,6 +160,25 @@ def draft(
         "mode": "execution-plan" if required else "light-task",
         "draft_status": "needs-refinement" if required else "light-task-ready",
         "execution_plan_required": required,
+        "planning_basis": {
+            "project_complexity": complexity,
+            "task_scope": task_scope,
+            "risk_tier": tier,
+            "reasons": planning_reasons,
+            "rule": (
+                "Project size preserves project intelligence but does not by "
+                "itself require a new execution plan. Require a plan for "
+                "significant/critical risk or demonstrated cross-boundary scope."
+            ),
+        },
+        "plan_reuse": {
+            "allowed": True,
+            "rule": (
+                "Reuse and validate an existing relevant plan instead of "
+                "creating a duplicate plan when objective, scope, ownership, "
+                "dependencies, and contracts are still current."
+            ),
+        },
         "objective": task,
         "context_plan": route,
         "coordination": {

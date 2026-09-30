@@ -182,6 +182,9 @@
       "integration_points": [
         "client ↔ WordPress REST route",
         "REST permission callback ↔ domain mutation"
+      ],
+      "activation_requires": [
+        "wordpress"
       ]
     },
     "external-http": {
