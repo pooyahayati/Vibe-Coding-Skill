@@ -42,13 +42,13 @@ Current version: `0.10.2`
 
 ## Large and mixed projects
 
-The `Context Router` separates **project complexity** from **task risk** and loads only the minimum relevant capability packs.
+The `Context Router` keeps **project complexity**, **task risk**, and **change scope** separate and loads only the minimum relevant capability packs.
 
 Current packs cover:
 
 `PHP` · `WordPress` · `WooCommerce` · browser JavaScript · WordPress REST · external HTTP · payments · web security · web performance
 
-Medium/large projects and Tier 2/3 work still retain project intelligence and integration coverage even when context is reduced.
+Large repositories retain project intelligence even when a local low-risk task stays lightweight. A new execution plan is driven by Tier 2/3 risk or demonstrated cross-boundary scope—not repository size alone.
 
 ## Tooling
 
