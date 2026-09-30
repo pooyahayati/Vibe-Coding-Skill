@@ -110,10 +110,12 @@ python scripts/run_delivery_benchmark.py validate --json
 python scripts/run_delivery_benchmark.py self-test --json
 ```
 
-The delivery catalog now contains the Phase 9B representative set: tiny local change, brownfield bug regression, contained feature, mixed-monorepo locality, and WordPress installable artifact. Each grader has deterministic good/broken regression coverage. Real Codex/Claude adapters plus credentialed repetitions remain Phase 9C work.
+The delivery catalog contains the Phase 9B representative set: tiny local change, brownfield bug regression, contained feature, mixed-monorepo locality, and WordPress installable artifact. Each grader has deterministic good/broken regression coverage.
+
+Phase 9C adds real `Codex` and `Claude Code` workspace-write adapters plus the manual `Real Delivery Benchmark` workflow. Codex runs in `workspace-write` with approval escalation disabled. Claude Code is restricted to file read/edit tools for these offline fixtures; Bash and Web tools are disallowed. Provider credentials are used only by the CLI process, raw output is redacted against credential values, and a run fails if a credential value is written into the product workspace.
 
 Delivery fixtures shown to the Agent live under `evals/delivery/fixtures/`. Hidden graders live separately under `evals/delivery/graders/` and are never packaged into the portable Skill or copied into the Agent workspace.
 
 Each scenario is evaluated as `control` and `treatment` for the same Agent. The aggregate reports treatment-vs-control delivery success as `improved`, `neutral`, `regressed`, or `incomplete`. Missing runs remain missing evidence.
 
-Phase 9A/9B do **not** produce real-agent delivery evidence and do not change the release-readiness gate. Hidden graders run against a snapshot copy so grader-side artifact generation cannot alter the captured Agent final-tree evidence.
+Deterministic Phase 9A/9B checks do **not** count as real-agent delivery evidence. Only a credentialed `Real Delivery Benchmark` run with complete Codex and Claude Code control/treatment repetitions produces that evidence. Hidden graders run against a snapshot copy so grader-side artifact generation cannot alter the captured Agent final-tree evidence.
