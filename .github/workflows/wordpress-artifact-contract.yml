@@ -104,7 +104,7 @@ jobs:
           done
 
           for attempt in $(seq 1 20); do
-            if docker run --rm --network vibe-wp-contract --volumes-from vibe-wp-runtime -e WORDPRESS_DB_HOST=vibe-wp-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress wordpress:cli --path=/var/www/html core install --url=http://localhost --title="Vibe Artifact Contract" --admin_user=admin --admin_password=admin --admin_email=admin@example.test --skip-email; then
+            if docker run --rm --user 0:0 --network vibe-wp-contract --volumes-from vibe-wp-runtime -e WORDPRESS_DB_HOST=vibe-wp-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress wordpress:cli --allow-root --path=/var/www/html core install --url=http://localhost --title="Vibe Artifact Contract" --admin_user=admin --admin_password=admin --admin_email=admin@example.test --skip-email; then
               break
             fi
             if [ "$attempt" -eq 20 ]; then
@@ -125,7 +125,7 @@ jobs:
           docker exec vibe-wp-runtime chown -R www-data:www-data /var/www/html/wp-content
 
           wp() {
-            docker run --rm --network vibe-wp-contract --volumes-from vibe-wp-runtime -e WORDPRESS_DB_HOST=vibe-wp-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress wordpress:cli --path=/var/www/html "$@"
+            docker run --rm --user 0:0 --network vibe-wp-contract --volumes-from vibe-wp-runtime -e WORDPRESS_DB_HOST=vibe-wp-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress wordpress:cli --allow-root --path=/var/www/html "$@"
           }
 
           wp plugin install /var/www/html/vibe-v1.zip --force --activate
