@@ -28,6 +28,8 @@ Weak evidence:
 - generated code;
 - passing unrelated tests.
 
+For a structured Done report, every acceptance criterion needs a stable identifier. Evidence types are bounded to recognized verification categories. A failed or not-run evidence item is treated as required by default and blocks completion; an optional failure is acceptable only when it is explicitly marked optional and carries a justification. Passing unrelated checks cannot cancel a failed required check.
+
 ## Review
 
 For meaningful changes, review requirement fit, correctness, unintended scope, architecture fit, error handling, tests, security, maintainability, and operational impact.
