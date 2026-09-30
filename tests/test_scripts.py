@@ -1393,6 +1393,67 @@ class ReleaseReadinessTests(unittest.TestCase):
             "agents": agents,
         }
 
+    def _stable_delivery_benchmark(self, mod, effect="neutral"):
+        identity = mod.delivery_benchmark_identity()
+        scenario_ids = mod.delivery_scenario_ids()
+        comparisons = []
+        for agent in ("codex", "claude-code"):
+            for scenario_id in scenario_ids:
+                comparisons.append({
+                    "agent": agent,
+                    "scenario_id": scenario_id,
+                    "expected_repetitions": 3,
+                    "control": {
+                        "complete": True,
+                        "completed_runs": 3,
+                        "successful_runs": 3,
+                        "success_rate": 1.0,
+                        "median_duration_ms": 100.0,
+                        "median_changed_files": 1.0,
+                    },
+                    "treatment": {
+                        "complete": True,
+                        "completed_runs": 3,
+                        "successful_runs": 3,
+                        "success_rate": 1.0,
+                        "median_duration_ms": 100.0,
+                        "median_changed_files": 1.0,
+                    },
+                    "effect": effect,
+                    "success_rate_delta": 0.0 if effect == "neutral" else -1.0,
+                })
+        expected_runs = mod.expected_delivery_run_count()
+        return {
+            "schema_version": 1,
+            "benchmark": "real-delivery-aggregate",
+            "required_agents": ["codex", "claude-code"],
+            "expected_scenarios": scenario_ids,
+            "expected_run_count": expected_runs,
+            "observed_valid_run_count": expected_runs,
+            "evidence_complete": True,
+            "missing_runs": [],
+            "unexpected_runs": [],
+            "duplicate_runs": [],
+            "invalid_files": [],
+            "identity": {
+                "consistent": True,
+                "skill_versions": [identity["skill_version"]],
+                "skill_tree_sha256s": [identity["skill_tree_sha256"]],
+                "catalog_sha256s": [identity["catalog_sha256"]],
+                "result_schema_sha256s": [identity["schema_sha256"]],
+                "agent_versions": {
+                    "codex": ["codex-test"],
+                    "claude-code": ["claude-test"],
+                },
+                "models": {
+                    "codex": [],
+                    "claude-code": [],
+                },
+            },
+            "effect_counts": {effect: len(comparisons)},
+            "comparisons": comparisons,
+        }
+
     def test_beta_requires_validate_skill_on_target_commit(self):
         mod = load_script("release_readiness.py")
         result = mod.evaluate(
@@ -1469,6 +1530,19 @@ class ReleaseReadinessTests(unittest.TestCase):
                 rel,
             )
 
+    def test_real_benchmark_workflows_support_exact_main_commit_trigger(self):
+        for rel in (
+            "agent-benchmark.yml",
+            "real-delivery-benchmark.yml",
+        ):
+            workflow = (
+                ROOT / ".github" / "workflows" / rel
+            ).read_text(encoding="utf-8")
+            self.assertIn("push:", workflow, rel)
+            self.assertIn("branches:", workflow, rel)
+            self.assertIn("- main", workflow, rel)
+            self.assertIn('.github/benchmark-trigger', workflow, rel)
+
     def test_stable_blocks_without_real_agent_aggregate(self):
         mod = load_script("release_readiness.py")
         result = mod.evaluate(self._report(mod), "stable")
@@ -1487,6 +1561,7 @@ class ReleaseReadinessTests(unittest.TestCase):
             self._report(mod),
             "stable",
             benchmark,
+            self._stable_delivery_benchmark(mod),
         )
         self.assertEqual(result["gate"], "PASS")
         self.assertTrue(
@@ -1495,6 +1570,49 @@ class ReleaseReadinessTests(unittest.TestCase):
                 for row in result["benchmark"]["agents"].values()
             )
         )
+
+    def test_stable_blocks_without_real_delivery_aggregate(self):
+        mod = load_script("release_readiness.py")
+        result = mod.evaluate(
+            self._report(mod),
+            "stable",
+            self._stable_benchmark(mod),
+        )
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "real-delivery benchmark aggregate" in failure
+                for failure in result["failures"]
+            )
+        )
+
+    def test_stable_rejects_delivery_regression(self):
+        mod = load_script("release_readiness.py")
+        delivery = self._stable_delivery_benchmark(mod)
+        delivery["comparisons"][0]["effect"] = "regressed"
+        delivery["comparisons"][0]["success_rate_delta"] = -1.0
+        delivery["effect_counts"] = {
+            "neutral": len(delivery["comparisons"]) - 1,
+            "regressed": 1,
+        }
+        result = mod.evaluate(
+            self._report(mod),
+            "stable",
+            self._stable_benchmark(mod),
+            delivery,
+        )
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "treatment regressions" in failure
+                for failure in result["failures"]
+            )
+        )
+
+    def test_rc_does_not_require_real_delivery_evidence(self):
+        mod = load_script("release_readiness.py")
+        result = mod.evaluate(self._report(mod), "rc")
+        self.assertEqual(result["gate"], "PASS")
 
     def test_stable_rejects_benchmark_with_wrong_scenario_set(self):
         mod = load_script("release_readiness.py")
@@ -1562,6 +1680,7 @@ class ReleaseReadinessTests(unittest.TestCase):
             "Tool Contract Tests",
             "WordPress Artifact Contract",
             "Real Agent Benchmark",
+            "Real Delivery Benchmark",
         ):
             self.assertIn(f"      - {workflow_name}", workflow)
         self.assertIn("gh run download", workflow)
@@ -1577,6 +1696,10 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.assertIn('CHANNEL="beta"', workflow)
         self.assertIn('CHANNEL="rc"', workflow)
         self.assertIn('CHANNEL="stable"', workflow)
+        self.assertIn("--delivery-aggregate", workflow)
+        self.assertIn("Resolve stable delivery evidence", workflow)
+        self.assertIn("Real Delivery Benchmark", workflow)
+        self.assertIn("--prerelease", workflow)
 
 
     def test_stable_rejects_complete_but_nonconformant_agent(self):

@@ -119,3 +119,5 @@ Delivery fixtures shown to the Agent live under `evals/delivery/fixtures/`. Hidd
 Each scenario is evaluated as `control` and `treatment` for the same Agent. The aggregate reports treatment-vs-control delivery success as `improved`, `neutral`, `regressed`, or `incomplete`. Missing runs remain missing evidence.
 
 Deterministic Phase 9A/9B checks do **not** count as real-agent delivery evidence. Only a credentialed `Real Delivery Benchmark` run with complete Codex and Claude Code control/treatment repetitions produces that evidence. Hidden graders run against a snapshot copy so grader-side artifact generation cannot alter the captured Agent final-tree evidence.
+
+Phase 9D makes Stable release readiness depend on both real evidence classes. Behavior evidence must be fully conformant for both Agents. Delivery evidence must be complete, identity-bound to the current Skill/catalog/schema, and contain no treatment regression. Use `.github/benchmark-trigger` to launch both real benchmarks on the exact `main` commit being qualified.

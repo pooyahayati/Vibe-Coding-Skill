@@ -121,9 +121,11 @@ Channels are evidence classes:
 
 - `beta`: requires a successful `Validate Skill` run for the target commit.
 - `rc`: requires the complete baseline on the target commit: `Validate Skill`, `Cross Platform Smoke`, `Real World Repository Validation`, `Agent Skills Spec Compatibility`, `Tool Contract Tests`, and `WordPress Artifact Contract`.
-- `stable`: requires the same baseline plus a complete, fully conformant real-agent aggregate for both `codex` and `claude-code`.
+- `stable`: requires the same baseline plus two independent real-Agent evidence classes on the exact target commit: a complete, fully conformant behavior aggregate and a complete Real Delivery aggregate for both `codex` and `claude-code`.
 
-Stable benchmark evidence must match the current Skill version and the exact portable Skill tree, eval catalog, and agent-output schema hashes. The aggregate's scenario ID list and each Agent's expected/completed/passed scenario counts must exactly match the current eval catalog. Release checks use the latest result for each required workflow on the target commit, and stable qualification considers the latest Real Agent Benchmark run rather than falling back to an older success. Completion of the Real Agent Benchmark itself re-triggers release evaluation, so a valid benchmark produced after the base CI checks can unlock a stable release without re-running those checks. Missing, incomplete, stale, superseded-by-failure, or non-conformant evidence blocks readiness.
+Stable behavior evidence must match the current Skill version and exact portable Skill tree, behavior eval catalog, and agent-output schema hashes. Stable delivery evidence must match the current Skill version/tree plus the delivery catalog/schema, contain the full control/treatment repetition matrix for both Agents, and contain no treatment regression. A neutral delivery result is valid evidence when control and treatment are equally successful; Stable does not require the Skill to manufacture an improvement where the Agent already succeeds.
+
+Release checks use the latest result for each required workflow on the target commit. Stable qualification considers the latest `Real Agent Benchmark` and `Real Delivery Benchmark` runs rather than falling back to older successes. Completion of either benchmark re-triggers release evaluation. Missing, incomplete, stale, superseded-by-failure, identity-mismatched, non-conformant, or delivery-regressed evidence blocks readiness.
 
 Repository branch protection is not part of this gate.
 
@@ -214,7 +216,9 @@ python scripts/benchmark_delivery_outputs.py RESULTS_DIR \
 
 The aggregate reports `improved`, `neutral`, `regressed`, or `incomplete` per Agent/scenario based on treatment-vs-control delivery success rate. Correctness is primary; efficiency metrics do not override failed required checks.
 
-Real Delivery Benchmark evidence is not yet part of the release-readiness gate. A future stable-gate change requires complete Phase 9B/9C evidence and must be made explicitly rather than inferred from deterministic self-tests.
+Phase 9D connects genuine Real Delivery evidence to Stable release readiness. The Stable gate requires complete exact-identity behavior evidence and complete exact-identity delivery evidence with no treatment regression. Deterministic self-tests never satisfy either real-Agent evidence class.
+
+Both real benchmarks can be triggered on an exact `main` commit by changing `.github/benchmark-trigger`. This makes the evidence SHA identical to the candidate release SHA instead of relying on a manually dispatched run from a different revision.
 
 ## Interpretation
 
