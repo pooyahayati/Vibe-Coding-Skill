@@ -1,13 +1,15 @@
 # Changelog
 
-## Unreleased — Independent 0.10.7 review fixes
+## 1.0.0 — Reviewed release and software-based publication checks
 
+- Remove model-evaluation requirements and automatic credentialed workflows from publication. Stable releases retain the complete same-commit software validation baseline.
+- Add a reproducible, installation-checked portable ZIP and SHA-256 release assets.
 - Preserve unresolved risk facts, normalize bounded aliases, recognize the reported Persian destructive request, and carry structured risk into execution planning.
 - Keep custom sibling projects and WordPress plugins distinct; accept ordinary runtime facts without requiring a specialist pack.
 - Require a required completion outcome and optionally bind completion to independently retained approved criteria.
 - Execute WordPress benchmark behavior from the exact ZIP with a trusted PHP harness; reject comment-only and unsafe-output implementations. Report real install preconditions without claiming database freshness.
-- Validate delivery envelopes, recompute success, bind scenario/check identities, distinguish simulated framework tests from real-agent evidence, and require a predefined essential-scenario success floor for Stable.
-- Fix Codex option placement, enable fail-closed sandboxed Claude shell checks, preflight parser/version/isolation capabilities, and require explicit campaign CLI/model pins.
+- Retain offline maintainer regressions for delivery-envelope validation, recomputed success, scenario/check identity, and simulated-evidence classification. Maintainer research utilities do not qualify releases and are excluded from the portable runtime.
+- Preserve earlier maintainer CLI adapter fixes for option placement, sandboxed shell checks, and parser/version/isolation preflight; no model campaign runs automatically.
 - Read selected-release dependency metadata, isolate offline CLI stubs on Windows/POSIX, retain immutable-baseline change evidence after agent commits/renames, normalize fixture line endings, and let compatibility CI reach the supported fallback resolver.
 
 ## 0.10.7 — Real-delivery benchmark framework and stable dual-evidence gate

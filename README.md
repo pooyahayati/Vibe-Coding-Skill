@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.10.7-blue)
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill for turning AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -18,7 +18,7 @@ Designed for **OpenAI Codex**, **Claude Code**, and other Agent Skills-compatibl
 - **Full technical changelog:** [CHANGELOG.md](CHANGELOG.md)
 - **Skill operating instructions:** [SKILL.md](SKILL.md)
 
-Current version: `0.10.7`
+Current version: `1.0.0`
 
 ## What it does
 
@@ -88,12 +88,8 @@ Generated Vibe/Graphify/Trivy/coverage/benchmark/cache/agent-state artifacts sta
 - [Context routing and execution](references/context-routing-and-execution.md)
 - [Project intelligence](references/project-intelligence.md)
 - [Security and dependencies](references/security-and-dependencies.md)
-- [Validation and benchmarking](references/validation-and-benchmarking.md)
+- [Validation and release checks](references/validation-and-benchmarking.md)
 - [Toolchain version resolution](references/toolchain-version-resolution.md)
-
-## Future work
-
-The credentialed blind benchmark against real `Codex` and `Claude Code` runs remains deferred in Issue #12. Missing benchmark evidence is not treated as success.
 
 ## License
 

@@ -1,5 +1,7 @@
 # Independent 0.10.7 Review: Remediation and Verification
 
+> Historical report: version 1.0.0 removes model-based release qualification at the owner's request. Its former benchmark requirements below are not current publication requirements. The WordPress CI fixture install/upgrade subsequently passed.
+
 Review date: 2026-09-30. Base commit: `4d0f5a78b2a519ede28bd67ec27eeb6f41eb135a`.
 
 This change addresses the 13 reproduced defects in the independent review of the unpublished 0.10.7 candidate. The reviewed skill was treated as the subject of the review, not as the authority for reviewing itself. Runtime instructions remain concise; detailed evidence and limitations stay in maintainer references and this report. The version remains 0.10.7; this change does not publish or qualify a Stable release.

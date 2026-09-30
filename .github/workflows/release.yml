@@ -9,14 +9,16 @@ on:
       - Agent Skills Spec Compatibility
       - Tool Contract Tests
       - WordPress Artifact Contract
-      - Real Agent Benchmark
-      - Real Delivery Benchmark
     types:
       - completed
 
 permissions:
   contents: write
   actions: read
+
+concurrency:
+  group: release-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -137,114 +139,6 @@ jobs:
           }, indent=2))
           PY
 
-      - name: Resolve stable benchmark evidence
-        id: benchmark
-        if: steps.readiness.outputs.base_ready == 'true' && steps.readiness.outputs.channel == 'stable'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.workflow_run.head_sha }}
-        shell: bash
-        run: |
-          gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SHA}&per_page=100" > /tmp/benchmark-runs.json
-          RUN_ID=$(python - <<'PY'
-          import json
-          import os
-
-          data = json.load(open("/tmp/benchmark-runs.json", encoding="utf-8"))
-          candidates = [
-              run
-              for run in data.get("workflow_runs", [])
-              if run.get("head_sha") == os.environ["SHA"]
-              and run.get("head_branch") == "main"
-              and run.get("name") == "Real Agent Benchmark"
-          ]
-          candidates.sort(
-              key=lambda run: (
-                  run.get("created_at") or "",
-                  int(run.get("id") or 0),
-              ),
-              reverse=True,
-          )
-          if not candidates:
-              print("")
-          elif candidates[0].get("conclusion") == "success":
-              print(candidates[0]["id"])
-          else:
-              print("")
-          PY
-          )
-
-          if [ -z "$RUN_ID" ]; then
-            echo "No latest successful Real Agent Benchmark exists for $SHA."
-            echo "aggregate=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          mkdir -p /tmp/real-agent-benchmark
-          gh run download "$RUN_ID" --dir /tmp/real-agent-benchmark
-          AGGREGATE=$(find /tmp/real-agent-benchmark -type f -name aggregate.json -print -quit)
-          if [ -z "$AGGREGATE" ]; then
-            echo "Successful benchmark run did not contain aggregate.json."
-            echo "aggregate=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "aggregate=$AGGREGATE" >> "$GITHUB_OUTPUT"
-
-      - name: Resolve stable delivery evidence
-        id: delivery
-        if: steps.readiness.outputs.base_ready == 'true' && steps.readiness.outputs.channel == 'stable'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.workflow_run.head_sha }}
-        shell: bash
-        run: |
-          gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SHA}&per_page=100" > /tmp/delivery-runs.json
-          RUN_ID=$(python - <<'PY'
-          import json
-          import os
-
-          data = json.load(open("/tmp/delivery-runs.json", encoding="utf-8"))
-          candidates = [
-              run
-              for run in data.get("workflow_runs", [])
-              if run.get("head_sha") == os.environ["SHA"]
-              and run.get("head_branch") == "main"
-              and run.get("name") == "Real Delivery Benchmark"
-          ]
-          candidates.sort(
-              key=lambda run: (
-                  run.get("created_at") or "",
-                  int(run.get("id") or 0),
-              ),
-              reverse=True,
-          )
-          if not candidates:
-              print("")
-          elif candidates[0].get("conclusion") == "success":
-              print(candidates[0]["id"])
-          else:
-              print("")
-          PY
-          )
-
-          if [ -z "$RUN_ID" ]; then
-            echo "No latest successful Real Delivery Benchmark exists for $SHA."
-            echo "aggregate=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          mkdir -p /tmp/real-delivery-benchmark
-          gh run download "$RUN_ID" --dir /tmp/real-delivery-benchmark
-          AGGREGATE=$(find /tmp/real-delivery-benchmark -type f -name aggregate.json -print -quit)
-          if [ -z "$AGGREGATE" ]; then
-            echo "Successful delivery benchmark did not contain aggregate.json."
-            echo "aggregate=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "aggregate=$AGGREGATE" >> "$GITHUB_OUTPUT"
-
       - name: Enforce release readiness
         if: steps.readiness.outputs.base_ready == 'true'
         shell: bash
@@ -254,13 +148,11 @@ jobs:
             --channel "${{ steps.readiness.outputs.channel }}"
             --json
           )
-          if [ -n "${{ steps.benchmark.outputs.aggregate }}" ]; then
-            args+=(--benchmark-aggregate "${{ steps.benchmark.outputs.aggregate }}")
-          fi
-          if [ -n "${{ steps.delivery.outputs.aggregate }}" ]; then
-            args+=(--delivery-aggregate "${{ steps.delivery.outputs.aggregate }}")
-          fi
           python scripts/release_readiness.py "${args[@]}"
+
+      - name: Build and verify portable release package
+        if: steps.readiness.outputs.base_ready == 'true'
+        run: python scripts/build_release.py --output-dir "$RUNNER_TEMP/vibe-release" --json
 
       - name: Create immutable version tag and GitHub Release
         if: steps.readiness.outputs.base_ready == 'true'
@@ -279,9 +171,13 @@ jobs:
             "$TAG"
             --target "$SHA"
             --title "Vibe Coding Skill $TAG"
-            --generate-notes
+            --notes-file "$RUNNER_TEMP/vibe-release/release-notes.md"
           )
           if [ "${{ steps.readiness.outputs.channel }}" != "stable" ]; then
             release_args+=(--prerelease)
+          else
+            release_args+=(--latest)
           fi
-          gh release create "${release_args[@]}"
+          gh release create "${release_args[@]}" \
+            "$RUNNER_TEMP/vibe-release/Vibe-Coding-Skill-${VERSION}.zip" \
+            "$RUNNER_TEMP/vibe-release/Vibe-Coding-Skill-${VERSION}-SHA256SUMS.txt"

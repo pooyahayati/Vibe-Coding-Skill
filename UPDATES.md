@@ -4,6 +4,13 @@ A short, human-readable summary of what changed in each release.
 
 For full technical details, see [CHANGELOG.md](CHANGELOG.md).
 
+## 1.0.0 — Reviewed release with simpler publication
+- Includes all 13 reproduced independent-review fixes for risk, routing, completion, dependencies, WordPress artifacts, and evidence integrity.
+- Keeps small changes lightweight while preserving stronger controls for sensitive and cross-project work.
+- Removes model evaluations from release requirements and removes their automatic workflows. Publishing does not require provider API keys or model configuration.
+- Retains cross-platform tests, representative-project checks, dependency/tool contracts, and real WordPress install/upgrade checks on the release commit.
+- Provides an installation-checked portable ZIP with SHA-256 checksums.
+
 ## 0.10.7 — Real delivery evidence and safer stable releases
 - Added a second benchmark that measures whether coding agents actually deliver working changes, not only whether they choose the right engineering policy.
 - Added five representative delivery scenarios with hidden graders and control-vs-Skill comparison.

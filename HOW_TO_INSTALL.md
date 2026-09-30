@@ -1,8 +1,14 @@
 # How to Install
 
-Current Skill version: `0.10.7`
+Current Skill version: `1.0.0`
 
 Keep the Skill installation outside the repositories you use it on. Vibe Coding operational state is intentionally local-only.
+
+## Portable release ZIP
+
+Download `Vibe-Coding-Skill-1.0.0.zip` and its SHA-256 checksum file from the [1.0.0 release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.0.0).
+Extract the contained `vibe-coding-skill` directory into your agent's user-level skills directory. Preserve that directory name. The ZIP includes the complete runtime and does not include credentialed model-evaluation runners.
+Run the offline installation check below from the extracted directory. Optional tool warnings do not block installation.
 
 ## OpenAI Codex
 
@@ -66,6 +72,6 @@ Vibe Coding keeps generated operational state outside your product repository un
 ~/.vibe-coding/projects/<project-id>/
 ```
 
-This includes graph, security, benchmark, cache, test-artifact, worktree, and agent state.
+This includes graph, security, cache, test-artifact, worktree, and agent state.
 
 For lifecycle, rollback, and recovery details, see [references/installation-and-lifecycle.md](references/installation-and-lifecycle.md).

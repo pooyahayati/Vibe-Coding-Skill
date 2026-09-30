@@ -69,7 +69,6 @@ class InstallCheckTests(unittest.TestCase):
 
         required_runtime = {
             "config/toolchain.json",
-            "config/agent-benchmarks.json",
             "evals/scenarios.json",
             "evals/agent-output.schema.json",
             "agents/openai.yaml",
@@ -88,7 +87,7 @@ class InstallCheckTests(unittest.TestCase):
             failures,
         )
         self.assertIn(
-            "missing runtime file: config/agent-benchmarks.json",
+            "missing runtime file: config/context-routing.json",
             failures,
         )
         self.assertIn(
@@ -1336,36 +1335,6 @@ class BenchmarkScoringTests(unittest.TestCase):
                 all(row["conformance_rate"] is None for row in data["agents"])
             )
 
-    def test_real_agent_workflow_isolates_agent_failures(self):
-        workflow = (
-            ROOT / ".github" / "workflows" / "agent-benchmark.yml"
-        ).read_text(encoding="utf-8")
-
-        protected_steps = [
-            "Install Codex CLI",
-            "Install Claude Code CLI",
-            "Preflight Codex",
-            "Preflight Claude Code",
-            "Run Codex blind benchmark",
-            "Run Claude Code blind benchmark",
-        ]
-        for name in protected_steps:
-            marker = f"- name: {name}\n        continue-on-error: true"
-            self.assertIn(marker, workflow)
-
-        aggregate_marker = (
-            "- name: Require complete evidence and aggregate\n"
-            "        if: always()"
-        )
-        upload_marker = (
-            "- name: Upload raw benchmark evidence\n"
-            "        if: always()"
-        )
-        self.assertIn(aggregate_marker, workflow)
-        self.assertIn(upload_marker, workflow)
-        self.assertIn("set -o pipefail", workflow)
-        self.assertIn('mkdir -p "$RESULTS_DIR"', workflow)
-        self.assertNotIn("- name: Require benchmark credentials", workflow)
 
 
 class ReleaseReadinessTests(unittest.TestCase):
@@ -1392,94 +1361,7 @@ class ReleaseReadinessTests(unittest.TestCase):
             "checks": checks,
         }
 
-    def _stable_benchmark(self, mod):
-        identity = mod.benchmark_identity()
-        scenario_ids = mod.current_scenario_ids()
-        expected_count = len(scenario_ids)
-        agents = []
-        for agent in ("codex", "claude-code"):
-            agents.append({
-                "agent": agent,
-                "expected_scenarios": expected_count,
-                "completed_scenarios": expected_count,
-                "passed_scenarios": expected_count,
-                "complete": True,
-                "conformance_rate": 1.0,
-                "skill_versions": [identity["skill_version"]],
-                "skill_tree_sha256s": [identity["skill_tree_sha256"]],
-                "catalog_sha256s": [identity["catalog_sha256"]],
-                "schema_sha256s": [identity["schema_sha256"]],
-            })
-        return {
-            "schema_version": 4,
-            "expected_scenarios": scenario_ids,
-            "required_agents": ["codex", "claude-code"],
-            "missing_required_agents": [],
-            "evidence_complete": True,
-            "agents": agents,
-        }
 
-    def _stable_delivery_benchmark(self, mod, effect="neutral"):
-        identity = mod.delivery_benchmark_identity()
-        scenario_ids = mod.delivery_scenario_ids()
-        comparisons = []
-        for agent in ("codex", "claude-code"):
-            for scenario_id in scenario_ids:
-                comparisons.append({
-                    "agent": agent,
-                    "scenario_id": scenario_id,
-                    "expected_repetitions": 3,
-                    "control": {
-                        "complete": True,
-                        "completed_runs": 3,
-                        "successful_runs": 3,
-                        "success_rate": 1.0,
-                        "median_duration_ms": 100.0,
-                        "median_changed_files": 1.0,
-                    },
-                    "treatment": {
-                        "complete": True,
-                        "completed_runs": 3,
-                        "successful_runs": 3,
-                        "success_rate": 1.0,
-                        "median_duration_ms": 100.0,
-                        "median_changed_files": 1.0,
-                    },
-                    "effect": effect,
-                    "success_rate_delta": 0.0 if effect == "neutral" else -1.0,
-                })
-        expected_runs = mod.expected_delivery_run_count()
-        return {
-            "schema_version": 1,
-            "benchmark": "real-delivery-aggregate",
-            "execution_class": "real",
-            "required_agents": ["codex", "claude-code"],
-            "expected_scenarios": scenario_ids,
-            "expected_run_count": expected_runs,
-            "observed_valid_run_count": expected_runs,
-            "evidence_complete": True,
-            "missing_runs": [],
-            "unexpected_runs": [],
-            "duplicate_runs": [],
-            "invalid_files": [],
-            "identity": {
-                "consistent": True,
-                "skill_versions": [identity["skill_version"]],
-                "skill_tree_sha256s": [identity["skill_tree_sha256"]],
-                "catalog_sha256s": [identity["catalog_sha256"]],
-                "result_schema_sha256s": [identity["schema_sha256"]],
-                "agent_versions": {
-                    "codex": ["codex-test"],
-                    "claude-code": ["claude-test"],
-                },
-                "models": {
-                    "codex": ["codex-model-test"],
-                    "claude-code": ["claude-model-test"],
-                },
-            },
-            "effect_counts": {effect: len(comparisons)},
-            "comparisons": comparisons,
-        }
 
     def test_beta_requires_validate_skill_on_target_commit(self):
         mod = load_script("release_readiness.py")
@@ -1557,161 +1439,40 @@ class ReleaseReadinessTests(unittest.TestCase):
                 rel,
             )
 
-    def test_real_benchmark_workflows_support_exact_main_commit_trigger(self):
-        for rel in (
-            "agent-benchmark.yml",
-            "real-delivery-benchmark.yml",
-        ):
-            workflow = (
-                ROOT / ".github" / "workflows" / rel
-            ).read_text(encoding="utf-8")
-            self.assertIn("push:", workflow, rel)
-            self.assertIn("branches:", workflow, rel)
-            self.assertIn("- main", workflow, rel)
-            self.assertIn('.github/benchmark-trigger', workflow, rel)
 
-    def test_stable_blocks_without_real_agent_aggregate(self):
-        mod = load_script("release_readiness.py")
-        result = mod.evaluate(self._report(mod), "stable")
-        self.assertEqual(result["gate"], "BLOCK")
-        self.assertTrue(
-            any(
-                "real-agent benchmark aggregate" in failure
-                for failure in result["failures"]
-            )
-        )
 
-    def test_stable_accepts_complete_conformant_matching_benchmark(self):
-        mod = load_script("release_readiness.py")
-        benchmark = self._stable_benchmark(mod)
-        result = mod.evaluate(
-            self._report(mod),
-            "stable",
-            benchmark,
-            self._stable_delivery_benchmark(mod),
-        )
-        self.assertEqual(result["gate"], "PASS")
-        self.assertTrue(
-            all(
-                row["identity_ok"]
-                for row in result["benchmark"]["agents"].values()
-            )
-        )
 
-    def test_stable_rejects_zero_delivery_success_even_when_neutral(self):
-        mod = load_script("release_readiness.py")
-        delivery = self._stable_delivery_benchmark(mod)
-        for comparison in delivery["comparisons"]:
-            for arm in ("control", "treatment"):
-                comparison[arm].update(successful_runs=0, success_rate=0.0)
-        result = mod.evaluate(self._report(mod), "stable", self._stable_benchmark(mod), delivery)
-        self.assertEqual(result["gate"], "BLOCK")
-        self.assertTrue(any("success floor" in failure for failure in result["failures"]))
 
-    def test_stable_rejects_contradictory_rates_and_missing_model(self):
-        mod = load_script("release_readiness.py")
-        delivery = self._stable_delivery_benchmark(mod)
-        delivery["comparisons"][0]["treatment"]["successful_runs"] = 0
-        delivery["identity"]["models"]["codex"] = []
-        result = mod.evaluate(self._report(mod), "stable", self._stable_benchmark(mod), delivery)
-        self.assertEqual(result["gate"], "BLOCK")
-        self.assertTrue(any("rate/count mismatch" in failure for failure in result["failures"]))
 
-    def test_stable_blocks_without_real_delivery_aggregate(self):
-        mod = load_script("release_readiness.py")
-        result = mod.evaluate(
-            self._report(mod),
-            "stable",
-            self._stable_benchmark(mod),
-        )
-        self.assertEqual(result["gate"], "BLOCK")
-        self.assertTrue(
-            any(
-                "real-delivery benchmark aggregate" in failure
-                for failure in result["failures"]
-            )
-        )
 
-    def test_stable_rejects_delivery_regression(self):
-        mod = load_script("release_readiness.py")
-        delivery = self._stable_delivery_benchmark(mod)
-        delivery["comparisons"][0]["effect"] = "regressed"
-        delivery["comparisons"][0]["success_rate_delta"] = -1.0
-        delivery["effect_counts"] = {
-            "neutral": len(delivery["comparisons"]) - 1,
-            "regressed": 1,
-        }
-        result = mod.evaluate(
-            self._report(mod),
-            "stable",
-            self._stable_benchmark(mod),
-            delivery,
-        )
-        self.assertEqual(result["gate"], "BLOCK")
-        self.assertTrue(
-            any(
-                "treatment regressions" in failure
-                for failure in result["failures"]
-            )
-        )
 
     def test_rc_does_not_require_real_delivery_evidence(self):
         mod = load_script("release_readiness.py")
         result = mod.evaluate(self._report(mod), "rc")
         self.assertEqual(result["gate"], "PASS")
 
-    def test_stable_rejects_benchmark_with_wrong_scenario_set(self):
-        mod = load_script("release_readiness.py")
-        benchmark = self._stable_benchmark(mod)
-        benchmark["expected_scenarios"] = benchmark["expected_scenarios"][:-1]
-        result = mod.evaluate(
-            self._report(mod),
-            "stable",
-            benchmark,
-        )
-        self.assertEqual(result["gate"], "BLOCK")
-        self.assertTrue(
-            any(
-                "scenario set does not match" in failure
-                for failure in result["failures"]
-            )
-        )
 
-    def test_stable_rejects_agent_scenario_count_mismatch(self):
-        mod = load_script("release_readiness.py")
-        benchmark = self._stable_benchmark(mod)
-        benchmark["agents"][0]["expected_scenarios"] -= 1
-        benchmark["agents"][0]["completed_scenarios"] -= 1
-        benchmark["agents"][0]["passed_scenarios"] -= 1
-        result = mod.evaluate(
-            self._report(mod),
-            "stable",
-            benchmark,
-        )
-        self.assertEqual(result["gate"], "BLOCK")
-        self.assertTrue(
-            any(
-                "conformance failures: codex" in failure
-                for failure in result["failures"]
-            )
-        )
 
-    def test_stable_rejects_benchmark_from_different_skill_tree(self):
+
+    def test_stable_passes_without_model_evaluations(self):
         mod = load_script("release_readiness.py")
-        benchmark = self._stable_benchmark(mod)
-        benchmark["agents"][0]["skill_tree_sha256s"] = ["stale-tree"]
-        result = mod.evaluate(
-            self._report(mod),
-            "stable",
-            benchmark,
-        )
-        self.assertEqual(result["gate"], "BLOCK")
-        self.assertTrue(
-            any(
-                "skill_tree_sha256s" in failure
-                for failure in result["failures"]
-            )
-        )
+        self.assertEqual(mod.evaluate(self._report(mod), "stable")["gate"], "PASS")
+
+    def test_stable_still_requires_every_software_check(self):
+        mod = load_script("release_readiness.py")
+        for name in mod.BASE_RELEASE_CHECKS:
+            with self.subTest(name=name):
+                report = self._report(mod)
+                report["checks"] = [row for row in report["checks"] if row["name"] != name]
+                self.assertEqual(mod.evaluate(report, "stable")["gate"], "BLOCK")
+
+    def test_release_has_no_automatic_model_workflows(self):
+        for name in ("agent-benchmark.yml", "real-delivery-benchmark.yml"):
+            self.assertFalse((ROOT / ".github/workflows" / name).exists())
+        workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+        self.assertNotIn("benchmark-aggregate", workflow)
+        self.assertNotIn("OPENAI_API_KEY", workflow)
+        self.assertNotIn("Real Agent Benchmark", workflow)
 
     def test_release_workflow_enforces_release_readiness_gate(self):
         workflow = (
@@ -1725,14 +1486,9 @@ class ReleaseReadinessTests(unittest.TestCase):
             "Agent Skills Spec Compatibility",
             "Tool Contract Tests",
             "WordPress Artifact Contract",
-            "Real Agent Benchmark",
-            "Real Delivery Benchmark",
         ):
             self.assertIn(f"      - {workflow_name}", workflow)
-        self.assertIn("gh run download", workflow)
         self.assertIn("current = latest.get(name)", workflow)
-        self.assertIn("candidates[0].get(\"conclusion\") == \"success\"", workflow)
-        self.assertIn("steps.readiness.outputs.channel == 'stable'", workflow)
         self.assertIn("steps.readiness.outputs.base_ready == 'true'", workflow)
         self.assertIn("TRIGGER_NAME:", workflow)
         self.assertIn("TRIGGER_CONCLUSION:", workflow)
@@ -1742,29 +1498,9 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.assertIn('CHANNEL="beta"', workflow)
         self.assertIn('CHANNEL="rc"', workflow)
         self.assertIn('CHANNEL="stable"', workflow)
-        self.assertIn("--delivery-aggregate", workflow)
-        self.assertIn("Resolve stable delivery evidence", workflow)
-        self.assertIn("Real Delivery Benchmark", workflow)
         self.assertIn("--prerelease", workflow)
 
 
-    def test_stable_rejects_complete_but_nonconformant_agent(self):
-        mod = load_script("release_readiness.py")
-        benchmark = self._stable_benchmark(mod)
-        benchmark["agents"][1]["passed_scenarios"] = 9
-        benchmark["agents"][1]["conformance_rate"] = 0.9
-        result = mod.evaluate(
-            self._report(mod),
-            "stable",
-            benchmark,
-        )
-        self.assertEqual(result["gate"], "BLOCK")
-        self.assertTrue(
-            any(
-                "conformance failures: claude-code" in failure
-                for failure in result["failures"]
-            )
-        )
 
 
 class BootstrapTests(unittest.TestCase):
