@@ -12,8 +12,7 @@ on:
     - cron: "17 5 * * 1"
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   check:
@@ -24,20 +23,11 @@ jobs:
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
-      - name: Test latest stable graphify compatibility
+      - name: Test latest stable Graphify compatibility
         run: python scripts/graphify_compat.py --latest --json | tee graphify-compat.json
       - name: Verify last-known-good fallback
-        run: python scripts/graphify_compat.py --version "$(python -c 'import json; print(json.load(open("config/toolchain.json"))["graphify"]["last_known_good"])')" --json | tee graphify-fallback.json
-
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
         run: |
-          VERSION=$(python -c 'import json; print(json.load(open("config/toolchain.json"))["graphify"]["approved"])')
-          BRANCH="bot/graphify-${VERSION}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B "$BRANCH"
-          git add config/toolchain.json
-          git commit -m "chore: approve Graphify ${VERSION}"
-          git push --force-with-lease origin "$BRANCH"
-          gh pr create             --base main             --head "$BRANCH"             --title "chore: approve Graphify ${VERSION}"             --body "Automated compatibility contract tests passed for Graphify ${VERSION}. Merging this PR makes it the approved stable version for Vibe Coding Skill."             || true
+          VERSION=$(python -c 'import json; print(json.load(open("config/toolchain.json"))["graphify"]["last_known_good"])')
+          python scripts/graphify_compat.py --version "$VERSION" --json | tee graphify-fallback.json
+      - name: Verify resolver policy
+        run: python scripts/toolchain_resolution.py graphify --json
