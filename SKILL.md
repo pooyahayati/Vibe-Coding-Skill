@@ -92,6 +92,8 @@ Capability packs supplement Vibe Core; they never replace project-wide constrain
 
 A platform-specific pack MUST have platform evidence. Generic terminology such as “REST API” must not activate a WordPress-specific pack in an unrelated backend. Explicit `--include-pack` is additive when semantic evidence is known.
 
+When platform/runtime/capability/concern semantics are known but task wording is ambiguous or language-dependent, pass structured Context Router facts (`--context-runtime`, `--context-platform`, `--context-capability`, `--context-concern`) rather than expanding natural-language keyword lists.
+
 Current packs cover PHP, WordPress, WooCommerce, browser JavaScript, WordPress REST, external HTTP, payments, web security, and web performance.
 
 Read `references/context-routing-and-execution.md` for routing precedence, context metrics, and pack composition.
@@ -137,7 +139,7 @@ Read `references/execution-and-verification.md`.
 
 Never report `Done` without explicit acceptance criteria and relevant evidence.
 
-Use `scripts/completion_gate.py` for structured completion reports. Failed required evidence blocks completion; unrelated passing checks cannot cancel it. Higher-risk evidence must carry the required provenance/revision binding.
+Use `scripts/completion_gate.py` for structured completion reports. Failed required evidence blocks completion; unrelated passing checks cannot cancel it. Evidence kinds must come from the gate's semantic taxonomy, and Tier 2/3 diversity is measured by evidence family rather than arbitrary labels. Higher-risk evidence must carry the required provenance/revision binding.
 
 If evidence is unavailable, report `Unverified` rather than complete.
 
