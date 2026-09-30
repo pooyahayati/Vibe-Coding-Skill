@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - "VERSION"
+      - ".github/workflows/release.yml"
       - "SKILL.md"
       - "agents/openai.yaml"
       - "plugin.json"
@@ -15,6 +16,7 @@ on:
   pull_request:
     paths:
       - "VERSION"
+      - ".github/workflows/release.yml"
       - "SKILL.md"
       - "agents/openai.yaml"
       - "plugin.json"
