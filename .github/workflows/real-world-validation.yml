@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - "VERSION"
+      - ".github/workflows/release.yml"
       - "scripts/run_real_world_validations.py"
       - "validation/real-world-projects.json"
       - "scripts/local_workspace.py"
@@ -25,6 +26,7 @@ on:
   pull_request:
     paths:
       - "VERSION"
+      - ".github/workflows/release.yml"
       - "scripts/run_real_world_validations.py"
       - "validation/real-world-projects.json"
       - "scripts/local_workspace.py"
