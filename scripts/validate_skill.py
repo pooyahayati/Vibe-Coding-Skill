@@ -232,6 +232,17 @@ def main() -> int:
                     f"{required_pack!r}"
                 )
 
+    pack_reference_pattern = re.compile(r"references/([A-Za-z0-9_.-]+\.md)")
+    for pack_file in sorted((ROOT / "packs").glob("*.md")):
+        pack_text = pack_file.read_text(encoding="utf-8")
+        for ref_name in pack_reference_pattern.findall(pack_text):
+            ref_path = ROOT / "references" / ref_name
+            if not ref_path.exists():
+                fail(
+                    f"{pack_file.relative_to(ROOT)} references missing file: "
+                    f"references/{ref_name}"
+                )
+
     agents_config = json.loads(benchmark_agents.read_text(encoding="utf-8"))
     if set((agents_config.get("agents") or {}).keys()) != {"codex", "claude-code"}:
         fail("config/agent-benchmarks.json must define codex and claude-code adapters")

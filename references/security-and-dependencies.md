@@ -138,6 +138,20 @@ Maintenance evidence includes:
 
 Age thresholds are review heuristics, not universal quality judgments. Mature stable packages may legitimately release infrequently.
 
+## Composer / Packagist
+
+The bundled dependency guard does not currently implement a Composer/Packagist adapter.
+
+For Composer-managed PHP/WordPress dependencies, use native and official evidence instead of treating the generic guard as successful coverage:
+
+- inspect `composer.json` and the committed `composer.lock`;
+- verify the concrete package/version on Packagist or the package's official source/distribution;
+- run `composer validate`;
+- run `composer audit` for the locked dependency set when available;
+- review source/provenance, maintenance, license, and necessity according to the current risk.
+
+Packages distributed outside Packagist require their own verified source/distribution path.
+
 ## Dependency hallucination rule
 
 Never install a package merely because an AI model suggested its name. Verify it independently.

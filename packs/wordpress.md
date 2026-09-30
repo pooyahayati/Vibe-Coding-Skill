@@ -21,8 +21,12 @@ Plugin ↔ WordPress lifecycle; plugin ↔ other plugins/themes.
 ## Required checks
 Relevant WordPress flow, permissions for mutations, activation/upgrade path when touched, and conflict/regression coverage for shared hooks or global UI.
 
+When the task includes plugin release/distribution, the delivered ZIP is the verification target: confirm package shape/version, install the exact artifact in WordPress, and verify the upgrade/lifecycle path when applicable.
+
 ## Avoid
 Direct core edits, raw cURL when the WordPress HTTP API fits, unconditional site-wide assets/requests, unprepared SQL, and assuming another plugin/theme is always present.
 
 ## Deeper references
-Official WordPress Plugin/Common APIs documentation. Specialist WordPress skills may add depth but are optional.
+For plugin creation/release/distribution, load `references/wordpress-delivery.md`.
+
+Official WordPress Plugin/Common APIs documentation remains authoritative for platform behavior. Specialist WordPress skills may add depth but are optional.
