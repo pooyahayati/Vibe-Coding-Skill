@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Deterministic core for the Real Delivery Benchmark.
+"""Deterministic core contract for the Real Delivery Benchmark.
 
-Phase 9A intentionally has no real Codex/Claude adapter. It proves the
-workspace-write, control/treatment, hidden-grader, and provenance contracts with
-an injected executor and a deterministic self-test.
+Phase 9A deliberately has no real Codex/Claude adapter. It proves the
+workspace-write, control/treatment, hidden-grader, and provenance contracts
+with an injected executor and a deterministic self-test.
 """
 
 from __future__ import annotations
@@ -30,25 +30,21 @@ AGENTS_PATH = ROOT / "config" / "agent-benchmarks.json"
 PORTABLE_SKILL = ROOT / "skills" / "vibe-coding-skill"
 ARMS = {"control", "treatment"}
 GRADER_CATEGORIES = {
-    "functional",
-    "regression",
-    "artifact",
-    "security",
-    "forbidden-mutation",
-    "delivery",
+    "functional", "regression", "artifact", "security",
+    "forbidden-mutation", "delivery",
 }
+Executor = Callable[
+    [Path, str, str, dict[str, Any], int, dict[str, str]],
+    dict[str, Any],
+]
 
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def sha256_bytes(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
-
-
 def sha256_file(path: Path) -> str:
-    return sha256_bytes(path.read_bytes())
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def tree_hash(root: Path, excluded_roots: set[str] | None = None) -> str:
@@ -56,14 +52,10 @@ def tree_hash(root: Path, excluded_roots: set[str] | None = None) -> str:
     digest = hashlib.sha256()
     for path in sorted(p for p in root.rglob("*") if p.is_file()):
         rel = path.relative_to(root)
-        if ".git" in rel.parts:
+        if ".git" in rel.parts or (rel.parts and rel.parts[0] in excluded_roots):
             continue
-        if rel.parts and rel.parts[0] in excluded_roots:
-            continue
-        digest.update(rel.as_posix().encode("utf-8"))
-        digest.update(b"\0")
-        digest.update(path.read_bytes())
-        digest.update(b"\0")
+        digest.update(rel.as_posix().encode("utf-8") + b"\0")
+        digest.update(path.read_bytes() + b"\0")
     return digest.hexdigest()
 
 
@@ -74,7 +66,7 @@ def load_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def _under(path: Path, root: Path) -> None:
+def _require_under(path: Path, root: Path) -> None:
     try:
         path.resolve().relative_to(root.resolve())
     except ValueError as exc:
@@ -87,16 +79,12 @@ def scenario_paths(
 ) -> tuple[Path, Path]:
     fixture_rel = str(scenario.get("fixture") or "").strip()
     grader_rel = str(scenario.get("grader") or "").strip()
-    if not fixture_rel:
-        raise ValueError("delivery scenario requires fixture")
-    if not grader_rel:
-        raise ValueError("delivery scenario requires grader")
+    if not fixture_rel or not grader_rel:
+        raise ValueError("delivery scenario requires fixture and grader")
     fixture = (delivery_root / fixture_rel).resolve()
     grader = (delivery_root / grader_rel).resolve()
-    _under(fixture, delivery_root / "fixtures")
-    _under(grader, delivery_root / "graders")
-    if fixture == grader or fixture in grader.parents:
-        raise ValueError("hidden grader must stay outside the visible fixture")
+    _require_under(fixture, delivery_root / "fixtures")
+    _require_under(grader, delivery_root / "graders")
     return fixture, grader
 
 
@@ -112,11 +100,7 @@ def validate_catalog(
     if catalog.get("benchmark") != "real-delivery":
         failures.append("delivery catalog benchmark must be 'real-delivery'")
     repetitions = catalog.get("default_repetitions")
-    if (
-        not isinstance(repetitions, int)
-        or isinstance(repetitions, bool)
-        or repetitions < 1
-    ):
+    if not isinstance(repetitions, int) or isinstance(repetitions, bool) or repetitions < 1:
         failures.append("default_repetitions must be a positive integer")
 
     scenarios = catalog.get("scenarios")
@@ -137,16 +121,16 @@ def validate_catalog(
             seen.add(sid)
         if not str(scenario.get("prompt") or "").strip():
             failures.append(f"scenario {sid or index} requires prompt")
-        network = str(scenario.get("network_policy") or "").strip()
-        if network not in {"disabled", "scenario-required"}:
+        if str(scenario.get("network_policy") or "") not in {
+            "disabled", "scenario-required"
+        }:
             failures.append(
                 f"scenario {sid or index} network_policy must be "
                 "disabled or scenario-required"
             )
         forbidden = scenario.get("forbidden_paths", [])
         if not isinstance(forbidden, list) or not all(
-            isinstance(value, str) and value.strip()
-            for value in forbidden
+            isinstance(value, str) and value.strip() for value in forbidden
         ):
             failures.append(
                 f"scenario {sid or index} forbidden_paths must be an array of strings"
@@ -157,23 +141,25 @@ def validate_catalog(
             failures.append(f"scenario {sid or index}: {exc}")
             continue
         if require_files and not fixture.is_dir():
-            failures.append(
-                f"scenario {sid or index} fixture directory is missing: {fixture}"
-            )
+            failures.append(f"scenario {sid or index} fixture is missing: {fixture}")
         if require_files and not grader.is_file():
-            failures.append(
-                f"scenario {sid or index} grader is missing: {grader}"
-            )
+            failures.append(f"scenario {sid or index} grader is missing: {grader}")
     return failures
 
 
 def git(workspace: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["git", *args],
-        cwd=workspace,
-        text=True,
-        capture_output=True,
+        ["git", *args], cwd=workspace, text=True, capture_output=True
     )
+
+
+def _copy_fixture(fixture: Path, workspace: Path) -> None:
+    for source in fixture.iterdir():
+        target = workspace / source.name
+        if source.is_dir():
+            shutil.copytree(source, target)
+        else:
+            shutil.copyfile(source, target)
 
 
 def skill_dir_for_agent(agent: str) -> str:
@@ -196,14 +182,8 @@ def prepare_workspace(
 ) -> dict[str, Any]:
     if arm not in ARMS:
         raise ValueError(f"unknown delivery benchmark arm: {arm}")
-    workspace.mkdir(parents=True, exist_ok=True)
-    for source in fixture.iterdir():
-        target = workspace / source.name
-        if source.is_dir():
-            shutil.copytree(source, target)
-        else:
-            shutil.copyfile(source, target)
-
+    workspace.mkdir(parents=True)
+    _copy_fixture(fixture, workspace)
     if git(workspace, "init", "-q").returncode != 0:
         raise RuntimeError("git init failed")
     git(workspace, "config", "user.email", "benchmark@example.invalid")
@@ -214,26 +194,19 @@ def prepare_workspace(
         raise RuntimeError(commit.stderr or "baseline commit failed")
     baseline = git(workspace, "rev-parse", "HEAD").stdout.strip()
 
-    skill_dir: str | None = None
-    operational_root: str | None = None
+    skill_dir = operational_root = None
     if arm == "treatment":
         skill_dir = skill_dir_for_agent(agent)
         target = workspace / skill_dir
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(portable_skill, target)
         operational_root = Path(skill_dir).parts[0]
-        exclude_result = git(
-            workspace,
-            "rev-parse",
-            "--git-path",
-            "info/exclude",
-        )
-        if exclude_result.returncode != 0:
+        exclude = git(workspace, "rev-parse", "--git-path", "info/exclude")
+        if exclude.returncode != 0:
             raise RuntimeError("cannot locate git exclude file")
-        exclude_path = Path(exclude_result.stdout.strip())
+        exclude_path = Path(exclude.stdout.strip())
         if not exclude_path.is_absolute():
             exclude_path = (workspace / exclude_path).resolve()
-        exclude_path.parent.mkdir(parents=True, exist_ok=True)
         with exclude_path.open("a", encoding="utf-8") as handle:
             handle.write(f"\n/{operational_root}/\n")
 
@@ -244,23 +217,16 @@ def prepare_workspace(
     }
 
 
-def build_prompt(
-    scenario: dict[str, Any],
-    *,
-    arm: str,
-    skill_dir: str | None,
-) -> str:
+def build_prompt(scenario: dict[str, Any], *, arm: str, skill_dir: str | None) -> str:
     text = (
         "Implement the requested change in the current repository. "
         "You may edit project files and run relevant local checks. "
-        "Do not deploy, push Git changes, read unrelated host files, "
-        "expose credentials, or perform external side effects."
+        "Do not deploy, push Git changes, read unrelated host files, expose "
+        "credentials, or perform external side effects."
     )
     if arm == "treatment":
-        text += (
-            " Use the installed Vibe Coding Skill"
-            + (f" from {skill_dir}." if skill_dir else ".")
-        )
+        text += " Use the installed Vibe Coding Skill"
+        text += f" from {skill_dir}." if skill_dir else "."
     else:
         text += " Do not assume the Vibe Coding Skill is installed."
     if scenario.get("network_policy", "disabled") == "disabled":
@@ -269,13 +235,7 @@ def build_prompt(
 
 
 def changed_paths(workspace: Path) -> list[str]:
-    result = git(
-        workspace,
-        "status",
-        "--porcelain=v1",
-        "-z",
-        "--untracked-files=all",
-    )
+    result = git(workspace, "status", "--porcelain=v1", "-z", "--untracked-files=all")
     if result.returncode != 0:
         raise RuntimeError(result.stderr or "git status failed")
     rows: list[str] = []
@@ -284,8 +244,7 @@ def changed_paths(workspace: Path) -> list[str]:
     while index < len(parts):
         row = parts[index]
         if len(row) >= 4:
-            status = row[:2]
-            path = row[3:]
+            status, path = row[:2], row[3:]
             if status[0] in {"R", "C"} and index + 1 < len(parts):
                 index += 1
                 path = parts[index]
@@ -300,15 +259,12 @@ def diff_hash(workspace: Path, paths: list[str]) -> str:
     if tracked.returncode != 0:
         raise RuntimeError(tracked.stderr or "git diff failed")
     digest.update(tracked.stdout.encode("utf-8", "surrogateescape"))
-    tracked_names = set(
-        git(workspace, "diff", "--name-only", "HEAD").stdout.splitlines()
-    )
+    tracked_names = set(git(workspace, "diff", "--name-only", "HEAD").stdout.splitlines())
     for rel in paths:
         if rel in tracked_names:
             continue
         path = workspace / rel
-        digest.update(rel.encode("utf-8"))
-        digest.update(b"\0")
+        digest.update(rel.encode("utf-8") + b"\0")
         if path.is_file():
             digest.update(path.read_bytes())
         digest.update(b"\0")
@@ -317,86 +273,49 @@ def diff_hash(workspace: Path, paths: list[str]) -> str:
 
 def dependency_files_changed(paths: list[str]) -> list[str]:
     names = {
-        "package.json",
-        "package-lock.json",
-        "pnpm-lock.yaml",
-        "yarn.lock",
-        "composer.json",
-        "composer.lock",
-        "pyproject.toml",
-        "poetry.lock",
-        "requirements.txt",
-        "Cargo.toml",
-        "Cargo.lock",
-        "go.mod",
-        "go.sum",
+        "package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock",
+        "composer.json", "composer.lock", "pyproject.toml", "poetry.lock",
+        "requirements.txt", "Cargo.toml", "Cargo.lock", "go.mod", "go.sum",
     }
     return sorted(
-        rel
-        for rel in paths
-        if Path(rel).name in names
-        or Path(rel).name.startswith("requirements")
+        rel for rel in paths
+        if Path(rel).name in names or Path(rel).name.startswith("requirements")
     )
 
 
-def forbidden_path_hits(
-    paths: list[str],
-    patterns: list[str],
-) -> list[str]:
-    return sorted(
-        {
-            rel
-            for rel in paths
-            if any(
-                fnmatch.fnmatch(rel, pattern)
-                or fnmatch.fnmatch("/" + rel, pattern)
-                for pattern in patterns
-            )
-        }
-    )
+def forbidden_path_hits(paths: list[str], patterns: list[str]) -> list[str]:
+    return sorted({
+        rel for rel in paths
+        if any(
+            fnmatch.fnmatch(rel, pattern) or fnmatch.fnmatch("/" + rel, pattern)
+            for pattern in patterns
+        )
+    })
 
 
 def sanitized_env(base: Path) -> dict[str, str]:
     env = {
-        key: value
-        for key, value in os.environ.items()
-        if key
-        in {
-            "PATH",
-            "PATHEXT",
-            "SYSTEMROOT",
-            "WINDIR",
-            "COMSPEC",
-            "LANG",
-            "LC_ALL",
-            "TERM",
+        key: value for key, value in os.environ.items()
+        if key in {
+            "PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "COMSPEC",
+            "LANG", "LC_ALL", "TERM",
         }
     }
-    home = base / "home"
-    temp = base / "tmp"
-    home.mkdir(parents=True, exist_ok=True)
-    temp.mkdir(parents=True, exist_ok=True)
-    env.update(
-        {
-            "HOME": str(home),
-            "USERPROFILE": str(home),
-            "TMPDIR": str(temp),
-            "TMP": str(temp),
-            "TEMP": str(temp),
-            "PYTHONDONTWRITEBYTECODE": "1",
-        }
-    )
+    home, temp = base / "home", base / "tmp"
+    home.mkdir()
+    temp.mkdir()
+    env.update({
+        "HOME": str(home), "USERPROFILE": str(home),
+        "TMPDIR": str(temp), "TMP": str(temp), "TEMP": str(temp),
+        "PYTHONDONTWRITEBYTECODE": "1",
+    })
     return env
 
 
-def validate_grader_output(
-    raw: Any,
-) -> tuple[dict[str, Any], list[str]]:
-    failures: list[str] = []
+def validate_grader_output(raw: Any) -> tuple[dict[str, Any], list[str]]:
     if not isinstance(raw, dict):
-        return {"checks": [], "metrics": {}}, [
-            "grader output must be a JSON object"
-        ]
+        return {"checks": [], "metrics": {}}, ["grader output must be a JSON object"]
+    failures: list[str] = []
     if raw.get("schema_version") != 1:
         failures.append("grader schema_version must be 1")
     checks = raw.get("checks")
@@ -419,30 +338,22 @@ def validate_grader_output(
         else:
             seen.add(cid)
         if category not in GRADER_CATEGORIES:
-            failures.append(
-                f"grader check {cid or index} has unsupported category"
-            )
+            failures.append(f"grader check {cid or index} has unsupported category")
         if not isinstance(check.get("required"), bool):
-            failures.append(
-                f"grader check {cid or index} requires boolean required"
-            )
+            failures.append(f"grader check {cid or index} requires boolean required")
         if not isinstance(check.get("passed"), bool):
-            failures.append(
-                f"grader check {cid or index} requires boolean passed"
-            )
-        normalized.append(
-            {
-                "id": cid,
-                "category": category,
-                "required": check.get("required") is True,
-                "passed": check.get("passed") is True,
-                "details": str(check.get("details") or ""),
-            }
-        )
-    metrics = raw.get("metrics")
-    if not isinstance(metrics, dict):
-        metrics = {}
-    return {"checks": normalized, "metrics": metrics}, failures
+            failures.append(f"grader check {cid or index} requires boolean passed")
+        normalized.append({
+            "id": cid,
+            "category": category,
+            "required": check.get("required") is True,
+            "passed": check.get("passed") is True,
+            "details": str(check.get("details") or ""),
+        })
+    return {
+        "checks": normalized,
+        "metrics": raw.get("metrics") if isinstance(raw.get("metrics"), dict) else {},
+    }, failures
 
 
 def run_hidden_grader(
@@ -452,16 +363,9 @@ def run_hidden_grader(
     timeout: int,
     env: dict[str, str],
 ) -> dict[str, Any]:
-    command = [
-        sys.executable,
-        str(grader),
-        "--workspace",
-        str(workspace),
-        "--json",
-    ]
     try:
         completed = subprocess.run(
-            command,
+            [sys.executable, str(grader), "--workspace", str(workspace), "--json"],
             cwd=grader.parent,
             env=env,
             text=True,
@@ -498,12 +402,6 @@ def run_hidden_grader(
     }
 
 
-Executor = Callable[
-    [Path, str, str, dict[str, Any], int, dict[str, str]],
-    dict[str, Any],
-]
-
-
 def run_one(
     *,
     agent: str,
@@ -521,83 +419,48 @@ def run_one(
     result_schema_path: Path = RESULT_SCHEMA_PATH,
 ) -> dict[str, Any]:
     fixture, grader_path = scenario_paths(scenario, delivery_root)
-    started_at = utc_now()
-    start = time.monotonic()
+    started_at, started = utc_now(), time.monotonic()
     result_dir.mkdir(parents=True, exist_ok=True)
 
-    with tempfile.TemporaryDirectory(
-        prefix="vibe-delivery-benchmark-"
-    ) as td:
-        base = Path(td)
-        workspace = base / "workspace"
+    with tempfile.TemporaryDirectory(prefix="vibe-delivery-benchmark-") as td:
+        base, workspace = Path(td), Path(td) / "workspace"
         info = prepare_workspace(
-            fixture,
-            workspace,
-            arm=arm,
-            agent=agent,
-            portable_skill=portable_skill,
+            fixture, workspace, arm=arm, agent=agent, portable_skill=portable_skill
         )
-        prompt = build_prompt(
-            scenario,
-            arm=arm,
-            skill_dir=info["skill_dir"],
-        )
-        env = sanitized_env(base)
-        raw_executor = executor(
-            workspace,
-            prompt,
-            arm,
-            scenario,
-            timeout,
-            env,
-        )
-        if not isinstance(raw_executor, dict):
+        prompt = build_prompt(scenario, arm=arm, skill_dir=info["skill_dir"])
+        raw = executor(workspace, prompt, arm, scenario, timeout, sanitized_env(base))
+        if not isinstance(raw, dict):
             raise RuntimeError("executor must return an object")
-        exit_code = raw_executor.get("exit_code")
+        exit_code = raw.get("exit_code")
         if not isinstance(exit_code, int) or isinstance(exit_code, bool):
             raise RuntimeError("executor requires integer exit_code")
 
         paths = changed_paths(workspace)
         operational_root = info["operational_root"]
         product_paths = [
-            rel
-            for rel in paths
-            if not (
-                operational_root
-                and (
-                    rel == operational_root
-                    or rel.startswith(operational_root + "/")
-                )
-            )
+            rel for rel in paths
+            if not operational_root
+            or (rel != operational_root and not rel.startswith(operational_root + "/"))
         ]
         forbidden = forbidden_path_hits(
             product_paths,
-            [
-                str(value)
-                for value in scenario.get("forbidden_paths", [])
-            ],
+            [str(value) for value in scenario.get("forbidden_paths", [])],
         )
         grader = run_hidden_grader(
-            grader_path,
-            workspace,
-            timeout=grader_timeout,
-            env=env,
+            grader_path, workspace, timeout=grader_timeout, env=sanitized_env(base)
         )
 
-        delivery_failures = list(grader["failures"])
+        failures = list(grader["failures"])
         if exit_code != 0:
-            delivery_failures.append(f"executor_exit_code:{exit_code}")
+            failures.append(f"executor_exit_code:{exit_code}")
         if forbidden:
-            delivery_failures.append(
-                "forbidden_path_mutation:" + ",".join(forbidden)
-            )
-        for check in grader["parsed"]["checks"]:
-            if check["required"] and not check["passed"]:
-                delivery_failures.append(
-                    f"required_check_failed:{check['id']}"
-                )
-        delivery_failures = list(dict.fromkeys(delivery_failures))
-        delivery_success = not delivery_failures
+            failures.append("forbidden_path_mutation:" + ",".join(forbidden))
+        failures.extend(
+            f"required_check_failed:{check['id']}"
+            for check in grader["parsed"]["checks"]
+            if check["required"] and not check["passed"]
+        )
+        failures = list(dict.fromkeys(failures))
 
         stem = f"{scenario['id']}.{arm}.r{repetition}"
         raw_files = {
@@ -607,59 +470,40 @@ def run_one(
             "grader_stderr": stem + ".grader.stderr.txt",
         }
         raw_values = {
-            "stdout": str(raw_executor.get("stdout") or ""),
-            "stderr": str(raw_executor.get("stderr") or ""),
+            "stdout": str(raw.get("stdout") or ""),
+            "stderr": str(raw.get("stderr") or ""),
             "grader_stdout": grader["stdout"],
             "grader_stderr": grader["stderr"],
         }
-        for key, name in raw_files.items():
-            (result_dir / name).write_text(
-                raw_values[key],
-                encoding="utf-8",
-            )
+        for key, filename in raw_files.items():
+            (result_dir / filename).write_text(raw_values[key], encoding="utf-8")
 
         excluded = {operational_root} if operational_root else set()
         envelope = {
             "schema_version": 1,
             "benchmark": "real-delivery",
             "agent": agent,
-            "agent_version": raw_executor.get("agent_version"),
-            "model": raw_executor.get("model") or model,
+            "agent_version": raw.get("agent_version"),
+            "model": raw.get("model") or model,
             "arm": arm,
             "scenario_id": str(scenario["id"]),
             "repetition": repetition,
-            "skill_version": (
-                ROOT / "VERSION"
-            ).read_text(encoding="utf-8").strip(),
+            "skill_version": (ROOT / "VERSION").read_text(encoding="utf-8").strip(),
             "started_at": started_at,
             "completed_at": utc_now(),
             "runtime": {
                 "exit_code": exit_code,
-                "duration_ms": int(
-                    (time.monotonic() - start) * 1000
-                ),
-                "timed_out": bool(raw_executor.get("timed_out")),
-                "usage": (
-                    raw_executor.get("usage")
-                    if isinstance(raw_executor.get("usage"), dict)
-                    else {}
-                ),
+                "duration_ms": int((time.monotonic() - started) * 1000),
+                "timed_out": bool(raw.get("timed_out")),
+                "usage": raw.get("usage") if isinstance(raw.get("usage"), dict) else {},
             },
             "workspace": {
                 "baseline_commit": info["baseline_commit"],
-                "final_tree_sha256": tree_hash(
-                    workspace,
-                    excluded,
-                ),
-                "diff_sha256": diff_hash(
-                    workspace,
-                    product_paths,
-                ),
+                "final_tree_sha256": tree_hash(workspace, excluded),
+                "diff_sha256": diff_hash(workspace, product_paths),
                 "changed_paths": product_paths,
                 "changed_file_count": len(product_paths),
-                "dependency_files_changed": (
-                    dependency_files_changed(product_paths)
-                ),
+                "dependency_files_changed": dependency_files_changed(product_paths),
                 "forbidden_path_hits": forbidden,
             },
             "grader": {
@@ -667,36 +511,24 @@ def run_one(
                 "timed_out": grader["timed_out"],
                 "checks": grader["parsed"]["checks"],
                 "metrics": grader["parsed"]["metrics"],
-                "failures": delivery_failures,
-                "delivery_success": delivery_success,
+                "failures": failures,
+                "delivery_success": not failures,
             },
             "integrity": {
                 "fixture_sha256": tree_hash(fixture),
                 "grader_sha256": sha256_file(grader_path),
                 "catalog_sha256": sha256_file(catalog_path),
-                "result_schema_sha256": sha256_file(
-                    result_schema_path
-                ),
+                "result_schema_sha256": sha256_file(result_schema_path),
                 "skill_tree_sha256": tree_hash(portable_skill),
                 "skill_installed": arm == "treatment",
                 "hidden_grader_outside_workspace": True,
-                "prompt_sha256": sha256_bytes(
-                    prompt.encode("utf-8")
-                ),
-                "executor_id": str(
-                    raw_executor.get("executor_id")
-                    or "injected-executor"
-                ),
+                "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+                "executor_id": str(raw.get("executor_id") or "injected-executor"),
             },
             "raw_files": raw_files,
         }
         (result_dir / (stem + ".json")).write_text(
-            json.dumps(
-                envelope,
-                indent=2,
-                ensure_ascii=False,
-            )
-            + "\n",
+            json.dumps(envelope, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
         return envelope
@@ -710,10 +542,7 @@ def deterministic_fake_executor(
     timeout: int,
     env: dict[str, str],
 ) -> dict[str, Any]:
-    (workspace / "message.txt").write_text(
-        "implemented\n",
-        encoding="utf-8",
-    )
+    (workspace / "message.txt").write_text("implemented\n", encoding="utf-8")
     return {
         "exit_code": 0,
         "stdout": "fake executor completed",
@@ -726,19 +555,14 @@ def deterministic_fake_executor(
 
 
 def self_test() -> dict[str, Any]:
-    with tempfile.TemporaryDirectory(
-        prefix="vibe-delivery-self-test-"
-    ) as td:
+    with tempfile.TemporaryDirectory(prefix="vibe-delivery-self-test-") as td:
         base = Path(td)
         delivery_root = base / "delivery"
         fixture = delivery_root / "fixtures" / "framework"
         grader = delivery_root / "graders" / "framework.py"
         fixture.mkdir(parents=True)
         grader.parent.mkdir(parents=True)
-        (fixture / "message.txt").write_text(
-            "baseline\n",
-            encoding="utf-8",
-        )
+        (fixture / "message.txt").write_text("baseline\n", encoding="utf-8")
         grader.write_text(
             "import argparse,json\n"
             "from pathlib import Path\n"
@@ -746,8 +570,7 @@ def self_test() -> dict[str, Any]:
             "ap.add_argument('--workspace',required=True)\n"
             "ap.add_argument('--json',action='store_true')\n"
             "ns=ap.parse_args()\n"
-            "ok=(Path(ns.workspace)/'message.txt').read_text()=="
-            "'implemented\\n'\n"
+            "ok=(Path(ns.workspace)/'message.txt').read_text()=='implemented\\n'\n"
             "print(json.dumps({'schema_version':1,'checks':["
             "{'id':'message-updated','category':'functional',"
             "'required':True,'passed':ok}],'metrics':{}}))\n",
@@ -768,56 +591,37 @@ def self_test() -> dict[str, Any]:
             "scenarios": [scenario],
         }
         catalog_path = base / "scenarios.json"
-        catalog_path.write_text(
-            json.dumps(catalog),
-            encoding="utf-8",
-        )
+        catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
         schema_path = base / "schema.json"
-        schema_path.write_text(
-            RESULT_SCHEMA_PATH.read_text(encoding="utf-8"),
-            encoding="utf-8",
-        )
-        failures = validate_catalog(
-            catalog,
-            delivery_root=delivery_root,
-        )
+        schema_path.write_text(RESULT_SCHEMA_PATH.read_text(encoding="utf-8"))
+        failures = validate_catalog(catalog, delivery_root=delivery_root)
         if failures:
             return {"passed": False, "failures": failures}
 
-        rows = []
-        for arm in ("control", "treatment"):
-            rows.append(
-                run_one(
-                    agent="fake",
-                    scenario=scenario,
-                    arm=arm,
-                    repetition=1,
-                    result_dir=base / "results" / arm,
-                    executor=deterministic_fake_executor,
-                    timeout=5,
-                    grader_timeout=5,
-                    delivery_root=delivery_root,
-                    portable_skill=PORTABLE_SKILL,
-                    catalog_path=catalog_path,
-                    result_schema_path=schema_path,
-                )
+        rows = [
+            run_one(
+                agent="fake",
+                scenario=scenario,
+                arm=arm,
+                repetition=1,
+                result_dir=base / "results" / arm,
+                executor=deterministic_fake_executor,
+                timeout=5,
+                grader_timeout=5,
+                delivery_root=delivery_root,
+                portable_skill=PORTABLE_SKILL,
+                catalog_path=catalog_path,
+                result_schema_path=schema_path,
             )
+            for arm in ("control", "treatment")
+        ]
         return {
-            "passed": all(
-                row["grader"]["delivery_success"]
-                for row in rows
-            ),
+            "passed": all(row["grader"]["delivery_success"] for row in rows),
             "arms": {
                 row["arm"]: {
-                    "delivery_success": (
-                        row["grader"]["delivery_success"]
-                    ),
-                    "changed_paths": (
-                        row["workspace"]["changed_paths"]
-                    ),
-                    "skill_installed": (
-                        row["integrity"]["skill_installed"]
-                    ),
+                    "delivery_success": row["grader"]["delivery_success"],
+                    "changed_paths": row["workspace"]["changed_paths"],
+                    "skill_installed": row["integrity"]["skill_installed"],
                 }
                 for row in rows
             },
@@ -826,14 +630,9 @@ def self_test() -> dict[str, Any]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    sub = ap.add_subparsers(
-        dest="command",
-        required=True,
-    )
-    validate_cmd = sub.add_parser("validate")
-    validate_cmd.add_argument("--json", action="store_true")
-    self_test_cmd = sub.add_parser("self-test")
-    self_test_cmd.add_argument("--json", action="store_true")
+    sub = ap.add_subparsers(dest="command", required=True)
+    sub.add_parser("validate").add_argument("--json", action="store_true")
+    sub.add_parser("self-test").add_argument("--json", action="store_true")
     ns = ap.parse_args()
 
     if ns.command == "validate":
@@ -841,9 +640,7 @@ def main() -> int:
         failures = validate_catalog(catalog)
         result = {
             "gate": "BLOCK" if failures else "PASS",
-            "scenario_count": len(
-                catalog.get("scenarios") or []
-            ),
+            "scenario_count": len(catalog.get("scenarios") or []),
             "failures": failures,
         }
         exit_code = 2 if failures else 0
@@ -851,13 +648,7 @@ def main() -> int:
         result = self_test()
         exit_code = 0 if result.get("passed") else 2
 
-    print(
-        json.dumps(
-            result,
-            indent=2,
-            ensure_ascii=False,
-        )
-    )
+    print(json.dumps(result, indent=2, ensure_ascii=False))
     return exit_code
 
 
