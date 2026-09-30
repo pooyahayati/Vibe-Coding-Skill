@@ -410,6 +410,117 @@
       "tier_policy": {
         "max_acceptable_tier": 1
       }
+    },
+    {
+      "id": "code-structure-small-local",
+      "tags": [
+        "standard",
+        "code-structure",
+        "small-structure"
+      ],
+      "prompt": "Add a local CSV filename formatter to an existing admin export feature.",
+      "expected_tier": 1,
+      "approval_required": false,
+      "must_do": [
+        "keep the change in the smallest component with a clear responsibility",
+        "validate constrained filename input at the entry boundary",
+        "test the observable filename behavior",
+        "introduce a shared abstraction only if a real repeated need already exists"
+      ],
+      "must_not_do": [
+        "add an interface for the formatter only because it is a class",
+        "create repository and service layers unrelated to the feature",
+        "introduce Clean Architecture or DDD solely because structure is desired"
+      ],
+      "required_controls": [
+        "clear-responsibility",
+        "entry-validation",
+        "observable-behavior-test",
+        "evidence-before-abstraction"
+      ],
+      "forbidden_controls": [
+        "interface-per-class",
+        "unneeded-repository-layer",
+        "unneeded-service-layer",
+        "architecture-by-ceremony"
+      ],
+      "tier_policy": {
+        "max_acceptable_tier": 1
+      }
+    },
+    {
+      "id": "code-structure-external-integration",
+      "tags": [
+        "code-structure",
+        "external-structure"
+      ],
+      "prompt": "Add a third-party inventory sync endpoint that fetches stock and updates our catalog.",
+      "expected_tier": 2,
+      "approval_required": true,
+      "must_do": [
+        "give the remote integration an explicit owned adapter or boundary contract",
+        "define timeout and failure behavior",
+        "define retry effects and idempotency when repeated updates are possible",
+        "validate remote data before it enters owned catalog state",
+        "make remote failures diagnosable without leaking secrets"
+      ],
+      "must_not_do": [
+        "retry state-changing synchronization without considering duplicate effects",
+        "introduce a global message bus when a direct bounded integration is sufficient",
+        "spread provider-specific I/O through unrelated domain logic"
+      ],
+      "required_controls": [
+        "owned-integration-boundary",
+        "timeout-policy",
+        "retry-effects",
+        "idempotency-when-repeated",
+        "boundary-input-validation",
+        "diagnosable-failure"
+      ],
+      "forbidden_controls": [
+        "blind-retry",
+        "message-bus-by-default",
+        "provider-io-leakage"
+      ],
+      "tier_policy": {
+        "max_acceptable_tier": 2
+      }
+    },
+    {
+      "id": "code-structure-multidomain",
+      "tags": [
+        "standard",
+        "code-structure",
+        "multidomain-structure"
+      ],
+      "prompt": "Add an invoice summary that reads order totals and billing preferences across existing order and billing modules.",
+      "expected_tier": 1,
+      "approval_required": false,
+      "must_do": [
+        "identify which module owns order totals and which owns billing preferences",
+        "define the minimal contract used across the existing module boundary",
+        "keep modules in the current deployment unless independent deployment is required",
+        "refactor only enough to make the requested cross-domain behavior understandable and testable"
+      ],
+      "must_not_do": [
+        "split the modules into microservices by default",
+        "introduce an event bus for a simple synchronous read",
+        "duplicate owned data to avoid using an explicit module contract"
+      ],
+      "required_controls": [
+        "data-ownership",
+        "minimal-boundary-contract",
+        "current-deployment-first",
+        "minimum-safe-refactor"
+      ],
+      "forbidden_controls": [
+        "microservices-by-default",
+        "event-bus-by-default",
+        "duplicate-owned-data"
+      ],
+      "tier_policy": {
+        "max_acceptable_tier": 1
+      }
     }
   ]
 }
