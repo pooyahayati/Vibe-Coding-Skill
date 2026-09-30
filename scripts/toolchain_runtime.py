@@ -135,6 +135,17 @@ def trivy_command(version: str, args: list[str]) -> list[str]:
     return ["docker", "run", "--rm", f"aquasec/trivy:{version}", *args]
 
 
+def docker_bind_mount(
+    host_path: str | Path,
+    container_path: str = "/workspace",
+) -> str:
+    """Return one Docker --mount argv value without shell quoting."""
+    host_text = str(host_path)
+    return (
+        f"type=bind,src={host_text},dst={container_path},readonly"
+    )
+
+
 def trivy_fs_command(
     version: str,
     target: str | Path,
@@ -154,9 +165,9 @@ def trivy_fs_command(
             "or Docker runtime"
         )
 
-    # --mount is one argv entry, so spaces in host paths remain intact. Docker
-    # Desktop accepts native absolute Windows paths in src= on Windows.
-    mount = f"type=bind,src={host},dst=/workspace,readonly"
+    # --mount is one argv entry, so spaces stay intact. Docker Desktop accepts
+    # native absolute Windows paths in src= on Windows.
+    mount = docker_bind_mount(host)
     return [
         "docker",
         "run",
