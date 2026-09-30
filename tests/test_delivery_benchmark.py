@@ -389,6 +389,79 @@ class DeliveryRunnerTests(unittest.TestCase):
             )
         )
 
+    def test_grader_mutations_do_not_contaminate_agent_tree_hash(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            delivery_root = base / "delivery"
+            fixture = delivery_root / "fixtures" / "snapshot"
+            grader = delivery_root / "graders" / "snapshot.py"
+            fixture.mkdir(parents=True)
+            grader.parent.mkdir(parents=True)
+            (fixture / "message.txt").write_text(
+                "baseline\n",
+                encoding="utf-8",
+            )
+            grader.write_text(
+                "import argparse,json\n"
+                "from pathlib import Path\n"
+                "ap=argparse.ArgumentParser()\n"
+                "ap.add_argument('--workspace',required=True)\n"
+                "ap.add_argument('--json',action='store_true')\n"
+                "ns=ap.parse_args()\n"
+                "(Path(ns.workspace)/'grader-artifact.txt').write_text('built')\n"
+                "print(json.dumps({'schema_version':1,'checks':["
+                "{'id':'artifact','category':'artifact',"
+                "'required':True,'passed':True}],'metrics':{}}))\n",
+                encoding="utf-8",
+            )
+            scenario = {
+                "id": "snapshot",
+                "prompt": "Do nothing.",
+                "fixture": "fixtures/snapshot",
+                "grader": "graders/snapshot.py",
+                "network_policy": "disabled",
+                "forbidden_paths": [],
+            }
+            catalog_path = base / "scenarios.json"
+            catalog_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "benchmark": "real-delivery",
+                        "default_repetitions": 1,
+                        "scenarios": [scenario],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            schema_path = base / "schema.json"
+            schema_path.write_text("{}", encoding="utf-8")
+            portable = base / "portable"
+            portable.mkdir()
+            (portable / "SKILL.md").write_text("# test\n", encoding="utf-8")
+
+            row = self.runner.run_one(
+                agent="fake",
+                scenario=scenario,
+                arm="control",
+                repetition=1,
+                result_dir=base / "results",
+                executor=noop_executor,
+                timeout=5,
+                grader_timeout=5,
+                delivery_root=delivery_root,
+                portable_skill=portable,
+                catalog_path=catalog_path,
+                result_schema_path=schema_path,
+            )
+
+            self.assertEqual(row["workspace"]["changed_paths"], [])
+            self.assertEqual(
+                row["workspace"]["final_tree_sha256"],
+                self.runner.tree_hash(fixture),
+            )
+            self.assertTrue(row["grader"]["delivery_success"])
+
     def test_framework_self_test_passes(self):
         result = self.runner.self_test()
         self.assertTrue(
