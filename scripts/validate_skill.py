@@ -97,8 +97,8 @@ def main() -> int:
         fail("skill name exceeds 64 chars")
     if not description or len(description) > 1024:
         fail("description must be 1..1024 chars")
-    if len(body.splitlines()) > 500:
-        fail("SKILL.md exceeds recommended 500 lines")
+    if len(body.splitlines()) > 260:
+        fail("SKILL.md exceeds the 260-line routed-core guard")
     if "\\n" in body:
         fail("SKILL.md contains literal escaped newline sequences; use real newlines")
 
@@ -218,6 +218,19 @@ def main() -> int:
         pack_path = ROOT / str(pack["path"])
         if not pack_path.exists():
             fail(f"missing capability pack: {pack['path']}")
+        activation_requires = pack.get("activation_requires", [])
+        if not isinstance(activation_requires, list):
+            fail(f"{pack_name} activation_requires must be an array")
+        for required_pack in activation_requires:
+            if (
+                not isinstance(required_pack, str)
+                or not required_pack.strip()
+                or required_pack not in packs
+            ):
+                fail(
+                    f"{pack_name} has invalid activation requirement: "
+                    f"{required_pack!r}"
+                )
 
     agents_config = json.loads(benchmark_agents.read_text(encoding="utf-8"))
     if set((agents_config.get("agents") or {}).keys()) != {"codex", "claude-code"}:
