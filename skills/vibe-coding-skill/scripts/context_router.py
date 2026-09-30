@@ -436,7 +436,7 @@ def change_scope(paths: list[str], risk: dict[str, Any]) -> dict[str, Any]:
         reasons.append("single known affected path")
     else:
         level = "bounded"
-        reasons.append("multiple known paths within one top-level root")
+        reasons.append("multiple known paths within one project area")
 
     return {
         "level": level,
@@ -706,7 +706,11 @@ def persistent_context(
                 selected.append(name)
     if tier >= 2 and "ROADMAP.md" in present:
         selected.append("ROADMAP.md")
-    if not selected and tier >= 1 and "README.md" in present:
+    if (
+        tier >= 1
+        and "README.md" in present
+        and not any(Path(name).name != "AGENTS.md" for name in selected)
+    ):
         selected.append("README.md")
     return [
         {
