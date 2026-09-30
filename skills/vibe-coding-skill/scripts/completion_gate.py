@@ -26,11 +26,48 @@ MIN_PASSING_EVIDENCE_BY_TIER = {
     3: 2,
 }
 
-MIN_DISTINCT_EVIDENCE_KINDS_BY_TIER = {
+MIN_DISTINCT_EVIDENCE_FAMILIES_BY_TIER = {
     0: 1,
     1: 1,
     2: 2,
     3: 2,
+}
+
+EVIDENCE_KIND_FAMILIES = {
+    "test": "verification",
+    "unit-test": "verification",
+    "component-test": "verification",
+    "regression-test": "verification",
+    "integration": "integration",
+    "integration-test": "integration",
+    "contract": "integration",
+    "contract-test": "integration",
+    "build": "delivery",
+    "artifact": "delivery",
+    "package": "delivery",
+    "review": "review",
+    "code-review": "review",
+    "independent-review": "review",
+    "security": "security",
+    "security-scan": "security",
+    "security-review": "security",
+    "smoke": "runtime",
+    "runtime": "runtime",
+    "runtime-check": "runtime",
+    "health-check": "runtime",
+    "migration": "data",
+    "migration-check": "data",
+    "data-integrity": "data",
+    "recovery": "recovery",
+    "rollback": "recovery",
+    "recovery-drill": "recovery",
+    "performance": "performance",
+    "performance-measurement": "performance",
+    "static-analysis": "static",
+    "lint": "static",
+    "type-check": "static",
+    "manual-check": "manual",
+    "visual-check": "manual",
 }
 
 
@@ -57,13 +94,18 @@ def valid_timestamp(value: Any) -> bool:
     return parsed.tzinfo is not None and parsed.utcoffset() is not None
 
 
+def evidence_family(kind: Any) -> str | None:
+    value = str(kind or "").strip().lower().replace("_", "-")
+    return EVIDENCE_KIND_FAMILIES.get(value)
+
+
 def passing_evidence(evidence: list[Any]) -> list[dict[str, Any]]:
     return [
         item
         for item in evidence
         if isinstance(item, dict)
         and str(item.get("id") or "").strip()
-        and str(item.get("kind") or "").strip()
+        and evidence_family(item.get("kind"))
         and str(item.get("result") or "").strip().lower() in PASS_RESULTS
     ]
 
@@ -119,8 +161,14 @@ def validate_evidence_shape(evidence: Any) -> tuple[list[str], list[str]]:
             failures.append(f"duplicate evidence id: {evidence_id}")
         else:
             seen.add(evidence_id)
-        if not str(item.get("kind") or "").strip():
+        kind = str(item.get("kind") or "").strip()
+        if not kind:
             failures.append(f"evidence item {index} requires kind")
+        elif evidence_family(kind) is None:
+            failures.append(
+                f"evidence item {index} has unsupported kind {kind!r}; "
+                "use a defined semantic evidence kind"
+            )
         if not str(item.get("result") or "").strip():
             failures.append(f"evidence item {index} requires result")
         if not isinstance(item.get("required"), bool):
@@ -219,6 +267,7 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
     failures: list[str] = []
     warnings: list[str] = []
     qualified_evidence: list[dict[str, Any]] = []
+    qualified_evidence_families: set[str] = set()
     evidence_provenance_issues: list[dict[str, Any]] = []
 
     if status == "done":
@@ -266,6 +315,9 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
                     )
                 else:
                     qualified_evidence.append(item)
+                    family = evidence_family(item.get("kind"))
+                    if family:
+                        qualified_evidence_families.add(family)
                     qualified_ids.add(str(item.get("id") or "").strip())
 
             for criterion in criteria:
@@ -290,16 +342,11 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
                     "evidence item(s) with required provenance"
                 )
 
-            distinct_kinds = {
-                str(item.get("kind") or "").strip().lower()
-                for item in qualified_evidence
-                if str(item.get("kind") or "").strip()
-            }
-            minimum_kinds = MIN_DISTINCT_EVIDENCE_KINDS_BY_TIER[risk_tier]
-            if len(distinct_kinds) < minimum_kinds:
+            minimum_families = MIN_DISTINCT_EVIDENCE_FAMILIES_BY_TIER[risk_tier]
+            if len(qualified_evidence_families) < minimum_families:
                 failures.append(
-                    f"Tier {risk_tier} requires at least {minimum_kinds} "
-                    "distinct passing evidence kind(s)"
+                    f"Tier {risk_tier} requires at least {minimum_families} "
+                    "distinct semantic evidence family/families"
                 )
 
             if evidence_provenance_issues and qualified_evidence:
@@ -347,6 +394,8 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
         "evidence_count": len(evidence),
         "passing_evidence_count": len(passing_evidence(evidence)),
         "qualified_evidence_count": len(qualified_evidence),
+        "qualified_evidence_families": sorted(qualified_evidence_families),
+        "supported_evidence_kinds": sorted(EVIDENCE_KIND_FAMILIES),
         "criteria_count": len(criteria),
         "required_provenance_fields": required_fields,
         "evidence_provenance_issues": evidence_provenance_issues,

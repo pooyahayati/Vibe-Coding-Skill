@@ -40,6 +40,7 @@ WORDPRESS_SCOPED_CONTAINERS = {
     ("wp-content", "themes"),
     ("wp-content", "mu-plugins"),
 }
+CONTEXT_FACT_FIELDS = ("runtime", "platform", "capability", "concern")
 
 
 def load_config() -> dict[str, Any]:
@@ -94,6 +95,83 @@ def project_files(root: Path) -> list[str]:
 
 def normalize_rel(raw: str) -> str:
     return raw.replace("\\", "/").lstrip("./").rstrip("/")
+
+
+def normalize_context_fact_value(value: Any) -> str:
+    text = str(value or "").strip().lower().replace("_", "-")
+    return "-".join(text.split())
+
+
+def normalize_context_facts(
+    facts: dict[str, Any] | None,
+) -> dict[str, list[str]]:
+    if not facts:
+        return {}
+
+    result: dict[str, list[str]] = {}
+    for field, raw in facts.items():
+        if field not in CONTEXT_FACT_FIELDS:
+            raise ValueError(f"unsupported structured context field: {field}")
+        values = (
+            list(raw)
+            if isinstance(raw, (list, tuple, set))
+            else [raw]
+        )
+        normalized = [
+            normalize_context_fact_value(value)
+            for value in values
+            if normalize_context_fact_value(value)
+        ]
+        if normalized:
+            result[field] = list(dict.fromkeys(normalized))
+    return result
+
+
+def validate_context_facts(
+    config: dict[str, Any],
+    facts: dict[str, list[str]],
+) -> None:
+    supported: dict[str, set[str]] = {
+        field: set() for field in CONTEXT_FACT_FIELDS
+    }
+    for pack in config.get("packs", {}).values():
+        for field, values in pack.get("context_facts", {}).items():
+            if field not in supported:
+                continue
+            supported[field].update(
+                normalize_context_fact_value(value)
+                for value in values
+                if normalize_context_fact_value(value)
+            )
+
+    invalid = [
+        f"{field}={value}"
+        for field, values in facts.items()
+        for value in values
+        if value not in supported.get(field, set())
+    ]
+    if invalid:
+        raise ValueError(
+            "unsupported structured context fact(s): " + ", ".join(invalid)
+        )
+
+
+def pack_context_fact_evidence(
+    pack: dict[str, Any],
+    facts: dict[str, list[str]],
+) -> list[str]:
+    evidence: list[str] = []
+    mapping = pack.get("context_facts", {})
+    for field, values in facts.items():
+        accepted = {
+            normalize_context_fact_value(value)
+            for value in mapping.get(field, [])
+            if normalize_context_fact_value(value)
+        }
+        for value in values:
+            if value in accepted:
+                evidence.append(f"context-fact:{field}={value}")
+    return evidence
 
 
 def capability_area(rel: str) -> str:
@@ -281,6 +359,7 @@ def pack_task_evidence(
     task: str,
     paths: list[str],
     touched: list[tuple[str, str]],
+    context_facts: dict[str, list[str]] | None = None,
 ) -> list[str]:
     evidence: list[str] = []
     task_lower = task.lower()
@@ -296,6 +375,9 @@ def pack_task_evidence(
         hits = contains_any(text, markers)
         if hits:
             evidence.append(f"touched-marker:{hits[0]}@{rel}")
+    evidence.extend(
+        pack_context_fact_evidence(pack, context_facts or {})
+    )
     return list(dict.fromkeys(evidence))
 
 
@@ -762,12 +844,15 @@ def plan(
     invariants: list[str] | None = None,
     include_packs: list[str] | None = None,
     risk_facts: dict[str, Any] | None = None,
+    context_facts: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     root = root.resolve()
     paths = paths or []
     invariants = invariants or []
     include_packs = include_packs or []
     config = load_config()
+    normalized_context_facts = normalize_context_facts(context_facts)
+    validate_context_facts(config, normalized_context_facts)
     unknown_includes = sorted(
         set(include_packs) - set(config["packs"])
     )
@@ -784,7 +869,13 @@ def plan(
     task_ev: dict[str, list[str]] = {}
     for name, pack in config["packs"].items():
         project_ev[name] = pack_project_evidence(pack, files, texts)
-        task_ev[name] = pack_task_evidence(pack, task, paths, touched)
+        task_ev[name] = pack_task_evidence(
+            pack,
+            task,
+            paths,
+            touched,
+            normalized_context_facts,
+        )
         if name in include_packs:
             task_ev[name] = list(
                 dict.fromkeys(task_ev[name] + ["explicit-include"])
@@ -857,7 +948,14 @@ def plan(
             "name": name,
             "category": pack["category"],
             "path": pack["path"],
-            "confidence": confidence(ev),
+            "confidence": confidence(
+                ev,
+                explicit=any(
+                    value == "explicit-include"
+                    or value.startswith("context-fact:")
+                    for value in ev
+                ),
+            ),
             "evidence": ev,
         }
         selected_rows.append(row)
@@ -906,11 +1004,14 @@ def plan(
             "text": task,
             "paths": paths,
             "explicit_pack_includes": sorted(set(include_packs)),
+            "structured_context_facts": normalized_context_facts,
             "risk": risk,
             "scope": scope,
             "routing_note": (
                 "Re-run routing when touched paths become known if the task "
-                "starts without concrete impact paths."
+                "starts without concrete impact paths. Use structured context "
+                "facts when platform/runtime/capability/concern semantics are "
+                "known but task wording is language-dependent or ambiguous."
             ),
         },
         "core": {
@@ -998,6 +1099,10 @@ def main() -> int:
     ap.add_argument("--risk-environment")
     ap.add_argument("--risk-data-sensitivity")
     ap.add_argument("--risk-change-boundary")
+    ap.add_argument("--context-runtime", action="append", default=[])
+    ap.add_argument("--context-platform", action="append", default=[])
+    ap.add_argument("--context-capability", action="append", default=[])
+    ap.add_argument("--context-concern", action="append", default=[])
     ap.add_argument("--json", action="store_true")
     ns = ap.parse_args()
 
@@ -1011,6 +1116,11 @@ def main() -> int:
         key: value for key, value in risk_facts.items()
         if value is not None
     }
+    context_facts = {
+        field: getattr(ns, f"context_{field}")
+        for field in CONTEXT_FACT_FIELDS
+        if getattr(ns, f"context_{field}")
+    }
 
     result = plan(
         Path(ns.root),
@@ -1020,6 +1130,7 @@ def main() -> int:
         ns.invariant,
         ns.include_pack,
         risk_facts or None,
+        context_facts or None,
     )
     if ns.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))

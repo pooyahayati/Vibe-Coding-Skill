@@ -27,7 +27,7 @@ python scripts/context_router.py \
   --json
 ```
 
-The router uses repository/file/task evidence. It reports confidence, risk, change scope, selected packs, and bounded context metrics. When affected paths are known, source-marker scanning is path-scoped: it inspects the affected project area plus shallow repository-root signals instead of scanning unrelated application areas. Re-run after impact analysis when affected paths were initially unknown.
+The router uses repository/file/task evidence plus optional structured context facts. It reports confidence, risk, change scope, selected packs, and bounded context metrics. When affected paths are known, source-marker scanning is path-scoped: it inspects the affected project area plus shallow repository-root signals instead of scanning unrelated application areas. Re-run after impact analysis when affected paths were initially unknown.
 
 For a greenfield project, estimate expected complexity from the problem, integration/deployment boundaries, data ownership, and known growth requirements. When that estimate matters before files exist, pass an explicit `--complexity <small|medium|large>` rather than treating an empty directory as proof of a small product.
 
@@ -42,6 +42,21 @@ When deterministic evidence is incomplete but the developer/agent has explicit s
 For mixed repositories, project-scoped evidence is kept local to the affected area when path evidence is available. Common monorepo containers such as `apps/`, `packages/`, `services/`, `plugins/`, and `themes/` treat the contained application/package as the capability area; WordPress plugin/theme directories under `wp-content/` are scoped the same way. Repository-root platform evidence remains repository-wide. Documentation mentions alone are not source-level platform evidence.
 
 Directory paths are valid affected-path evidence. The router inspects a bounded subset of text/source files inside that directory so a caller does not need an exact file path before routing.
+
+### Structured context facts
+
+When platform/runtime/capability/concern semantics are known but wording is ambiguous or language-dependent, pass canonical facts instead of adding more natural-language keyword variants:
+
+```text
+--context-runtime php
+--context-platform wordpress
+--context-capability woocommerce
+--context-concern payments
+```
+
+Supported fact fields are `runtime`, `platform`, `capability`, and `concern`. Values are config-driven by each capability pack and invalid values fail explicitly instead of being silently ignored. Structured facts are semantic routing evidence; text/path/source signals remain supplemental discovery evidence.
+
+Equivalent requests in different human languages should select the same packs when supplied the same structured context facts.
 
 ## Project intelligence under context reduction
 

@@ -697,6 +697,92 @@ class CompletionGateTests(unittest.TestCase):
         )
         self.assertEqual(result["gate"], "PASS")
         self.assertEqual(result["qualified_evidence_count"], 2)
+        self.assertEqual(
+            result["qualified_evidence_families"],
+            ["review", "verification"],
+        )
+
+
+    def test_done_rejects_unknown_evidence_kinds_even_when_they_pass(self):
+        commit = "abc1234"
+        evidence = [
+            self.evidence(
+                evidence_id="E-1",
+                kind="foo",
+                provenance={
+                    "source": "ci",
+                    "reference": "run-1",
+                    "commit": commit,
+                },
+            ),
+            self.evidence(
+                evidence_id="E-2",
+                kind="bar",
+                provenance={
+                    "source": "ci",
+                    "reference": "run-2",
+                    "commit": commit,
+                },
+            ),
+        ]
+        result = self.mod.evaluate(
+            self.report(
+                tier=2,
+                commit=commit,
+                criteria=[self.criterion(["E-1", "E-2"])],
+                evidence=evidence,
+            )
+        )
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertEqual(result["qualified_evidence_count"], 0)
+        self.assertTrue(
+            any(
+                "unsupported kind" in failure
+                for failure in result["failures"]
+            )
+        )
+
+    def test_tier2_requires_distinct_semantic_evidence_families(self):
+        commit = "abc1234"
+        evidence = [
+            self.evidence(
+                evidence_id="E-1",
+                kind="test",
+                provenance={
+                    "source": "ci",
+                    "reference": "unit/run-1",
+                    "commit": commit,
+                },
+            ),
+            self.evidence(
+                evidence_id="E-2",
+                kind="regression-test",
+                provenance={
+                    "source": "ci",
+                    "reference": "regression/run-2",
+                    "commit": commit,
+                },
+            ),
+        ]
+        result = self.mod.evaluate(
+            self.report(
+                tier=2,
+                commit=commit,
+                criteria=[self.criterion(["E-1", "E-2"])],
+                evidence=evidence,
+            )
+        )
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertEqual(
+            result["qualified_evidence_families"],
+            ["verification"],
+        )
+        self.assertTrue(
+            any(
+                "distinct semantic evidence" in failure
+                for failure in result["failures"]
+            )
+        )
 
     def test_tier2_rejects_evidence_from_different_revision(self):
         evidence = [
