@@ -1318,6 +1318,20 @@ class ReleaseReadinessTests(unittest.TestCase):
             self.assertEqual(result["gate"], "BLOCK")
             self.assertIn(missing_name, result["missing_checks"])
 
+    def test_release_critical_path_filtered_workflows_run_on_version_bump(self):
+        for rel in (
+            "real-world-validation.yml",
+            "agent-skills-spec.yml",
+            "tool-contracts.yml",
+            "wordpress-artifact-contract.yml",
+        ):
+            workflow = (
+                ROOT / ".github" / "workflows" / rel
+            ).read_text(encoding="utf-8")
+            self.assertIn("push:", workflow, rel)
+            self.assertIn("branches:\n      - main", workflow, rel)
+            self.assertIn('- "VERSION"', workflow, rel)
+
     def test_stable_blocks_without_real_agent_aggregate(self):
         mod = load_script("release_readiness.py")
         result = mod.evaluate(self._report(mod), "stable")
