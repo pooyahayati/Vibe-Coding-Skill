@@ -4,6 +4,13 @@ A short, human-readable summary of what changed in each release.
 
 For full technical details, see [CHANGELOG.md](CHANGELOG.md).
 
+## 0.10.7 — Real delivery evidence and safer stable releases
+- Added a second benchmark that measures whether coding agents actually deliver working changes, not only whether they choose the right engineering policy.
+- Added five representative delivery scenarios with hidden graders and control-vs-Skill comparison.
+- Stable releases now require both behavior evidence and real delivery evidence for the exact release commit.
+- Pre-1.0 releases are now marked as GitHub prereleases, matching the project's internal RC policy.
+- Real provider benchmark execution was attempted, but repository provider credentials are not configured; this release does not claim real-agent delivery success.
+
 ## 0.10.6 — More reliable multilingual routing and completion evidence
 - Known platform/capability facts can now drive context routing directly, so equivalent tasks in different languages select the same relevant packs without growing keyword lists.
 - Execution planning uses the same structured context facts as the router.
