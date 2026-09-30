@@ -34,6 +34,25 @@ def load_guard():
     return mod
 
 
+def repository_health_contract_ok(
+    is_github_repository: bool,
+    repo_health: dict[str, object],
+    decision: str,
+    signals: list[dict[str, object]],
+) -> bool:
+    if not is_github_repository:
+        return True
+    if repo_health.get("checked") is True:
+        return True
+    return (
+        decision == "REVIEW REQUIRED"
+        and any(
+            signal.get("code") == "repository.health_unavailable"
+            for signal in signals
+        )
+    )
+
+
 def main() -> int:
     guard = load_guard()
     results = []
@@ -100,14 +119,21 @@ def main() -> int:
                         for signal in signals
                     )
                 )
+            repository_health_ok = repository_health_contract_ok(
+                bool(guard.github_slug(repository)),
+                repo_health,
+                decision,
+                signals,
+            )
             deep_ok = (
                 depsdev.get("checked") is True
                 and bool(licenses)
-                and (not guard.github_slug(repository) or repo_health.get("checked") is True)
+                and repository_health_ok
                 and decision_consistent
             )
             row["security_findings"] = security_findings
             row["decision_consistent"] = decision_consistent
+            row["repository_health_contract_ok"] = repository_health_ok
             row["deep_ok"] = deep_ok
             ok = ok and deep_ok
             row["ok"] = ok
