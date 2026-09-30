@@ -109,6 +109,36 @@ class ContextRouterTests(unittest.TestCase):
         self.assertTrue(result["interactions"])
         self.assertGreaterEqual(len(result["integration_points"]), 3)
 
+    def test_router_escalation_rebuilds_complete_effective_policy(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(
+                root,
+                "gateway.php",
+                WORDPRESS_WOO
+                + "\nclass Vibe_Gateway extends WC_Payment_Gateway {}\n",
+            )
+
+            result = self.router.plan(
+                root,
+                "Add a Stripe payment gateway with webhook refund handling",
+                ["gateway.php"],
+            )
+
+        risk = result["task"]["risk"]
+        self.assertEqual(risk["tier"], 3)
+        self.assertEqual(risk["router_floor_from"], 2)
+        self.assertIn("explicit approval", risk["required_controls"])
+        self.assertIn("rollback/recovery plan", risk["required_controls"])
+        self.assertIn("independent review", risk["required_controls"])
+        self.assertTrue(
+            result["context_plan"]["coverage"]["risk_controls_preserved"]
+        )
+        self.assertTrue(
+            any("routing interaction" in reason for reason in risk["reasons"])
+        )
+
     def test_wordpress_rest_external_api_composes_without_duplicate_context(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
