@@ -100,34 +100,26 @@ def contract_test(version: str) -> dict[str, object]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
     ap.add_argument("--version")
     ap.add_argument("--latest", action="store_true")
-    ap.add_argument("--update-approved", action="store_true")
     ap.add_argument("--json", action="store_true")
     ns = ap.parse_args()
 
     cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
-    current = cfg["graphify"]["approved"]
+    current = cfg["graphify"].get("last_known_good")
+    if not ns.latest and not ns.version and not current:
+        raise SystemExit("no Graphify version specified or last-known-good fallback")
     version = latest_pypi_version() if ns.latest else (ns.version or current)
 
     result = contract_test(version)
-    result["previous_approved"] = current
-
-    if result["ok"] and ns.update_approved and version != current:
-        cfg["graphify"]["approved"] = version
-        cfg["graphify"]["last_known_good"] = version
-        cfg["graphify"]["latest_seen"] = version
-        CONFIG.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
-        result["config_updated"] = True
-    else:
-        result["config_updated"] = False
-
+    result["last_known_good"] = current
+    result["resolution"] = "latest-compatible-stable"
     if ns.json:
         print(json.dumps(result, indent=2))
     else:
         print(f"Graphify {version}: {'PASS' if result['ok'] else 'FAIL'}")
     return 0 if result["ok"] else 1
+
 
 
 if __name__ == "__main__":
