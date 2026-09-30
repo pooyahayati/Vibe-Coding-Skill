@@ -10,6 +10,30 @@ from pathlib import Path
 from typing import Any
 
 PASS_RESULTS = {"pass", "passed", "success", "ok"}
+SUPPORTED_EVIDENCE_KINDS = {
+    "test",
+    "unit-test",
+    "component-test",
+    "integration-test",
+    "contract-test",
+    "e2e",
+    "build",
+    "lint",
+    "typecheck",
+    "review",
+    "security",
+    "scan",
+    "migration",
+    "deployment",
+    "smoke",
+    "reproduction",
+    "rendered-check",
+    "accessibility",
+    "recovery",
+    "graph",
+    "data-integrity",
+    "idempotency",
+}
 
 PROVENANCE_FIELDS_BY_TIER = {
     0: (),
@@ -56,14 +80,48 @@ def valid_timestamp(value: Any) -> bool:
     return parsed.tzinfo is not None and parsed.utcoffset() is not None
 
 
+def evidence_kind(item: dict[str, Any]) -> str:
+    return str(item.get("kind") or "").strip().lower()
+
+
 def passing_evidence(evidence: list[Any]) -> list[dict[str, Any]]:
     return [
         item
         for item in evidence
         if isinstance(item, dict)
-        and str(item.get("kind") or "").strip()
+        and evidence_kind(item) in SUPPORTED_EVIDENCE_KINDS
         and str(item.get("result") or "").strip().lower() in PASS_RESULTS
     ]
+
+
+def required_evidence_failures(evidence: list[Any]) -> list[str]:
+    failures: list[str] = []
+    for index, item in enumerate(evidence):
+        if not isinstance(item, dict):
+            continue
+        kind = evidence_kind(item)
+        result = str(item.get("result") or "").strip().lower()
+        required = item.get("required", True)
+        if not isinstance(required, bool):
+            failures.append(f"evidence {index} requires boolean required")
+            continue
+        if kind and kind not in SUPPORTED_EVIDENCE_KINDS:
+            failures.append(f"evidence {index} has unsupported kind: {kind}")
+            continue
+        if result in PASS_RESULTS:
+            continue
+        if required:
+            failures.append(
+                f"required evidence {index} did not pass"
+                + (f": {kind}" if kind else "")
+            )
+        else:
+            justification = str(item.get("justification") or "").strip()
+            if not justification:
+                failures.append(
+                    f"optional failed evidence {index} requires justification"
+                )
+    return failures
 
 
 def provenance_issues(
@@ -113,6 +171,11 @@ def acceptance_criteria_failures(criteria: Any) -> list[str]:
                 f"acceptance criterion {index} must be an object"
             )
             continue
+        criterion_id = str(item.get("id") or "").strip()
+        if not criterion_id:
+            failures.append(
+                f"acceptance criterion {index} requires non-empty id"
+            )
         if not isinstance(item.get("met"), bool):
             failures.append(
                 f"acceptance criterion {index} requires boolean met"
@@ -146,6 +209,8 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
 
         if not isinstance(raw_evidence, list):
             failures.append("evidence must be an array")
+        else:
+            failures.extend(required_evidence_failures(evidence))
         if raw_blockers is not None and not isinstance(raw_blockers, list):
             failures.append("blockers must be an array")
 
