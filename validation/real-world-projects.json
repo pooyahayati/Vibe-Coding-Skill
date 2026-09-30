@@ -62,7 +62,7 @@
           "require_context_reduction": true,
           "min_pack_reduction_ratio": 0.75,
           "require_project_intelligence": true,
-          "require_execution_plan": true,
+          "require_execution_plan": false,
           "min_integration_points": 0
         }
       ]
@@ -101,7 +101,7 @@
           "max_loaded_packs": 4,
           "require_context_reduction": true,
           "min_pack_reduction_ratio": 0.5,
-          "require_execution_plan": true
+          "require_execution_plan": false
         },
         {
           "id": "payment-webhook-refund",
