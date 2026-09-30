@@ -142,6 +142,24 @@ def main() -> int:
     if f"version-{version}-" not in readme_text and f"Current version: `{version}`" not in readme_text:
         fail("README.md version marker does not match VERSION")
 
+    updates = ROOT / "UPDATES.md"
+    if not updates.exists():
+        fail("UPDATES.md is missing")
+    updates_text = updates.read_text(encoding="utf-8")
+    if not re.search(rf"(?m)^## {re.escape(version)}(?:\s|$)", updates_text):
+        fail(f"UPDATES.md does not contain a human-readable entry for {version}")
+
+    install_guide = ROOT / "HOW_TO_INSTALL.md"
+    if not install_guide.exists():
+        fail("HOW_TO_INSTALL.md is missing")
+    install_text = install_guide.read_text(encoding="utf-8")
+    if f"Current Skill version: `{version}`" not in install_text:
+        fail("HOW_TO_INSTALL.md version marker does not match VERSION")
+
+    for required_link in ("HOW_TO_INSTALL.md", "UPDATES.md", "CHANGELOG.md"):
+        if f"]({required_link})" not in readme_text:
+            fail(f"README.md must link to {required_link}")
+
     for rel in REQUIRED_REFS:
         if not (ROOT / rel).exists():
             fail(f"missing reference: {rel}")
