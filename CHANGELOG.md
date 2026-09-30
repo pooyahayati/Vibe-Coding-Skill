@@ -16,6 +16,10 @@
 - Made Trivy filesystem execution target-aware: container fallback now bind-mounts the host target read-only and generic Trivy command construction rejects ambiguous unmounted `fs` scans.
 - Allowed Graphify and Trivy compatibility contracts to use an exact-version native executable when available instead of requiring `uvx` or Docker unconditionally.
 - Added regressions for same-session version reuse, new-session re-resolution, Windows/space-containing bind mounts, native compatibility runtimes, and explicit filesystem command routing.
+- Added a bounded technology-selection contract: existing capability/stack first, at most 2–3 realistic options when a material choice remains, constraint-based selection, official support/version verification when decision-critical, and explicit rejection of the nearest alternative.
+- Added a stage interaction contract with concrete inputs, outputs, exit criteria, readiness status, limitations, evidence, and next-step reporting while keeping routine implementation details autonomous.
+- Replaced test-count/coverage-quantity thinking with behavior/failure/boundary-based selection, deduplication against existing coverage, stage-specific execution, and an explicit verification stopping rule.
+- Added behavior-contract eval scenarios for existing-stack technology decisions and proportionate bug verification, including regressions against rewrite-by-default, universal language rankings, fixed coverage quotas, duplicate tests, and unrelated E2E repetition.
 
 ## 0.10.2 — Latest-compatible-stable toolchain runtime binding
 
