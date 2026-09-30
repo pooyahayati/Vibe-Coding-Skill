@@ -49,27 +49,75 @@ def run(cmd: list[str], cwd: Path, timeout: int = 300) -> tuple[bool, str]:
     return p.returncode == 0, out[-4000:]
 
 
-def contract_test(version: str) -> dict[str, object]:
-    if not shutil.which("docker"):
-        raise RuntimeError("Docker is required for Trivy compatibility testing")
+def detected_version(executable: str) -> str | None:
+    ok, out = run([executable, "--version"], ROOT, timeout=60)
+    if not ok:
+        return None
+    match = re.search(r"\b(\d+\.\d+(?:\.\d+)?)\b", out)
+    return match.group(1) if match else None
 
+
+def contract_test(version: str) -> dict[str, object]:
+    native = shutil.which("trivy")
+    use_native = bool(native and detected_version(native) == version)
     image = f"aquasec/trivy:{version}"
+    if not use_native and not shutil.which("docker"):
+        raise RuntimeError(
+            f"Trivy {version} compatibility testing requires either a matching "
+            "native trivy executable or Docker"
+        )
+
     checks = []
-    ok, out = run(["docker", "run", "--rm", image, "--version"], ROOT)
-    checks.append({"command": f"{image} --version", "ok": ok, "output": out})
+    if use_native:
+        assert native is not None
+        ok, out = run([native, "--version"], ROOT)
+        checks.append({"command": f"{native} --version", "ok": ok, "output": out})
+    else:
+        ok, out = run(["docker", "run", "--rm", image, "--version"], ROOT)
+        checks.append({"command": f"{image} --version", "ok": ok, "output": out})
     if not ok:
         return {"version": version, "ok": False, "checks": checks}
 
     with tempfile.TemporaryDirectory(prefix="vibe-trivy-") as td:
         fixture = Path(td)
         (fixture / "app.txt").write_text("ordinary test fixture\n", encoding="utf-8")
-        mount = f"{fixture.resolve()}:/workspace:ro"
-        ok, out = run([
-            "docker", "run", "--rm", "-v", mount, image,
-            "fs", "--scanners", "secret", "--format", "json", "/workspace",
-        ], ROOT)
+        if use_native:
+            assert native is not None
+            cmd = [
+                native,
+                "fs",
+                "--scanners",
+                "secret",
+                "--format",
+                "json",
+                str(fixture.resolve()),
+            ]
+        else:
+            mount = (
+                f"type=bind,src={fixture.resolve()},dst=/workspace,readonly"
+            )
+            cmd = [
+                "docker",
+                "run",
+                "--rm",
+                "--mount",
+                mount,
+                image,
+                "fs",
+                "--scanners",
+                "secret",
+                "--format",
+                "json",
+                "/workspace",
+            ]
+        ok, out = run(cmd, ROOT)
         checks.append({"command": "secret scanner smoke test", "ok": ok, "output": out})
-    return {"version": version, "ok": ok, "checks": checks}
+    return {
+        "version": version,
+        "ok": ok,
+        "runtime": "native" if use_native else "docker",
+        "checks": checks,
+    }
 
 
 def main() -> int:
