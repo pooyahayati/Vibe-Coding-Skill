@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.10.6 — Language-independent routing and semantic completion evidence
+
+- Added config-driven structured context facts for runtime, platform, capability, and concern routing so known semantics no longer depend on natural-language keywords.
+- Added explicit Context Router CLI inputs for structured runtime/platform/capability/concern facts and rejects unsupported fact values instead of silently ignoring them.
+- Propagated structured context facts into execution planning so routing and planning operate from the same semantic inputs.
+- Added regression coverage proving equivalent English/Persian greenfield WordPress/WooCommerce payment tasks select the same capability packs and workflow floor when supplied the same structured facts.
+- Replaced free-form completion evidence diversity with a controlled semantic evidence taxonomy and evidence families.
+- Made Tier 2/3 evidence diversity count semantic families rather than raw labels, preventing multiple verification-test labels from manufacturing independent evidence.
+- Added regressions that reject unknown evidence kinds and block higher-risk completion when all passing evidence belongs to only one semantic family.
+- Kept canonical and portable routing, completion, configuration, references, and Skill contracts synchronized.
+
 ## 0.10.5 — Path-aware context routing for large and mixed repositories
 
 - Made capability routing project-area aware so platform evidence stays local to the affected application/package in common monorepo layouts such as `apps/`, `packages/`, `services/`, `plugins/`, `themes/`, and scoped WordPress plugin/theme directories.
