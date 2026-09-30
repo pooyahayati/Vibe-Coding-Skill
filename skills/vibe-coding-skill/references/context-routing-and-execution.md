@@ -27,7 +27,7 @@ python scripts/context_router.py \
   --json
 ```
 
-The router uses repository/file/task evidence. It reports confidence, risk, change scope, selected packs, and bounded context metrics. Re-run after impact analysis when affected paths were initially unknown.
+The router uses repository/file/task evidence. It reports confidence, risk, change scope, selected packs, and bounded context metrics. When affected paths are known, source-marker scanning is path-scoped: it inspects the affected project area plus shallow repository-root signals instead of scanning unrelated application areas. Re-run after impact analysis when affected paths were initially unknown.
 
 For a greenfield project, estimate expected complexity from the problem, integration/deployment boundaries, data ownership, and known growth requirements. When that estimate matters before files exist, pass an explicit `--complexity <small|medium|large>` rather than treating an empty directory as proof of a small product.
 
@@ -39,13 +39,17 @@ For example, generic phrases such as `REST API` or `API route` must not activate
 
 When deterministic evidence is incomplete but the developer/agent has explicit semantic evidence, `--include-pack <name>` is additive. It may add context; it must not silently suppress detected risk or domain constraints.
 
-For mixed repositories, project-scoped evidence is kept local to the affected area when path evidence is available. Documentation mentions alone are not source-level platform evidence.
+For mixed repositories, project-scoped evidence is kept local to the affected area when path evidence is available. Common monorepo containers such as `apps/`, `packages/`, `services/`, `plugins/`, and `themes/` treat the contained application/package as the capability area; WordPress plugin/theme directories under `wp-content/` are scoped the same way. Repository-root platform evidence remains repository-wide. Documentation mentions alone are not source-level platform evidence.
+
+Directory paths are valid affected-path evidence. The router inspects a bounded subset of text/source files inside that directory so a caller does not need an exact file path before routing.
 
 ## Project intelligence under context reduction
 
 Context reduction means **read selectively**, not ignore architecture.
 
 Large repositories retain project-intelligence policy even for low-risk local work. Tier 2/3 work also retains it regardless of repository size. Existing project invariants are extracted and carried into the Context Plan without forcing the whole project documentation set into every task.
+
+Applicable `AGENTS.md` files are not reduced to invariant extraction: the repository-root file and any file governing the affected subtree are selected as full persistent instructions. Unrelated sibling `AGENTS.md` files are excluded.
 
 The target is **minimum sufficient context**, not minimum context.
 
@@ -62,8 +66,8 @@ Composition is expected when evidence overlaps. Interaction rules may add concer
 The router reports a task-scope level:
 
 - `local` — one known affected path;
-- `bounded` — multiple known paths inside one top-level root;
-- `cross-boundary` — affected paths span top-level roots or explicit cross-module/system impact is detected;
+- `bounded` — multiple known paths inside one project area;
+- `cross-boundary` — affected paths span project areas or explicit cross-module/system impact is detected;
 - `unknown` — affected paths are not known yet.
 
 Scope is evidence, not a permanent label. Re-route when new affected paths are discovered.
@@ -110,7 +114,7 @@ Material changes to scope, architecture, data semantics, public API, security po
 
 ## Context metrics
 
-The router reports candidate/loaded pack count, selected persistent/reference sources, estimated Skill-context bytes, integration points, project scanning cost, and preservation of project invariants/risk/project intelligence.
+The router reports candidate/loaded pack count, selected persistent/reference sources, integration points, project scanning cost, and preservation of project invariants/risk/project intelligence. It keeps the legacy selected Skill-context byte estimate and also reports separate core/reference/pack byte counts, a persistent-project-context upper bound, a combined context upper bound, and whether scanning used `path-scoped` or `fallback-project-scan` mode.
 
 Use these metrics to detect context bloat or missing coverage; do not optimize them at the expense of correctness.
 

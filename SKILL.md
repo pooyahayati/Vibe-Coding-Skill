@@ -47,13 +47,13 @@ Optimize for working software, minimum total complexity, maintainability, diagno
 
 MUST:
 
-- read `AGENTS.md` when present;
+- read every applicable `AGENTS.md` from the repository root through the affected subtree when present;
 - inspect repository structure/manifests and known affected paths;
 - run the Context Router before loading broad domain references:
 
 `python scripts/context_router.py --root <project> --task "<task>" --path <known-path> --json`
 
-The router separates **project complexity**, **task risk**, **change scope**, and **capability packs**. A large repository may still have a tiny local task. Re-run routing when impact analysis reveals different paths.
+The router separates **project complexity**, **task risk**, **change scope**, and **capability packs**. With known affected paths it scopes platform evidence and source scanning to the relevant project area while preserving repository-wide instructions. A large repository may still have a tiny local task. Re-run routing when impact analysis reveals different paths.
 
 Large-project context reduction means selective reading, not loss of project intelligence. Preserve relevant architecture/invariants even when the task follows the light path.
 
@@ -101,7 +101,7 @@ Read `references/context-routing-and-execution.md` for routing precedence, conte
 A new execution plan is REQUIRED when:
 
 - final risk is Tier 2 or Tier 3; or
-- the known change scope crosses top-level project boundaries.
+- the known change scope crosses project-area boundaries.
 
 Project size alone MUST NOT force a plan. Medium/large repositories still retain relevant project intelligence. Reuse and validate an existing relevant plan instead of creating a duplicate.
 
