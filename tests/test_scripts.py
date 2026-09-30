@@ -1510,6 +1510,7 @@ esac
             env = os.environ.copy()
             env["PATH"] = str(bindir) + os.pathsep + env["PATH"]
             env["VIBE_CODING_HOME"] = str(local_home)
+            env["VIBE_TOOLCHAIN_GRAPHIFY_SESSION_VERSION"] = "0.9.64"
 
             refresh = subprocess.run(
                 [sys.executable, str(ROOT / "scripts" / "graph_provider.py"),
