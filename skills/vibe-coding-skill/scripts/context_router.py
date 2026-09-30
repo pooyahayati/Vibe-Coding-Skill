@@ -541,9 +541,14 @@ def plan(
         )
         risk.update(policy)
         risk["router_floor_from"] = previous_tier
+        prior_reasons = (
+            list(risk.get("reasons") or [])
+            if risk.get("matched_rules")
+            else []
+        )
         risk["reasons"] = list(
             dict.fromkeys(
-                list(risk.get("reasons") or [])
+                prior_reasons
                 + ["routing interaction raised the workflow floor"]
             )
         )
