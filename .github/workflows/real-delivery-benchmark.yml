@@ -1,6 +1,13 @@
 name: Real Delivery Benchmark
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/real-delivery-benchmark.yml"
+      - "scripts/run_delivery_benchmark.py"
+      - "scripts/benchmark_delivery_outputs.py"
+      - "evals/delivery/**"
+      - "tests/test_delivery_benchmark.py"
   workflow_dispatch:
     inputs:
       codex_cli_version:
@@ -39,7 +46,24 @@ permissions:
   actions: read
 
 jobs:
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate deterministic delivery contracts
+        run: |
+          python scripts/run_delivery_benchmark.py validate --json
+          python scripts/run_delivery_benchmark.py self-test --json
+          python -m unittest tests.test_delivery_benchmark
+
   delivery:
+    if: github.event_name == 'workflow_dispatch'
     name: delivery (${{ matrix.agent }})
     strategy:
       fail-fast: false
@@ -127,7 +151,7 @@ jobs:
           retention-days: 30
 
   aggregate:
-    if: always()
+    if: github.event_name == 'workflow_dispatch' && always()
     needs:
       - delivery
     runs-on: ubuntu-latest
