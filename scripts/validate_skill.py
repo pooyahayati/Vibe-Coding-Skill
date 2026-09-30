@@ -146,7 +146,7 @@ def main() -> int:
     if not updates.exists():
         fail("UPDATES.md is missing")
     updates_text = updates.read_text(encoding="utf-8")
-    if not re.search(rf"(?m)^## {re.escape(version)}(?:\\s|$)", updates_text):
+    if not re.search(rf"(?m)^## {re.escape(version)}(?:\s|$)", updates_text):
         fail(f"UPDATES.md does not contain a human-readable entry for {version}")
 
     install_guide = ROOT / "HOW_TO_INSTALL.md"
