@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Compatibility-gated latest stable toolchains
+
+- Replaced normal operating-version pins for Graphify and Trivy with latest-compatible-stable resolution.
+- Added a shared resolver that tests the latest published stable candidate and falls back to a verified last-known-good version when compatibility fails.
+- Kept exact selected versions as runtime/session pins for reproducibility without hard-coding current versions into user-facing documentation.
+- Removed approved/latest-seen operating pins from toolchain configuration and added validation coverage for the new policy.
+
 ## 0.10.1 — Real-world routing validation hardening
 
 - Added pinned real-world routing validation against a large Django repository and the official WooCommerce Stripe gateway.
