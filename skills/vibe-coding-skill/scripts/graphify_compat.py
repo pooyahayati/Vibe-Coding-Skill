@@ -47,11 +47,28 @@ def run(cmd: list[str], cwd: Path) -> tuple[bool, str]:
     return p.returncode == 0, out[-4000:]
 
 
-def contract_test(version: str) -> dict[str, object]:
-    if not shutil.which("uvx"):
-        raise RuntimeError("uvx is required for Graphify compatibility testing")
+def detected_version(executable: str) -> str | None:
+    ok, out = run([executable, "--version"], ROOT)
+    if not ok:
+        return None
+    match = re.search(r"\b(\d+\.\d+(?:\.\d+)?)\b", out)
+    return match.group(1) if match else None
 
-    package = f"graphifyy=={version}"
+
+def graphify_prefix(version: str) -> tuple[list[str], str]:
+    native = shutil.which("graphify")
+    if native and detected_version(native) == version:
+        return [native], "native"
+    if shutil.which("uvx"):
+        return ["uvx", "--from", f"graphifyy=={version}", "graphify"], "uvx"
+    raise RuntimeError(
+        f"Graphify {version} compatibility testing requires either a matching "
+        "native graphify executable or uvx"
+    )
+
+
+def contract_test(version: str) -> dict[str, object]:
+    prefix, runtime = graphify_prefix(version)
     checks: list[dict[str, object]] = []
 
     with tempfile.TemporaryDirectory(prefix="vibe-graphify-") as td:
@@ -62,8 +79,8 @@ def contract_test(version: str) -> dict[str, object]:
         )
 
         commands = [
-            ["uvx", "--from", package, "graphify", "--version"],
-            ["uvx", "--from", package, "graphify", "extract", ".", "--code-only", "--no-viz"],
+            [*prefix, "--version"],
+            [*prefix, "extract", ".", "--code-only", "--no-viz"],
         ]
         for cmd in commands:
             ok, out = run(cmd, root)
@@ -107,9 +124,9 @@ def contract_test(version: str) -> dict[str, object]:
 
         graph_arg = str(graph_path.resolve())
         adapter_commands = [
-            ["uvx", "--from", package, "graphify", "query", "alpha", "--graph", graph_arg],
-            ["uvx", "--from", package, "graphify", "explain", labels[0], "--graph", graph_arg],
-            ["uvx", "--from", package, "graphify", "path", labels[0], labels[1], "--graph", graph_arg],
+            [*prefix, "query", "alpha", "--graph", graph_arg],
+            [*prefix, "explain", labels[0], "--graph", graph_arg],
+            [*prefix, "path", labels[0], labels[1], "--graph", graph_arg],
         ]
         for cmd in adapter_commands:
             ok, out = run(cmd, root)
@@ -121,10 +138,15 @@ def contract_test(version: str) -> dict[str, object]:
             "def alpha():\n    return beta()\n\ndef beta():\n    return 43\n",
             encoding="utf-8",
         )
-        update_cmd = ["uvx", "--from", package, "graphify", "update", "."]
+        update_cmd = [*prefix, "update", "."]
         ok, out = run(update_cmd, root)
         checks.append({"command": " ".join(update_cmd), "ok": ok, "output": out})
-        return {"version": version, "ok": bool(ok), "checks": checks}
+        return {
+            "version": version,
+            "ok": bool(ok),
+            "runtime": runtime,
+            "checks": checks,
+        }
 
 
 def main() -> int:
