@@ -110,10 +110,10 @@ python scripts/run_delivery_benchmark.py validate --json
 python scripts/run_delivery_benchmark.py self-test --json
 ```
 
-The delivery catalog is intentionally empty in Phase 9A. Representative fixtures/graders are Phase 9B work, and real Codex/Claude adapters plus credentialed repetitions are Phase 9C work.
+The delivery catalog now contains the Phase 9B representative set: tiny local change, brownfield bug regression, contained feature, mixed-monorepo locality, and WordPress installable artifact. Each grader has deterministic good/broken regression coverage. Real Codex/Claude adapters plus credentialed repetitions remain Phase 9C work.
 
 Delivery fixtures shown to the Agent live under `evals/delivery/fixtures/`. Hidden graders live separately under `evals/delivery/graders/` and are never packaged into the portable Skill or copied into the Agent workspace.
 
 Each scenario is evaluated as `control` and `treatment` for the same Agent. The aggregate reports treatment-vs-control delivery success as `improved`, `neutral`, `regressed`, or `incomplete`. Missing runs remain missing evidence.
 
-Phase 9A does **not** produce real-agent delivery evidence and does not change the release-readiness gate.
+Phase 9A/9B do **not** produce real-agent delivery evidence and do not change the release-readiness gate. Hidden graders run against a snapshot copy so grader-side artifact generation cannot alter the captured Agent final-tree evidence.
