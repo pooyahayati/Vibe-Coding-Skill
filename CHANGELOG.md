@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — Independent review Phase 1 remediation
+
+- Reworked deterministic risk classification around structured operation/environment/data-sensitivity/change-boundary facts, with multilingual high-risk signals and explicit uncertainty for unrecognized non-English wording.
+- Added a shared tier-policy builder and rebuilt the complete policy after Context Router escalation so tier, controls, approval requirements, and reasons remain consistent.
+- Hardened the Completion Gate so unnamed acceptance criteria, unsupported evidence kinds, failed required evidence, and unjustified optional failures cannot produce a false Done result.
+- Converted toolchain regressions to discoverable `unittest` tests and fixed package/direct-script runtime imports.
+- Made Graphify version lookup portable without requiring a root `VERSION` file.
+- Made compatibility subprocess timeouts structured failures that trigger one verified last-known-good fallback attempt, using the active Python interpreter.
+
+
 ## 0.10.2 — Latest-compatible-stable toolchain runtime binding
 
 - Replaced normal operating-version pins for Graphify and Trivy with latest-compatible-stable resolution.
