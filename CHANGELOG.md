@@ -1,11 +1,17 @@
 # Changelog
 
-## Unreleased — Compatibility-gated latest stable toolchains
+## 0.10.2 — Latest-compatible-stable toolchain runtime binding
 
 - Replaced normal operating-version pins for Graphify and Trivy with latest-compatible-stable resolution.
 - Added a shared resolver that tests the latest published stable candidate and falls back to a verified last-known-good version when compatibility fails.
-- Kept exact selected versions as runtime/session pins for reproducibility without hard-coding current versions into user-facing documentation.
-- Removed approved/latest-seen operating pins from toolchain configuration and added validation coverage for the new policy.
+- Bound runtime execution to the exact resolved version instead of silently invoking whichever local executable happens to be installed.
+- Added exact Graphify execution through a matching local binary or an isolated `uvx --from graphifyy==<version>` runtime, and exact Trivy execution through a matching local binary or versioned official container image.
+- Added execution-scoped session pins so a resolved tool version remains stable for the current run without re-resolving mid-execution.
+- Removed misleading integration-guard claims that merely detecting an installed executable meant the runtime version was pinned.
+- Packaged the resolver, runtime adapter, and Graphify/Trivy compatibility contracts in the portable skill and extended install/sync validation so portable installations cannot omit these runtime dependencies.
+- Removed fixed current tool versions from normal user-facing documentation while retaining machine-managed last-known-good fallback state and historical release evidence.
+- Expanded CI coverage for latest-compatible-stable resolution, fallback behavior, exact runtime binding, portable installation, cross-platform smoke tests, and live Graphify/Trivy compatibility contracts.
+- Kept the credentialed Codex/Claude Code benchmark deferred in Issue #12; deterministic, cross-platform, tool-contract, and pinned real-repository validation remain the active pre-1.0 release baseline.
 
 ## 0.10.1 — Real-world routing validation hardening
 
