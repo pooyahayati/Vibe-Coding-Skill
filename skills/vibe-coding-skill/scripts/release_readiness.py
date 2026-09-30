@@ -13,6 +13,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "evals" / "scenarios.json"
 SCHEMA_PATH = ROOT / "evals" / "agent-output.schema.json"
+DELIVERY_CATALOG_PATH = ROOT / "evals" / "delivery" / "scenarios.json"
+DELIVERY_SCHEMA_PATH = ROOT / "evals" / "delivery-result.schema.json"
 PORTABLE_SKILL = (
     ROOT / "skills" / "vibe-coding-skill"
     if (ROOT / "skills" / "vibe-coding-skill" / "SKILL.md").exists()
@@ -91,6 +93,48 @@ def benchmark_identity() -> dict[str, str]:
         "skill_tree_sha256": skill_tree_hash(PORTABLE_SKILL),
         "catalog_sha256": sha256_file(CATALOG_PATH),
         "schema_sha256": sha256_file(SCHEMA_PATH),
+    }
+
+
+def delivery_scenario_ids() -> list[str]:
+    catalog = json.loads(
+        DELIVERY_CATALOG_PATH.read_text(encoding="utf-8")
+    )
+    scenarios = catalog.get("scenarios")
+    if not isinstance(scenarios, list):
+        raise RuntimeError("delivery catalog scenarios must be an array")
+    ids = [
+        str(item.get("id") or "").strip()
+        for item in scenarios
+        if isinstance(item, dict)
+    ]
+    if not ids or any(not value for value in ids) or len(ids) != len(set(ids)):
+        raise RuntimeError(
+            "delivery catalog scenario IDs must be non-empty and unique"
+        )
+    return ids
+
+
+def expected_delivery_run_count() -> int:
+    catalog = json.loads(
+        DELIVERY_CATALOG_PATH.read_text(encoding="utf-8")
+    )
+    default_repetitions = int(catalog.get("default_repetitions", 1))
+    total_per_agent = 0
+    for scenario in catalog.get("scenarios") or []:
+        repetitions = int(
+            scenario.get("repetitions", default_repetitions)
+        )
+        total_per_agent += repetitions * 2
+    return total_per_agent * len(STABLE_AGENTS)
+
+
+def delivery_benchmark_identity() -> dict[str, str]:
+    return {
+        "skill_version": current_skill_version(),
+        "skill_tree_sha256": skill_tree_hash(PORTABLE_SKILL),
+        "catalog_sha256": sha256_file(DELIVERY_CATALOG_PATH),
+        "schema_sha256": sha256_file(DELIVERY_SCHEMA_PATH),
     }
 
 
@@ -242,10 +286,159 @@ def validate_stable_benchmark(
     return failures, summary
 
 
+def validate_stable_delivery_benchmark(
+    benchmark: dict[str, Any] | None,
+    expected_identity: dict[str, str],
+) -> tuple[list[str], dict[str, Any]]:
+    failures: list[str] = []
+    summary: dict[str, Any] = {
+        "required_agents": sorted(STABLE_AGENTS),
+        "provided": isinstance(benchmark, dict),
+        "identity": expected_identity,
+    }
+    if not isinstance(benchmark, dict):
+        failures.append(
+            "stable requires a real-delivery benchmark aggregate"
+        )
+        return failures, summary
+
+    if benchmark.get("schema_version") != 1:
+        failures.append(
+            "stable delivery aggregate must use schema_version 1"
+        )
+    if benchmark.get("benchmark") != "real-delivery-aggregate":
+        failures.append(
+            "stable delivery aggregate has unexpected benchmark type"
+        )
+    if benchmark.get("evidence_complete") is not True:
+        failures.append(
+            "stable requires complete real-delivery benchmark evidence"
+        )
+
+    expected_ids = delivery_scenario_ids()
+    if benchmark.get("expected_scenarios") != expected_ids:
+        failures.append(
+            "stable delivery scenario set does not match current delivery catalog"
+        )
+
+    required_agents = {
+        str(value)
+        for value in benchmark.get("required_agents", [])
+        if isinstance(value, str)
+    }
+    missing_agents = sorted(STABLE_AGENTS - required_agents)
+    if missing_agents:
+        failures.append(
+            "stable delivery aggregate missing required agents: "
+            + ",".join(missing_agents)
+        )
+
+    expected_runs = expected_delivery_run_count()
+    if benchmark.get("expected_run_count") != expected_runs:
+        failures.append(
+            "stable delivery expected run count does not match current catalog"
+        )
+    if benchmark.get("observed_valid_run_count") != expected_runs:
+        failures.append(
+            "stable delivery valid run count does not match expected run count"
+        )
+
+    for key in (
+        "missing_runs",
+        "unexpected_runs",
+        "duplicate_runs",
+        "invalid_files",
+    ):
+        if benchmark.get(key) not in ([], None):
+            failures.append(
+                f"stable delivery aggregate contains {key}"
+            )
+
+    identity = benchmark.get("identity")
+    identity_ok = isinstance(identity, dict) and identity.get("consistent") is True
+    if not identity_ok:
+        failures.append(
+            "stable delivery aggregate identity is inconsistent"
+        )
+        identity = identity if isinstance(identity, dict) else {}
+
+    expected_lists = {
+        "skill_versions": [expected_identity["skill_version"]],
+        "skill_tree_sha256s": [expected_identity["skill_tree_sha256"]],
+        "catalog_sha256s": [expected_identity["catalog_sha256"]],
+        "result_schema_sha256s": [expected_identity["schema_sha256"]],
+    }
+    observed_identity: dict[str, Any] = {}
+    for key, expected in expected_lists.items():
+        observed = identity.get(key)
+        observed_identity[key] = observed
+        if observed != expected:
+            failures.append(
+                f"stable delivery identity mismatch: {key}"
+            )
+
+    comparisons = benchmark.get("comparisons")
+    if not isinstance(comparisons, list):
+        comparisons = []
+        failures.append(
+            "stable delivery aggregate requires comparisons"
+        )
+
+    expected_pairs = {
+        (agent, scenario_id)
+        for agent in STABLE_AGENTS
+        for scenario_id in expected_ids
+    }
+    observed_pairs: set[tuple[str, str]] = set()
+    regressions: list[dict[str, Any]] = []
+    incomplete: list[dict[str, Any]] = []
+    for row in comparisons:
+        if not isinstance(row, dict):
+            continue
+        pair = (
+            str(row.get("agent") or ""),
+            str(row.get("scenario_id") or ""),
+        )
+        observed_pairs.add(pair)
+        effect = str(row.get("effect") or "")
+        if effect == "regressed":
+            regressions.append(row)
+        if effect == "incomplete":
+            incomplete.append(row)
+
+    if observed_pairs != expected_pairs:
+        failures.append(
+            "stable delivery comparison set does not match required agent/scenario pairs"
+        )
+    if regressions:
+        failures.append(
+            "stable delivery benchmark contains treatment regressions"
+        )
+    if incomplete:
+        failures.append(
+            "stable delivery benchmark contains incomplete comparisons"
+        )
+
+    summary.update({
+        "identity_ok": identity_ok and all(
+            observed_identity[key] == expected
+            for key, expected in expected_lists.items()
+        ),
+        "observed_identity": observed_identity,
+        "expected_run_count": expected_runs,
+        "comparison_count": len(comparisons),
+        "regression_count": len(regressions),
+        "incomplete_count": len(incomplete),
+        "effect_counts": benchmark.get("effect_counts", {}),
+    })
+    return failures, summary
+
+
 def evaluate(
     report: dict[str, Any],
     channel: str,
     benchmark: dict[str, Any] | None = None,
+    delivery_benchmark: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if channel not in CHANNEL_CHECKS:
         raise ValueError(f"unknown release channel: {channel}")
@@ -287,16 +480,35 @@ def evaluate(
         "required": channel == "stable",
         "provided": isinstance(benchmark, dict),
     }
+    delivery_summary: dict[str, Any] = {
+        "required": channel == "stable",
+        "provided": isinstance(delivery_benchmark, dict),
+    }
     if channel == "stable":
         benchmark_failures, benchmark_summary = validate_stable_benchmark(
             benchmark,
             expected_identity,
         )
         failures.extend(benchmark_failures)
-    elif benchmark is not None:
-        warnings.append(
-            "benchmark aggregate provided but not required for this release channel"
+
+        delivery_failures, delivery_summary = (
+            validate_stable_delivery_benchmark(
+                delivery_benchmark,
+                delivery_benchmark_identity(),
+            )
         )
+        failures.extend(delivery_failures)
+    else:
+        if benchmark is not None:
+            warnings.append(
+                "behavior benchmark aggregate provided but not required "
+                "for this release channel"
+            )
+        if delivery_benchmark is not None:
+            warnings.append(
+                "delivery benchmark aggregate provided but not required "
+                "for this release channel"
+            )
 
     return {
         "schema_version": 1,
@@ -310,6 +522,7 @@ def evaluate(
         "latest_check_conclusions": dict(sorted(latest_checks.items())),
         "missing_checks": missing_checks,
         "benchmark": benchmark_summary,
+        "delivery_benchmark": delivery_summary,
         "failures": failures,
         "warnings": warnings,
     }
@@ -324,6 +537,7 @@ def main() -> int:
         required=True,
     )
     ap.add_argument("--benchmark-aggregate")
+    ap.add_argument("--delivery-aggregate")
     ap.add_argument("--json", action="store_true")
     ns = ap.parse_args()
 
@@ -333,7 +547,17 @@ def main() -> int:
         if ns.benchmark_aggregate
         else None
     )
-    result = evaluate(report, ns.channel, benchmark)
+    delivery_benchmark = (
+        json.loads(Path(ns.delivery_aggregate).read_text(encoding="utf-8"))
+        if ns.delivery_aggregate
+        else None
+    )
+    result = evaluate(
+        report,
+        ns.channel,
+        benchmark,
+        delivery_benchmark,
+    )
 
     if ns.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
