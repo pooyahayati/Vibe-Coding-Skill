@@ -20,6 +20,11 @@
 - Added a stage interaction contract with concrete inputs, outputs, exit criteria, readiness status, limitations, evidence, and next-step reporting while keeping routine implementation details autonomous.
 - Replaced test-count/coverage-quantity thinking with behavior/failure/boundary-based selection, deduplication against existing coverage, stage-specific execution, and an explicit verification stopping rule.
 - Added behavior-contract eval scenarios for existing-stack technology decisions and proportionate bug verification, including regressions against rewrite-by-default, universal language rankings, fixed coverage quotas, duplicate tests, and unrelated E2E repetition.
+- Added a WordPress delivery workflow that distinguishes discovery/bootstrap/implementation/security/lifecycle/UI/WooCommerce/delivery stages and requires verification against the exact installable ZIP for release/distribution work.
+- Added `wordpress_artifact.py` to build deterministic single-root plugin ZIPs, verify embedded slug/version and SHA-256, perform safe install-shape smoke checks, and drive WP-CLI install/upgrade/deactivate/reactivate checks against exact artifacts.
+- Added guarded uninstall execution for disposable environments and explicit project-specific data-retention verification; deactivation is never treated as uninstall.
+- Added a real WordPress CI contract that builds two fixture releases, installs the first exact ZIP, upgrades to the second exact ZIP, and verifies activation/version behavior in a disposable WordPress runtime.
+- Added proportional Plugin Check guidance, conditional HPOS/Cart-Checkout Blocks checks, and an explicit Composer/Packagist fallback because the bundled dependency guard does not claim Composer coverage.
 
 ## 0.10.2 — Latest-compatible-stable toolchain runtime binding
 
