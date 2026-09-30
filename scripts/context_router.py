@@ -519,7 +519,8 @@ def plan(
                 dict.fromkeys(task_ev[name] + ["explicit-include"])
             )
 
-    risk = load_risk_classifier().classify(task, paths)
+    risk_module = load_risk_classifier()
+    risk = risk_module.classify(task, paths)
     complexity = project_complexity(files, config, complexity_override)
     selected, effective_tier, interactions = resolve_selection(
         config,
@@ -532,14 +533,31 @@ def plan(
     )
     risk = dict(risk)
     if effective_tier > int(risk["tier"]):
-        risk["router_floor_from"] = risk["tier"]
-        risk["tier"] = effective_tier
-        risk["label"] = ["tiny", "standard", "significant", "critical"][
-            effective_tier
+        base_tier = int(risk["tier"])
+        base_reasons = list(risk.get("reasons") or [])
+        policy = risk_module.policy_for_tier(effective_tier)
+        risk.update(policy)
+        risk["router_floor_from"] = base_tier
+        risk["router_floor_reason"] = [
+            str(hit.get("reason") or "").strip()
+            for hit in interactions
+            if int(hit.get("minimum_tier") or 0) >= effective_tier
+            and str(hit.get("reason") or "").strip()
         ]
         risk["approval_required"] = (
             bool(risk.get("approval_required")) or effective_tier >= 3
         )
+        risk["reasons"] = list(
+            dict.fromkeys(
+                base_reasons
+                + risk["router_floor_reason"]
+                + [f"context router raised workflow floor to Tier {effective_tier}"]
+            )
+        )
+
+    expected_risk_controls = set(
+        risk_module.policy_for_tier(int(risk["tier"]))["required_controls"]
+    )
 
     detected_invariants = detected_project_invariants(root)
     core_mode = selected_core_mode(int(risk["tier"]))
@@ -657,7 +675,9 @@ def plan(
                 "project_invariants_preserved": bool(
                     invariants or detected_invariants
                 ),
-                "risk_controls_preserved": True,
+                "risk_controls_preserved": expected_risk_controls.issubset(
+                    set(risk.get("required_controls") or [])
+                ),
                 "project_intelligence_preserved": (
                     complexity["level"] == "large"
                     or int(risk["tier"]) >= 2
