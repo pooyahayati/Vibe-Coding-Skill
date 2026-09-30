@@ -367,6 +367,24 @@ def main() -> int:
     if not workflow.exists():
         fail("missing .github/workflows/agent-benchmark.yml")
 
+    delivery_workflow = (
+        ROOT / ".github" / "workflows" / "real-delivery-benchmark.yml"
+    )
+    if not delivery_workflow.exists():
+        fail("missing .github/workflows/real-delivery-benchmark.yml")
+    delivery_workflow_text = delivery_workflow.read_text(encoding="utf-8")
+    for token in (
+        "workflow_dispatch:",
+        "run_delivery_benchmark.py",
+        "benchmark_delivery_outputs.py",
+        "vibe-real-delivery-benchmark-",
+    ):
+        if token not in delivery_workflow_text:
+            fail(
+                "real delivery benchmark workflow is missing expected token: "
+                + token
+            )
+
     real_world = ROOT / "validation" / "real-world-projects.json"
     if not real_world.exists():
         fail("validation/real-world-projects.json is missing")
