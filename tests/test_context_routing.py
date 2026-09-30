@@ -107,6 +107,21 @@ class ContextRouterTests(unittest.TestCase):
         )
         self.assertEqual(result["task"]["risk"]["tier"], 3)
         self.assertTrue(result["interactions"])
+        self.assertIn(
+            "rollback/recovery plan",
+            result["task"]["risk"]["required_controls"],
+        )
+        self.assertIn(
+            "strong verification",
+            result["task"]["risk"]["required_controls"],
+        )
+        self.assertNotIn(
+            "standard change with no higher-risk fact detected",
+            result["task"]["risk"]["reasons"],
+        )
+        self.assertTrue(
+            result["context_plan"]["coverage"]["risk_controls_preserved"]
+        )
         self.assertGreaterEqual(len(result["integration_points"]), 3)
 
     def test_wordpress_rest_external_api_composes_without_duplicate_context(self):
