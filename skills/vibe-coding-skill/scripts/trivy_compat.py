@@ -57,15 +57,23 @@ def detected_version(executable: str) -> str | None:
     return match.group(1) if match else None
 
 
-def contract_test(version: str) -> dict[str, object]:
+def trivy_runtime(version: str) -> tuple[str, str]:
     native = shutil.which("trivy")
-    use_native = bool(native and detected_version(native) == version)
+    if native and detected_version(native) == version:
+        return "native", native
+    if shutil.which("docker"):
+        return "docker", "docker"
+    raise RuntimeError(
+        f"Trivy {version} compatibility testing requires either a matching "
+        "native trivy executable or Docker"
+    )
+
+
+def contract_test(version: str) -> dict[str, object]:
+    runtime, executable = trivy_runtime(version)
+    use_native = runtime == "native"
+    native = executable if use_native else None
     image = f"aquasec/trivy:{version}"
-    if not use_native and not shutil.which("docker"):
-        raise RuntimeError(
-            f"Trivy {version} compatibility testing requires either a matching "
-            "native trivy executable or Docker"
-        )
 
     checks = []
     if use_native:
