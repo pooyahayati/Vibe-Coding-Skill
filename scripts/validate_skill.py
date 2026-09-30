@@ -49,6 +49,8 @@ REQUIRED_SCRIPTS = [
     "run_failure_injections.py",
     "benchmark_agent_outputs.py",
     "run_agent_benchmark.py",
+    "run_delivery_benchmark.py",
+    "benchmark_delivery_outputs.py",
     "release_readiness.py",
     "local_workspace.py",
     "repository_purity.py",
@@ -177,6 +179,43 @@ def main() -> int:
             fail(f"invalid benchmark contract JSON {path.relative_to(ROOT)}: {exc}")
         if not isinstance(value, dict):
             fail(f"benchmark contract must be a JSON object: {path.relative_to(ROOT)}")
+
+    delivery_catalog = ROOT / "evals" / "delivery" / "scenarios.json"
+    delivery_schema = ROOT / "evals" / "delivery-result.schema.json"
+    for path in (delivery_catalog, delivery_schema):
+        if not path.exists():
+            fail(f"missing delivery benchmark contract file: {path.relative_to(ROOT)}")
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            fail(f"invalid delivery benchmark JSON {path.relative_to(ROOT)}: {exc}")
+        if not isinstance(value, dict):
+            fail(
+                "delivery benchmark contract must be a JSON object: "
+                f"{path.relative_to(ROOT)}"
+            )
+
+    delivery = json.loads(delivery_catalog.read_text(encoding="utf-8"))
+    if delivery.get("schema_version") != 1:
+        fail("delivery benchmark catalog schema_version must be 1")
+    if delivery.get("benchmark") != "real-delivery":
+        fail("delivery benchmark catalog must identify real-delivery")
+    if not isinstance(delivery.get("scenarios"), list):
+        fail("delivery benchmark scenarios must be an array")
+    repetitions = delivery.get("default_repetitions")
+    if (
+        not isinstance(repetitions, int)
+        or isinstance(repetitions, bool)
+        or repetitions < 1
+    ):
+        fail("delivery benchmark default_repetitions must be a positive integer")
+
+    portable_delivery = ROOT / "skills" / "vibe-coding-skill" / "evals" / "delivery"
+    if portable_delivery.exists():
+        fail(
+            "hidden delivery benchmark scenarios/graders must not be packaged "
+            "inside the portable Skill"
+        )
 
     toolchain_config = ROOT / "config" / "toolchain.json"
     if not toolchain_config.exists():
