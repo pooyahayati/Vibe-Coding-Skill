@@ -74,7 +74,7 @@ def main() -> int:
         "graph_path": graph.get("graph_path"),
     }
     if installed:
-        checks["graph_provider"]["runtime_version_is_pinned_for_execution"] = True
+        checks["graph_provider"]["runtime_version_detected"] = installed
     if ns.tier >= 2:
         if not graph.get("available"):
             warnings.append("Graphify unavailable for a Tier 2+ change; use repository/source fallback impact analysis")
