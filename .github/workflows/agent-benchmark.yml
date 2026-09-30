@@ -2,37 +2,11 @@ name: Real Agent Benchmark
 
 on:
   workflow_dispatch:
-    inputs:
-      codex_cli_version:
-        description: "@openai/codex npm version"
-        required: true
-        default: "latest"
-        type: string
-      claude_cli_version:
-        description: "@anthropic-ai/claude-code npm version"
-        required: true
-        default: "latest"
-        type: string
-      codex_model:
-        description: "Optional Codex model override"
-        required: false
-        default: ""
-        type: string
-      claude_model:
-        description: "Optional Claude model override"
-        required: false
-        default: ""
-        type: string
-      timeout_seconds:
-        description: "Per-scenario timeout"
-        required: true
-        default: "600"
-        type: string
-      claude_max_budget_usd:
-        description: "Per-scenario Claude Code budget cap"
-        required: true
-        default: "1.00"
-        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/benchmark-trigger"
 
 permissions:
   contents: read
@@ -64,14 +38,14 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          npm install -g "@openai/codex@${{ inputs.codex_cli_version }}"
+          npm install -g "@openai/codex@latest"
           codex --version
 
       - name: Install Claude Code CLI
         continue-on-error: true
         shell: bash
         run: |
-          npm install -g "@anthropic-ai/claude-code@${{ inputs.claude_cli_version }}"
+          npm install -g "@anthropic-ai/claude-code@latest"
           claude --version
 
       - name: Preflight Codex
@@ -91,13 +65,10 @@ jobs:
             --agent codex
             --scenario all
             --results-dir "$RESULTS_DIR"
-            --timeout "${{ inputs.timeout_seconds }}"
+            --timeout "600"
             --require-env-auth
             --json
           )
-          if [ -n "${{ inputs.codex_model }}" ]; then
-            args+=(--model "${{ inputs.codex_model }}")
-          fi
           python scripts/run_agent_benchmark.py "${args[@]}"
 
       - name: Run Claude Code blind benchmark
@@ -109,15 +80,12 @@ jobs:
             --agent claude-code
             --scenario all
             --results-dir "$RESULTS_DIR"
-            --timeout "${{ inputs.timeout_seconds }}"
+            --timeout "600"
             --max-turns 4
-            --max-budget-usd "${{ inputs.claude_max_budget_usd }}"
+            --max-budget-usd "1.00"
             --require-env-auth
             --json
           )
-          if [ -n "${{ inputs.claude_model }}" ]; then
-            args+=(--model "${{ inputs.claude_model }}")
-          fi
           python scripts/run_agent_benchmark.py "${args[@]}"
 
       - name: Require complete evidence and aggregate
