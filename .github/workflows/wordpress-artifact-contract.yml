@@ -90,6 +90,8 @@ jobs:
             sleep 2
           done
 
+          docker exec vibe-wp-runtime chown -R www-data:www-data /var/www/html
+
           for attempt in $(seq 1 60); do
             if docker exec vibe-wp-db mariadb-admin ping --host=127.0.0.1 --user=root --password=root --silent; then
               break
@@ -118,6 +120,9 @@ jobs:
           set -euo pipefail
           docker cp "$RUNNER_TEMP/vibe-wp-artifacts/v1.zip" vibe-wp-runtime:/var/www/html/vibe-v1.zip
           docker cp "$RUNNER_TEMP/vibe-wp-artifacts/v2.zip" vibe-wp-runtime:/var/www/html/vibe-v2.zip
+          docker exec vibe-wp-runtime chown www-data:www-data /var/www/html/vibe-v1.zip /var/www/html/vibe-v2.zip
+          docker exec vibe-wp-runtime mkdir -p /var/www/html/wp-content/upgrade
+          docker exec vibe-wp-runtime chown -R www-data:www-data /var/www/html/wp-content
 
           wp() {
             docker run --rm --network vibe-wp-contract --volumes-from vibe-wp-runtime -e WORDPRESS_DB_HOST=vibe-wp-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress wordpress:cli --path=/var/www/html "$@"
