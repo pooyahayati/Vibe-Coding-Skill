@@ -74,13 +74,15 @@ When GitHub is detected and `gh` is authenticated, it may be used for issue/PR/r
 
 ## Graphify
 
-Use the latest published stable Graphify release only after its compatibility contract passes. The exact resolved version is pinned for the current execution; if the candidate fails, use `last_known_good` and surface the fallback.
+Use the latest published stable Graphify release only after its compatibility contract passes. A compound graph operation owns an explicit toolchain session and resolves Graphify once. The exact selected version is recorded with graph state so later graph queries reuse it.
 
-Do not refresh a graph simply to satisfy a check for Tier 0/1 work.
+A matching native Graphify executable can satisfy the contract directly; otherwise the isolated `uvx` runtime is used. Do not refresh a graph simply to satisfy a check for Tier 0/1 work.
 
 ## Trivy
 
-Trivy remains the broad baseline scanner. The integration guard checks availability; actual scanning is run only when justified by the risk and scope.
+Trivy remains the broad baseline scanner. The integration guard checks availability; actual scanning is run only when justified by risk and scope.
+
+A matching native Trivy executable can satisfy the exact-version contract; otherwise the official versioned container is used. Containerized filesystem scans bind-mount the requested host target read-only and scan its mapped container path.
 
 A passing Trivy scan does not replace application-level security review or SAST where needed.
 

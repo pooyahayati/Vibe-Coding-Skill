@@ -12,6 +12,10 @@
 - Added explicit task change-scope reporting and changed execution-plan requirements to depend on Tier 2/3 risk or demonstrated cross-boundary scope rather than repository size alone.
 - Kept large-repository project intelligence active while allowing local low-risk work to stay on the light route.
 - Reduced the canonical/portable `SKILL.md` entry point from roughly 480 lines to a 215-line routed core and added a 260-line validation guard against maintainer-detail creep.
+- Added explicit execution-scoped toolchain sessions so compound operations resolve each managed tool once and reuse the exact selected version without a process-global cache.
+- Made Trivy filesystem execution target-aware: container fallback now bind-mounts the host target read-only and generic Trivy command construction rejects ambiguous unmounted `fs` scans.
+- Allowed Graphify and Trivy compatibility contracts to use an exact-version native executable when available instead of requiring `uvx` or Docker unconditionally.
+- Added regressions for same-session version reuse, new-session re-resolution, Windows/space-containing bind mounts, native compatibility runtimes, and explicit filesystem command routing.
 
 ## 0.10.2 — Latest-compatible-stable toolchain runtime binding
 

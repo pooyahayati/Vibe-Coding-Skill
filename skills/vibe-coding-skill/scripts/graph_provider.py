@@ -198,7 +198,8 @@ def persist_provider_output(root: Path, shadow: Path) -> Path:
 def refresh(root: Path, mode: str = "auto", keep_shadow: bool = False) -> dict[str, Any]:
     root = root.resolve()
     local_workspace.initialize(root)
-    resolved = toolchain_runtime.resolve(PROVIDER)
+    runtime_session = toolchain_runtime.new_session()
+    resolved = runtime_session.resolve(PROVIDER)
     selected_version = str(resolved["selected_version"])
     previous = graph_root(root, create=False)
     if mode == "auto":
@@ -227,6 +228,7 @@ def refresh(root: Path, mode: str = "auto", keep_shadow: bool = False) -> dict[s
         "provider": PROVIDER,
         "provider_version": selected_version,
         "resolution_source": resolved.get("source"),
+        "contract_verified": resolved.get("contract_verified"),
         "source_commit": current_head,
         "working_tree_fingerprint": fingerprint,
         "source_dirty": bool(dirty_out.strip()) if dirty_rc == 0 else None,
