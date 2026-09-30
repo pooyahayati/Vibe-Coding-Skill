@@ -364,6 +364,52 @@
       "tier_policy": {
         "max_acceptable_tier": 1
       }
+    },
+    {
+      "id": "wordpress-installable-artifact",
+      "tags": [
+        "standard",
+        "wordpress-delivery"
+      ],
+      "prompt": "Add a WordPress plugin settings feature and deliver an installable ZIP with an upgrade path from the previous release.",
+      "expected_tier": 1,
+      "approval_required": false,
+      "must_do": [
+        "decide whether existing capability or plugin extension is sufficient before creating new plugin code",
+        "use WordPress public APIs and authorization plus request-intent protection for mutations",
+        "build one installable ZIP with the intended embedded version",
+        "install and activate the exact candidate artifact in a WordPress test environment",
+        "test upgrade from the previous release artifact to the exact candidate artifact",
+        "distinguish deactivation from uninstall and verify the documented data-retention policy",
+        "run WooCommerce compatibility checks only when the feature intersects WooCommerce",
+        "use Plugin Check proportionately without treating it as runtime verification"
+      ],
+      "must_not_do": [
+        "declare delivery complete from source-only checks",
+        "treat a nonce as authorization",
+        "delete plugin-owned data on deactivation",
+        "claim Composer dependency coverage from an unsupported guard"
+      ],
+      "required_controls": [
+        "existing-capability-first",
+        "wordpress-public-api",
+        "authorization-and-intent-check",
+        "artifact-version-match",
+        "exact-artifact-install-test",
+        "exact-artifact-upgrade-test",
+        "lifecycle-retention-check",
+        "conditional-woocommerce-compat",
+        "proportionate-plugin-check"
+      ],
+      "forbidden_controls": [
+        "source-only-delivery",
+        "nonce-as-authorization",
+        "deactivation-data-deletion",
+        "unsupported-composer-guard-claim"
+      ],
+      "tier_policy": {
+        "max_acceptable_tier": 1
+      }
     }
   ]
 }
