@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-EXPECTED_STORE_SHA256 = "1c5addd2ff0642999b30551add48c9bcc869fdbbf61657fba1af52e8c72bdb17"
+EXPECTED_STORE_SHA256 = "08349b275cd9afa930f2aef8e15ce28a558a0aebff63eded9ca61f64e81015a1"
 
 
 def load_module(path: Path):
