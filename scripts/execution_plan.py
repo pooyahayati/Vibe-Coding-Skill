@@ -101,6 +101,7 @@ def draft(
     complexity_override: str = "auto",
     invariants: list[str] | None = None,
     include_packs: list[str] | None = None,
+    context_facts: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     router = load_context_router()
     route = router.plan(
@@ -110,6 +111,7 @@ def draft(
         complexity_override,
         invariants or [],
         include_packs or [],
+        context_facts=context_facts,
     )
     complexity = route["project"]["complexity"]["level"]
     tier = int(route["task"]["risk"]["tier"])
@@ -511,6 +513,10 @@ def main() -> int:
     )
     draft_cmd.add_argument("--invariant", action="append", default=[])
     draft_cmd.add_argument("--include-pack", action="append", default=[])
+    draft_cmd.add_argument("--context-runtime", action="append", default=[])
+    draft_cmd.add_argument("--context-platform", action="append", default=[])
+    draft_cmd.add_argument("--context-capability", action="append", default=[])
+    draft_cmd.add_argument("--context-concern", action="append", default=[])
     draft_cmd.add_argument("--json", action="store_true")
 
     validate_cmd = sub.add_parser("validate")
@@ -525,6 +531,11 @@ def main() -> int:
     ns = ap.parse_args()
 
     if ns.command == "draft":
+        context_facts = {
+            field: getattr(ns, f"context_{field}")
+            for field in ("runtime", "platform", "capability", "concern")
+            if getattr(ns, f"context_{field}")
+        }
         result = draft(
             Path(ns.root),
             ns.task,
@@ -532,6 +543,7 @@ def main() -> int:
             ns.complexity,
             ns.invariant,
             ns.include_pack,
+            context_facts or None,
         )
         exit_code = 0
     elif ns.command == "validate":
