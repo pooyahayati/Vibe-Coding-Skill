@@ -123,19 +123,20 @@ python scripts/repository_purity.py --root /path/to/project --json
 
 Product tests such as `tests/` remain in Git. Generated coverage/test reports remain local-only.
 
-## Graphify update model
+## External tool version model
 
-Graphify is the default graph provider, but the skill does not blindly follow new releases.
+Graphify and Trivy use the same compatibility-gated resolution policy. Public documentation does not pin their normal operating versions.
 
 ```text
-Latest Stable Graphify
-→ Contract Tests
-→ Pull Request
-→ Review/Merge
-→ Approved Version
+Latest Stable Published
+→ Compatibility Contract
+→ Exact Runtime Resolution
+→ Use
 ```
 
-The approved version is stored in `config/toolchain.json`.
+If the latest candidate fails its contract, the resolver falls back to the recorded last-known-good version and reports that fallback. The exact resolved version is the runtime pin for the current execution; `config/toolchain.json` stores policy and fallback state rather than a normal operating pin.
+
+See `references/toolchain-version-resolution.md`.
 
 ## Internal utilities
 
@@ -380,7 +381,7 @@ Portable core smoke tests run on Linux, macOS, and Windows.
 
 Normal CI is deterministic. Scheduled/manual live contracts smoke-test real registries, OSV, Graphify, and Trivy separately so external outages do not make ordinary PRs flaky.
 
-Both Graphify and Trivy use approved-version tracking in `config/toolchain.json`.
+Graphify and Trivy use compatibility-gated latest-stable resolution with a recorded last-known-good fallback in `config/toolchain.json`.
 
 ## Portable package
 
