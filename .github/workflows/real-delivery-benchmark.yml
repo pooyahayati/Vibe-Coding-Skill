@@ -1,0 +1,171 @@
+name: Real Delivery Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      codex_cli_version:
+        description: "@openai/codex npm version"
+        required: true
+        default: "latest"
+        type: string
+      claude_cli_version:
+        description: "@anthropic-ai/claude-code npm version"
+        required: true
+        default: "latest"
+        type: string
+      codex_model:
+        description: "Optional Codex model override"
+        required: false
+        default: ""
+        type: string
+      claude_model:
+        description: "Optional Claude model override"
+        required: false
+        default: ""
+        type: string
+      timeout_seconds:
+        description: "Per-delivery-run timeout"
+        required: true
+        default: "600"
+        type: string
+      claude_max_budget_usd:
+        description: "Per-run Claude Code budget cap"
+        required: true
+        default: "1.00"
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  delivery:
+    name: delivery (${{ matrix.agent }})
+    strategy:
+      fail-fast: false
+      matrix:
+        agent:
+          - codex
+          - claude-code
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+
+      - name: Configure result paths
+        shell: bash
+        run: echo "RESULTS_DIR=$RUNNER_TEMP/vibe-delivery-benchmark" >> "$GITHUB_ENV"
+
+      - name: Install Codex CLI
+        if: matrix.agent == 'codex'
+        shell: bash
+        run: |
+          npm install -g "@openai/codex@${{ inputs.codex_cli_version }}"
+          codex --version
+
+      - name: Install Claude Code CLI
+        if: matrix.agent == 'claude-code'
+        shell: bash
+        run: |
+          npm install -g "@anthropic-ai/claude-code@${{ inputs.claude_cli_version }}"
+          claude --version
+
+      - name: Preflight delivery adapter
+        shell: bash
+        run: |
+          python scripts/run_delivery_benchmark.py preflight \
+            --agent "${{ matrix.agent }}" \
+            --require-env-auth \
+            --json
+
+      - name: Run real delivery benchmark
+        shell: bash
+        run: |
+          args=(
+            run
+            --agent "${{ matrix.agent }}"
+            --scenario all
+            --arm all
+            --results-dir "$RESULTS_DIR"
+            --timeout "${{ inputs.timeout_seconds }}"
+            --grader-timeout 120
+            --max-turns 8
+            --require-env-auth
+            --json
+          )
+          if [ "${{ matrix.agent }}" = "codex" ] && [ -n "${{ inputs.codex_model }}" ]; then
+            args+=(--model "${{ inputs.codex_model }}")
+          fi
+          if [ "${{ matrix.agent }}" = "claude-code" ]; then
+            args+=(--max-budget-usd "${{ inputs.claude_max_budget_usd }}")
+            if [ -n "${{ inputs.claude_model }}" ]; then
+              args+=(--model "${{ inputs.claude_model }}")
+            fi
+          fi
+          python scripts/run_delivery_benchmark.py "${args[@]}"
+
+      - name: Upload per-agent delivery evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vibe-delivery-agent-${{ matrix.agent }}-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ env.RESULTS_DIR }}
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    if: always()
+    needs:
+      - delivery
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RESULTS_DIR: ${{ runner.temp }}/vibe-delivery-aggregate
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Download per-agent evidence
+        shell: bash
+        run: |
+          mkdir -p "$RESULTS_DIR"
+          gh run download "$GITHUB_RUN_ID" \
+            --pattern "vibe-delivery-agent-*" \
+            --dir "$RESULTS_DIR"
+
+      - name: Require complete delivery evidence
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/benchmark_delivery_outputs.py "$RESULTS_DIR" \
+            --required-agent codex \
+            --required-agent claude-code \
+            --require-complete \
+            --json | tee "$RESULTS_DIR/aggregate.json"
+
+      - name: Upload complete delivery evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vibe-real-delivery-benchmark-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ env.RESULTS_DIR }}
+          if-no-files-found: error
+          retention-days: 30
