@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -33,13 +34,35 @@ def validate_config(config: dict[str, Any], tool: str) -> dict[str, Any]:
 
 def contract(tool: str, version: str | None = None) -> dict[str, Any]:
     script = ROOT / SUPPORTED[tool]
-    cmd = ["python", str(script)]
+    cmd = [sys.executable, str(script)]
     if version:
         cmd += ["--version", version]
     else:
         cmd += ["--latest"]
     cmd += ["--json"]
-    p = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True, timeout=900)
+    try:
+        p = subprocess.run(
+            cmd,
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            timeout=900,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "version": version,
+            "ok": False,
+            "command_ok": False,
+            "error": f"{tool} compatibility command timed out",
+            "timeout_seconds": exc.timeout,
+        }
+    except OSError as exc:
+        return {
+            "version": version,
+            "ok": False,
+            "command_ok": False,
+            "error": f"{tool} compatibility command failed to start: {exc}",
+        }
     output = (p.stdout or "").strip()
     if not output:
         return {
