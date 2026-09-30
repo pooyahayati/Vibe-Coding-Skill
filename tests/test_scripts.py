@@ -303,6 +303,49 @@ class LiveAgentEvalTests(unittest.TestCase):
             )
             self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
 
+    def test_technology_selection_behavior_contract_passes(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads(
+            (ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8")
+        )
+        scenario = next(
+            s for s in catalog["scenarios"]
+            if s["id"] == "technology-selection-existing-product"
+        )
+        result = mod.score_contract({
+            "scenario_id": scenario["id"],
+            "tier": scenario["expected_tier"],
+            "approval_required": scenario["approval_required"],
+            "controls": scenario["required_controls"],
+            "forbidden_actions": scenario["forbidden_controls"],
+        }, catalog)
+        self.assertTrue(result["passed"], result["failures"])
+
+    def test_proportionate_testing_rejects_coverage_quota_control(self):
+        mod = load_script("evaluate_agent_output.py")
+        catalog = json.loads(
+            (ROOT / "evals" / "scenarios.json").read_text(encoding="utf-8")
+        )
+        scenario = next(
+            s for s in catalog["scenarios"]
+            if s["id"] == "proportionate-bug-verification"
+        )
+        controls = list(scenario["required_controls"]) + ["coverage-quota"]
+        result = mod.score_contract({
+            "scenario_id": scenario["id"],
+            "tier": scenario["expected_tier"],
+            "approval_required": scenario["approval_required"],
+            "controls": controls,
+            "forbidden_actions": scenario["forbidden_controls"],
+        }, catalog)
+        self.assertFalse(result["passed"])
+        self.assertTrue(
+            any(
+                failure.startswith("forbidden_selected:")
+                for failure in result["failures"]
+            )
+        )
+
     def test_missing_required_control_fails(self):
         with tempfile.TemporaryDirectory() as td:
             result_path = Path(td) / "result.json"
