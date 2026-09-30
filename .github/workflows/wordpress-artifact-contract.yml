@@ -37,7 +37,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p             "$RUNNER_TEMP/vibe-wp-v1"             "$RUNNER_TEMP/vibe-wp-v2"             "$RUNNER_TEMP/vibe-wp-artifacts"
+          mkdir -p "$RUNNER_TEMP/vibe-wp-v1" "$RUNNER_TEMP/vibe-wp-v2" "$RUNNER_TEMP/vibe-wp-artifacts"
 
           cat > "$RUNNER_TEMP/vibe-wp-v1/vibe-artifact-fixture.php" <<'PHP'
           <?php
@@ -63,15 +63,11 @@ jobs:
           add_action('init', static function () {});
           PHP
 
-          python scripts/wordpress_artifact.py package             --source-root "$RUNNER_TEMP/vibe-wp-v1"             --output "$RUNNER_TEMP/vibe-wp-artifacts/v1.zip"             --slug vibe-artifact-fixture             --json
-
-          python scripts/wordpress_artifact.py package             --source-root "$RUNNER_TEMP/vibe-wp-v2"             --output "$RUNNER_TEMP/vibe-wp-artifacts/v2.zip"             --slug vibe-artifact-fixture             --json
-
-          python scripts/wordpress_artifact.py verify             --artifact "$RUNNER_TEMP/vibe-wp-artifacts/v1.zip"             --expected-slug vibe-artifact-fixture             --expected-version 1.0.0             --json
-
-          python scripts/wordpress_artifact.py verify             --artifact "$RUNNER_TEMP/vibe-wp-artifacts/v2.zip"             --expected-slug vibe-artifact-fixture             --expected-version 1.1.0             --json
-
-          python scripts/wordpress_artifact.py install-smoke             --artifact "$RUNNER_TEMP/vibe-wp-artifacts/v2.zip"             --json
+          python scripts/wordpress_artifact.py package --source-root "$RUNNER_TEMP/vibe-wp-v1" --output "$RUNNER_TEMP/vibe-wp-artifacts/v1.zip" --slug vibe-artifact-fixture --json
+          python scripts/wordpress_artifact.py package --source-root "$RUNNER_TEMP/vibe-wp-v2" --output "$RUNNER_TEMP/vibe-wp-artifacts/v2.zip" --slug vibe-artifact-fixture --json
+          python scripts/wordpress_artifact.py verify --artifact "$RUNNER_TEMP/vibe-wp-artifacts/v1.zip" --expected-slug vibe-artifact-fixture --expected-version 1.0.0 --json
+          python scripts/wordpress_artifact.py verify --artifact "$RUNNER_TEMP/vibe-wp-artifacts/v2.zip" --expected-slug vibe-artifact-fixture --expected-version 1.1.0 --json
+          python scripts/wordpress_artifact.py install-smoke --artifact "$RUNNER_TEMP/vibe-wp-artifacts/v2.zip" --json
 
       - name: Start disposable WordPress runtime
         shell: bash
@@ -80,9 +76,8 @@ jobs:
           docker network create vibe-wp-contract
           docker volume create vibe-wp-contract-data
 
-          docker run -d             --name vibe-wp-db             --network vibe-wp-contract             -e MARIADB_DATABASE=wordpress             -e MARIADB_USER=wordpress             -e MARIADB_PASSWORD=wordpress             -e MARIADB_ROOT_PASSWORD=root             mariadb:11
-
-          docker run -d             --name vibe-wp-runtime             --network vibe-wp-contract             --mount source=vibe-wp-contract-data,target=/var/www/html             -e WORDPRESS_DB_HOST=vibe-wp-db:3306             -e WORDPRESS_DB_USER=wordpress             -e WORDPRESS_DB_PASSWORD=wordpress             -e WORDPRESS_DB_NAME=wordpress             wordpress:latest
+          docker run -d --name vibe-wp-db --network vibe-wp-contract -e MARIADB_DATABASE=wordpress -e MARIADB_USER=wordpress -e MARIADB_PASSWORD=wordpress -e MARIADB_ROOT_PASSWORD=root mariadb:11
+          docker run -d --name vibe-wp-runtime --network vibe-wp-contract --mount source=vibe-wp-contract-data,target=/var/www/html -e WORDPRESS_DB_HOST=vibe-wp-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress wordpress:latest
 
           for attempt in $(seq 1 60); do
             if docker exec vibe-wp-runtime test -f /var/www/html/wp-config.php; then
@@ -96,10 +91,21 @@ jobs:
           done
 
           for attempt in $(seq 1 60); do
-            if docker run --rm               --network vibe-wp-contract               --volumes-from vibe-wp-runtime               wordpress:cli               --path=/var/www/html               core install               --url=http://localhost               --title="Vibe Artifact Contract"               --admin_user=admin               --admin_password=admin               --admin_email=admin@example.test               --skip-email; then
+            if docker exec vibe-wp-db mariadb-admin ping --host=127.0.0.1 --user=root --password=root --silent; then
               break
             fi
             if [ "$attempt" -eq 60 ]; then
+              docker logs vibe-wp-db
+              exit 1
+            fi
+            sleep 2
+          done
+
+          for attempt in $(seq 1 20); do
+            if docker run --rm --network vibe-wp-contract --volumes-from vibe-wp-runtime -e WORDPRESS_DB_HOST=vibe-wp-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress wordpress:cli --path=/var/www/html core install --url=http://localhost --title="Vibe Artifact Contract" --admin_user=admin --admin_password=admin --admin_email=admin@example.test --skip-email; then
+              break
+            fi
+            if [ "$attempt" -eq 20 ]; then
               docker logs vibe-wp-db
               exit 1
             fi
@@ -110,11 +116,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker cp             "$RUNNER_TEMP/vibe-wp-artifacts/v1.zip"             vibe-wp-runtime:/var/www/html/vibe-v1.zip
-          docker cp             "$RUNNER_TEMP/vibe-wp-artifacts/v2.zip"             vibe-wp-runtime:/var/www/html/vibe-v2.zip
+          docker cp "$RUNNER_TEMP/vibe-wp-artifacts/v1.zip" vibe-wp-runtime:/var/www/html/vibe-v1.zip
+          docker cp "$RUNNER_TEMP/vibe-wp-artifacts/v2.zip" vibe-wp-runtime:/var/www/html/vibe-v2.zip
 
           wp() {
-            docker run --rm               --network vibe-wp-contract               --volumes-from vibe-wp-runtime               wordpress:cli               --path=/var/www/html               "$@"
+            docker run --rm --network vibe-wp-contract --volumes-from vibe-wp-runtime -e WORDPRESS_DB_HOST=vibe-wp-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress wordpress:cli --path=/var/www/html "$@"
           }
 
           wp plugin install /var/www/html/vibe-v1.zip --force --activate
