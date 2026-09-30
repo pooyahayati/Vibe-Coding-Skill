@@ -33,6 +33,8 @@
 - Consolidated PR/release tool validation into Tool Contract Tests while keeping dedicated Graphify/Trivy workflows for scheduled/manual compatibility monitoring; removed the duplicate Live Integration Contracts workflow.
 - Added release-trigger guarantees for path-filtered validation workflows, orphan-reference detection, and broader merged-branch cleanup for refactor/docs/release work branches.
 - Corrected stale validation documentation so real-world routing coverage and bounded conservative eval escalation match current implementation.
+- Fixed release orchestration for GitHub Actions eventual consistency by trusting the successful triggering `workflow_run` event when the runs API still reports that same run with a temporary null conclusion; release-gate workflow changes now retrigger the full path-filtered baseline.
+- Hardened live dependency contracts so rate-limited/unavailable optional GitHub source-health evidence passes only when the dependency decision explicitly degrades to `REVIEW REQUIRED` with a `repository.health_unavailable` signal; false `ACCEPT` remains a contract failure.
 
 ## 0.10.2 — Latest-compatible-stable toolchain runtime binding
 

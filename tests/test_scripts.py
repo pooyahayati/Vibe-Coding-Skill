@@ -209,6 +209,52 @@ class DependencyGuardTests(unittest.TestCase):
         self.assertTrue(any(s["code"] == "provenance.attestation_missing" for s in signals))
 
 
+class LiveDependencyEvalTests(unittest.TestCase):
+    def setUp(self):
+        self.mod = load_script("live_dependency_evals.py")
+
+    def test_source_health_unavailable_is_safe_only_as_review_required(self):
+        signals = [{
+            "level": "review",
+            "code": "repository.health_unavailable",
+            "message": "rate limited",
+        }]
+        self.assertTrue(
+            self.mod.repository_health_contract_ok(
+                True,
+                {"checked": False},
+                "REVIEW REQUIRED",
+                signals,
+            )
+        )
+        self.assertFalse(
+            self.mod.repository_health_contract_ok(
+                True,
+                {"checked": False},
+                "ACCEPT",
+                signals,
+            )
+        )
+
+    def test_checked_or_non_github_source_health_is_acceptable(self):
+        self.assertTrue(
+            self.mod.repository_health_contract_ok(
+                True,
+                {"checked": True},
+                "ACCEPT",
+                [],
+            )
+        )
+        self.assertTrue(
+            self.mod.repository_health_contract_ok(
+                False,
+                {"checked": False},
+                "ACCEPT",
+                [],
+            )
+        )
+
+
 class RiskClassifierTests(unittest.TestCase):
     def setUp(self):
         self.mod = load_script("risk_classifier.py")
@@ -1331,6 +1377,11 @@ class ReleaseReadinessTests(unittest.TestCase):
             self.assertIn("push:", workflow, rel)
             self.assertIn("branches:\n      - main", workflow, rel)
             self.assertIn('- "VERSION"', workflow, rel)
+            self.assertIn(
+                '- ".github/workflows/release.yml"',
+                workflow,
+                rel,
+            )
 
     def test_stable_blocks_without_real_agent_aggregate(self):
         mod = load_script("release_readiness.py")
@@ -1432,6 +1483,10 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.assertIn("candidates[0].get(\"conclusion\") == \"success\"", workflow)
         self.assertIn("steps.readiness.outputs.channel == 'stable'", workflow)
         self.assertIn("steps.readiness.outputs.base_ready == 'true'", workflow)
+        self.assertIn("TRIGGER_NAME:", workflow)
+        self.assertIn("TRIGGER_CONCLUSION:", workflow)
+        self.assertIn("TRIGGER_RUN_ID:", workflow)
+        self.assertIn("trigger_name in wanted", workflow)
         self.assertIn("base_ready={'true' if base_ready else 'false'}", workflow)
         self.assertIn('CHANNEL="beta"', workflow)
         self.assertIn('CHANNEL="rc"', workflow)
