@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "benchmark": "real-delivery",
+  "default_repetitions": 3,
+  "scenarios": []
+}

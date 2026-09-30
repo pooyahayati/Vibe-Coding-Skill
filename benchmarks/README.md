@@ -90,4 +90,30 @@ A conformance rate is emitted only for a complete evidence set. A partial run ca
 
 Tier selection is reported separately as `preferred`, `conservative_escalation`, `underclassified`, or `overengineered`. Only scenarios with an explicit hidden policy ceiling may accept conservative escalation. This keeps legitimate caution distinct from unnecessary process inflation while preserving strict failures for under-classified risk and excessive tier escalation.
 
-This benchmark is a conformance test, not a model leaderboard.
+This behavior benchmark is a conformance test, not a model leaderboard.
+
+## Real delivery benchmark
+
+A second benchmark layer measures implementation delivery rather than policy selection.
+
+Phase 9A adds the deterministic contract framework:
+
+- `evals/delivery/scenarios.json` — maintainer-only delivery scenario catalog;
+- `evals/delivery-result.schema.json` — result envelope schema;
+- `scripts/run_delivery_benchmark.py` — control/treatment workspace and hidden-grader contract;
+- `scripts/benchmark_delivery_outputs.py` — pairwise completeness/effect aggregation.
+
+Run the deterministic framework checks with:
+
+```bash
+python scripts/run_delivery_benchmark.py validate --json
+python scripts/run_delivery_benchmark.py self-test --json
+```
+
+The delivery catalog is intentionally empty in Phase 9A. Representative fixtures/graders are Phase 9B work, and real Codex/Claude adapters plus credentialed repetitions are Phase 9C work.
+
+Delivery fixtures shown to the Agent live under `evals/delivery/fixtures/`. Hidden graders live separately under `evals/delivery/graders/` and are never packaged into the portable Skill or copied into the Agent workspace.
+
+Each scenario is evaluated as `control` and `treatment` for the same Agent. The aggregate reports treatment-vs-control delivery success as `improved`, `neutral`, `regressed`, or `incomplete`. Missing runs remain missing evidence.
+
+Phase 9A does **not** produce real-agent delivery evidence and does not change the release-readiness gate.
