@@ -5,6 +5,10 @@ on:
     workflows:
       - Validate Skill
       - Cross Platform Smoke
+      - Real World Repository Validation
+      - Agent Skills Spec Compatibility
+      - Tool Contract Tests
+      - WordPress Artifact Contract
       - Real Agent Benchmark
     types:
       - completed
@@ -49,7 +53,19 @@ jobs:
 
           data = json.load(open("/tmp/runs.json", encoding="utf-8"))
           sha = os.environ["SHA"]
-          wanted = {"Validate Skill", "Cross Platform Smoke"}
+          baseline = {
+              "Validate Skill",
+              "Cross Platform Smoke",
+              "Real World Repository Validation",
+              "Agent Skills Spec Compatibility",
+              "Tool Contract Tests",
+              "WordPress Artifact Contract",
+          }
+          wanted = (
+              {"Validate Skill"}
+              if os.environ["CHANNEL"] == "beta"
+              else baseline
+          )
           latest = {}
           for run in data.get("workflow_runs", []):
               if (
@@ -78,11 +94,7 @@ jobs:
               "commit": sha,
               "checks": checks,
           }
-          required = (
-              {"Validate Skill"}
-              if os.environ["CHANNEL"] == "beta"
-              else {"Validate Skill", "Cross Platform Smoke"}
-          )
+          required = wanted
           passed = {
               check["name"]
               for check in checks
