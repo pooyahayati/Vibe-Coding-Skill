@@ -104,7 +104,7 @@ Provenance requirements scale with risk:
 
 - Tier 0: provenance metadata is optional.
 - Tier 1: counted evidence needs `source` and `reference`.
-- Tier 2: the report declares the target `commit`; at least two distinct passing evidence kinds carry `source`, `reference`, and that exact `commit`.
+- Tier 2: the report declares the target `commit`; at least two distinct passing semantic evidence families carry `source`, `reference`, and that exact `commit`.
 - Tier 3: Tier 2 revision binding plus timezone-aware ISO-8601 `captured_at` on every counted item.
 
 The gate validates structure, required failures, linkage, and provenance. It does not infer whether a test semantically proves a product requirement; evidence selection still requires engineering judgment.
@@ -166,6 +166,50 @@ Do not commit benchmark output to the project repository.
 
 Do not publish or compare a Codex/Claude result unless that agent actually produced the stored raw contract under the stated Skill version. Missing runs are missing evidence, never success.
 
+## Real delivery benchmark
+
+The behavior benchmark above measures whether an Agent selects the expected risk/process contract. It intentionally does not prove that the Agent can implement a correct product change.
+
+The Real Delivery Benchmark is a separate evidence layer for implementation efficacy. Its Phase 9A contract lives in:
+
+- `evals/delivery/scenarios.json`;
+- `evals/delivery-result.schema.json`;
+- `scripts/run_delivery_benchmark.py`;
+- `scripts/benchmark_delivery_outputs.py`.
+
+The experimental unit is `Agent × scenario × arm × repetition`. Each scenario has two arms:
+
+- `control`: the Agent receives the same visible fixture/task without the Vibe Coding Skill;
+- `treatment`: the Agent receives the same visible fixture/task with the portable Skill installed.
+
+Compare the Skill against the same Agent, not one Agent against another. Delivery success is a hard correctness signal from required hidden-grader checks; duration, changed-file count, dependency-file changes, and provider usage/cost are observational metrics.
+
+The visible fixture and hidden grader are separate roots. Hidden graders are maintainer-only benchmark assets and MUST NOT be copied into the temporary Agent workspace or packaged inside the portable Skill. The runner records fixture/grader/catalog/schema/Skill hashes, baseline commit, final tree hash, diff hash, changed paths, and raw executor/grader output. Missing runs are missing evidence, never success.
+
+Phase 9A deliberately has no real Codex/Claude delivery adapter and consumes no provider credentials. It provides deterministic contract validation and a fake-executor self-test:
+
+```bash
+python scripts/run_delivery_benchmark.py validate --json
+python scripts/run_delivery_benchmark.py self-test --json
+```
+
+Representative product fixtures/graders belong to Phase 9B. Real Codex/Claude workspace-write adapters, OS/network sandbox enforcement, and credentialed repetitions belong to Phase 9C. Do not describe Phase 9A as real-Agent delivery evidence.
+
+Aggregate completed delivery runs with:
+
+```bash
+python scripts/benchmark_delivery_outputs.py RESULTS_DIR \
+  --catalog evals/delivery/scenarios.json \
+  --required-agent codex \
+  --required-agent claude-code \
+  --require-complete \
+  --json
+```
+
+The aggregate reports `improved`, `neutral`, `regressed`, or `incomplete` per Agent/scenario based on treatment-vs-control delivery success rate. Correctness is primary; efficiency metrics do not override failed required checks.
+
+Real Delivery Benchmark evidence is not yet part of the release-readiness gate. A future stable-gate change requires complete Phase 9B/9C evidence and must be made explicitly rather than inferred from deterministic self-tests.
+
 ## Interpretation
 
-A deterministic validation PASS means the policy mechanisms behaved as specified. It does not prove that every coding agent will follow the skill. Live-agent benchmark results are a separate evidence class.
+A deterministic validation PASS means the policy mechanisms behaved as specified. It does not prove that every coding agent will follow the skill or deliver a correct implementation. Live behavior-benchmark and real-delivery results are separate evidence classes.
