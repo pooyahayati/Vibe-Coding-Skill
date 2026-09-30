@@ -42,12 +42,25 @@ def contract(tool: str, version: str | None = None) -> dict[str, Any]:
     p = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True, timeout=900)
     output = (p.stdout or "").strip()
     if not output:
-        raise RuntimeError(f"{tool} compatibility command returned no JSON")
+        return {
+            "version": version,
+            "ok": False,
+            "command_ok": False,
+            "error": f"{tool} compatibility command returned no JSON",
+        }
     try:
         result = json.loads(output)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"{tool} compatibility command returned invalid JSON: {exc}") from exc
+    except json.JSONDecodeError:
+        return {
+            "version": version,
+            "ok": False,
+            "command_ok": False,
+            "error": f"{tool} compatibility command returned invalid JSON",
+            "output": output[-1000:],
+        }
     result["command_ok"] = p.returncode == 0
+    if p.returncode != 0:
+        result["ok"] = False
     return result
 
 
