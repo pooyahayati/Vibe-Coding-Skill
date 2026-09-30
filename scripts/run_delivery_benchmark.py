@@ -428,7 +428,8 @@ def run_one(
             fixture, workspace, arm=arm, agent=agent, portable_skill=portable_skill
         )
         prompt = build_prompt(scenario, arm=arm, skill_dir=info["skill_dir"])
-        raw = executor(workspace, prompt, arm, scenario, timeout, sanitized_env(base))
+        env = sanitized_env(base)
+        raw = executor(workspace, prompt, arm, scenario, timeout, env)
         if not isinstance(raw, dict):
             raise RuntimeError("executor must return an object")
         exit_code = raw.get("exit_code")
@@ -447,7 +448,7 @@ def run_one(
             [str(value) for value in scenario.get("forbidden_paths", [])],
         )
         grader = run_hidden_grader(
-            grader_path, workspace, timeout=grader_timeout, env=sanitized_env(base)
+            grader_path, workspace, timeout=grader_timeout, env=env
         )
 
         failures = list(grader["failures"])
