@@ -31,6 +31,10 @@ RUNTIME_SCRIPTS = [
     "local_workspace.py",
     "repository_purity.py",
     "graph_provider.py",
+    "toolchain_resolution.py",
+    "toolchain_runtime.py",
+    "graphify_compat.py",
+    "trivy_compat.py",
     "github_traceability.py",
     "project_state.py",
     "resume_context.py",
@@ -58,6 +62,7 @@ REQUIRED_REFS = [
     "recovery-and-resume.md",
     "installation-and-lifecycle.md",
     "context-routing-and-execution.md",
+    "toolchain-version-resolution.md",
 ]
 
 REQUIRED_RUNTIME_FILES = [
