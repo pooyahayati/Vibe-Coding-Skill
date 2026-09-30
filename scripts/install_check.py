@@ -35,6 +35,7 @@ RUNTIME_SCRIPTS = [
     "toolchain_runtime.py",
     "graphify_compat.py",
     "trivy_compat.py",
+    "wordpress_artifact.py",
     "github_traceability.py",
     "project_state.py",
     "resume_context.py",
@@ -63,6 +64,7 @@ REQUIRED_REFS = [
     "installation-and-lifecycle.md",
     "context-routing-and-execution.md",
     "toolchain-version-resolution.md",
+    "wordpress-delivery.md",
 ]
 
 REQUIRED_RUNTIME_FILES = [
