@@ -20,6 +20,7 @@ REQUIRED_TAGS = {
     "production",
     "technology-selection",
     "test-selection",
+    "wordpress-delivery",
 }
 
 
