@@ -915,7 +915,7 @@ def main() -> int:
 
     run_cmd = sub.add_parser("run")
     run_cmd.add_argument("--agent", choices=["codex", "claude-code"], required=True)
-    run_cmd.add_argument("--scenario", action="append", default=["all"])
+    run_cmd.add_argument("--scenario", action="append", default=[])
     run_cmd.add_argument("--arm", choices=["control", "treatment", "all"], default="all")
     run_cmd.add_argument("--results-dir", required=True)
     run_cmd.add_argument("--model")
