@@ -55,6 +55,7 @@ def contract_test(version: str) -> dict[str, object]:
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser()
     ap.add_argument("--version")
     ap.add_argument("--latest", action="store_true")
     ap.add_argument("--json", action="store_true")
