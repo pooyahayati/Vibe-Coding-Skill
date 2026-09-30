@@ -202,6 +202,63 @@ def main() -> int:
         fail("delivery benchmark catalog must identify real-delivery")
     if not isinstance(delivery.get("scenarios"), list):
         fail("delivery benchmark scenarios must be an array")
+    delivery_scenarios = delivery.get("scenarios") or []
+    required_delivery_ids = {
+        "tiny-local-copy-fix",
+        "brownfield-duplicate-filter",
+        "contained-csv-export",
+        "mixed-monorepo-api-normalization",
+        "wordpress-installable-artifact",
+    }
+    observed_delivery_ids = {
+        str(row.get("id") or "").strip()
+        for row in delivery_scenarios
+        if isinstance(row, dict)
+    }
+    missing_delivery_ids = sorted(required_delivery_ids - observed_delivery_ids)
+    if missing_delivery_ids:
+        fail(
+            "delivery benchmark is missing representative scenarios: "
+            + ",".join(missing_delivery_ids)
+        )
+    if len(observed_delivery_ids) != len(delivery_scenarios):
+        fail("delivery benchmark scenario IDs must be non-empty and unique")
+
+    delivery_root = ROOT / "evals" / "delivery"
+    fixtures_root = delivery_root / "fixtures"
+    graders_root = delivery_root / "graders"
+    for scenario in delivery_scenarios:
+        if not isinstance(scenario, dict):
+            fail("delivery benchmark scenarios must contain objects")
+        scenario_id = str(scenario.get("id") or "").strip()
+        fixture_rel = str(scenario.get("fixture") or "").strip()
+        grader_rel = str(scenario.get("grader") or "").strip()
+        if not str(scenario.get("prompt") or "").strip():
+            fail(f"delivery scenario {scenario_id!r} is missing prompt")
+        if scenario.get("network_policy") not in {"disabled", "scenario-required"}:
+            fail(f"delivery scenario {scenario_id!r} has invalid network_policy")
+        if not fixture_rel or not grader_rel:
+            fail(f"delivery scenario {scenario_id!r} requires fixture and grader")
+        fixture_path = (delivery_root / fixture_rel).resolve()
+        grader_path = (delivery_root / grader_rel).resolve()
+        try:
+            fixture_path.relative_to(fixtures_root.resolve())
+            grader_path.relative_to(graders_root.resolve())
+        except ValueError:
+            fail(
+                f"delivery scenario {scenario_id!r} must keep fixtures/graders "
+                "under their dedicated hidden-contract roots"
+            )
+        if not fixture_path.is_dir():
+            fail(f"delivery fixture is missing for {scenario_id}: {fixture_rel}")
+        if not grader_path.is_file():
+            fail(f"delivery grader is missing for {scenario_id}: {grader_rel}")
+        compile(
+            grader_path.read_text(encoding="utf-8"),
+            str(grader_path),
+            "exec",
+        )
+
     repetitions = delivery.get("default_repetitions")
     if (
         not isinstance(repetitions, int)
