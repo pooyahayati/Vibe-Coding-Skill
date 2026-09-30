@@ -120,7 +120,7 @@ def draft(
     if tier >= 2:
         planning_reasons.append(f"risk Tier {tier} requires explicit planning")
     if task_scope == "cross-boundary":
-        planning_reasons.append("change scope crosses top-level project boundaries")
+        planning_reasons.append("change scope crosses project-area boundaries")
     required = bool(planning_reasons)
 
     workstream = {
