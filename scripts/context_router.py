@@ -492,6 +492,7 @@ def plan(
     complexity_override: str = "auto",
     invariants: list[str] | None = None,
     include_packs: list[str] | None = None,
+    risk_facts: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     root = root.resolve()
     paths = paths or []
@@ -519,7 +520,8 @@ def plan(
                 dict.fromkeys(task_ev[name] + ["explicit-include"])
             )
 
-    risk = load_risk_classifier().classify(task, paths)
+    risk_module = load_risk_classifier()
+    risk = risk_module.classify(task, paths, risk_facts)
     complexity = project_complexity(files, config, complexity_override)
     selected, effective_tier, interactions = resolve_selection(
         config,
@@ -532,13 +534,18 @@ def plan(
     )
     risk = dict(risk)
     if effective_tier > int(risk["tier"]):
-        risk["router_floor_from"] = risk["tier"]
-        risk["tier"] = effective_tier
-        risk["label"] = ["tiny", "standard", "significant", "critical"][
-            effective_tier
-        ]
-        risk["approval_required"] = (
-            bool(risk.get("approval_required")) or effective_tier >= 3
+        previous_tier = int(risk["tier"])
+        policy = risk_module.policy_for_tier(
+            effective_tier,
+            approval_required=bool(risk.get("approval_required")),
+        )
+        risk.update(policy)
+        risk["router_floor_from"] = previous_tier
+        risk["reasons"] = list(
+            dict.fromkeys(
+                list(risk.get("reasons") or [])
+                + ["routing interaction raised the workflow floor"]
+            )
         )
 
     detected_invariants = detected_project_invariants(root)
@@ -657,7 +664,12 @@ def plan(
                 "project_invariants_preserved": bool(
                     invariants or detected_invariants
                 ),
-                "risk_controls_preserved": True,
+                "risk_controls_preserved": set(
+                    risk_module.policy_for_tier(
+                        int(risk["tier"]),
+                        approval_required=bool(risk.get("approval_required")),
+                    )["required_controls"]
+                ).issubset(set(risk.get("required_controls") or [])),
                 "project_intelligence_preserved": (
                     complexity["level"] == "large"
                     or int(risk["tier"]) >= 2
@@ -679,8 +691,23 @@ def main() -> int:
     )
     ap.add_argument("--invariant", action="append", default=[])
     ap.add_argument("--include-pack", action="append", default=[])
+    ap.add_argument("--risk-operation")
+    ap.add_argument("--risk-environment")
+    ap.add_argument("--risk-data-sensitivity")
+    ap.add_argument("--risk-change-boundary")
     ap.add_argument("--json", action="store_true")
     ns = ap.parse_args()
+
+    risk_facts = {
+        "operation": ns.risk_operation,
+        "environment": ns.risk_environment,
+        "data_sensitivity": ns.risk_data_sensitivity,
+        "change_boundary": ns.risk_change_boundary,
+    }
+    risk_facts = {
+        key: value for key, value in risk_facts.items()
+        if value is not None
+    }
 
     result = plan(
         Path(ns.root),
@@ -689,6 +716,7 @@ def main() -> int:
         ns.complexity,
         ns.invariant,
         ns.include_pack,
+        risk_facts or None,
     )
     if ns.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
