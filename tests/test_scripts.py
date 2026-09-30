@@ -214,21 +214,74 @@ class RiskClassifierTests(unittest.TestCase):
         self.mod = load_script("risk_classifier.py")
 
     def test_tiny_typo(self):
-        self.assertEqual(self.mod.classify("Change one typo in the footer text.")["tier"], 0)
+        self.assertEqual(
+            self.mod.classify("Change one typo in the footer text.")["tier"],
+            0,
+        )
 
     def test_auth_is_significant_and_requires_approval(self):
-        result = self.mod.classify("Change authentication from session cookies to JWTs across the application.")
+        result = self.mod.classify(
+            "Change authentication from session cookies to JWTs across the application."
+        )
         self.assertEqual(result["tier"], 2)
         self.assertTrue(result["approval_required"])
 
     def test_destructive_production_migration_is_critical(self):
-        result = self.mod.classify("Drop the customer table and migrate production data.")
+        result = self.mod.classify(
+            "Drop the customer table and migrate production data."
+        )
         self.assertEqual(result["tier"], 3)
         self.assertTrue(result["approval_required"])
 
     def test_paths_can_raise_tier(self):
-        result = self.mod.classify("small refactor", ["src/auth/session.py"])
+        result = self.mod.classify(
+            "small refactor",
+            ["src/auth/session.py"],
+        )
         self.assertGreaterEqual(result["tier"], 2)
+
+    def test_drop_down_menu_is_not_destructive(self):
+        result = self.mod.classify(
+            "Add a drop-down menu to the settings page."
+        )
+        self.assertEqual(result["tier"], 1)
+        self.assertNotIn("destructive-data", result["matched_rules"])
+
+    def test_structured_facts_make_equivalent_languages_share_policy(self):
+        facts = {
+            "operation": "delete-all",
+            "environment": "production",
+            "data_sensitivity": "personal",
+            "change_boundary": "system",
+        }
+        english = self.mod.classify(
+            "Delete all customer records from the live database.",
+            facts=facts,
+        )
+        persian = self.mod.classify(
+            "همه اطلاعات مشتریان را از پایگاه داده محیط تولید حذف کن.",
+            facts=facts,
+        )
+        self.assertEqual(english["tier"], persian["tier"])
+        self.assertEqual(
+            english["required_controls"],
+            persian["required_controls"],
+        )
+        self.assertTrue(english["approval_required"])
+        self.assertTrue(persian["approval_required"])
+
+    def test_persian_destructive_production_request_is_detected(self):
+        result = self.mod.classify(
+            "همه اطلاعات مشتریان را از پایگاه داده محیط تولید حذف کن."
+        )
+        self.assertEqual(result["tier"], 3)
+        self.assertTrue(result["approval_required"])
+
+    def test_higher_tier_policy_retains_lower_tier_controls(self):
+        policy = self.mod.policy_for_tier(3)
+        self.assertIn("acceptance criteria", policy["required_controls"])
+        self.assertIn("independent review", policy["required_controls"])
+        self.assertIn("rollback/recovery plan", policy["required_controls"])
 
 
 class LiveAgentEvalTests(unittest.TestCase):
@@ -268,166 +321,243 @@ class LiveAgentEvalTests(unittest.TestCase):
 
 
 class CompletionGateTests(unittest.TestCase):
-    def test_done_without_evidence_blocks(self):
-        mod = load_script("completion_gate.py")
-        result = mod.evaluate({
-            "status": "Done",
-            "acceptance_criteria": [{"id": "AC-1", "met": True}],
-            "evidence": [],
-            "blockers": [],
-        })
-        self.assertEqual(result["gate"], "BLOCK")
+    def setUp(self):
+        self.mod = load_script("completion_gate.py")
 
-    def test_done_with_passing_evidence_passes(self):
-        mod = load_script("completion_gate.py")
-        result = mod.evaluate({
+    @staticmethod
+    def criterion(
+        evidence_ids=None,
+        *,
+        criterion_id="AC-1",
+        description="Requested behavior is verified.",
+        required=True,
+        met=True,
+    ):
+        return {
+            "id": criterion_id,
+            "description": description,
+            "required": required,
+            "met": met,
+            "evidence_ids": evidence_ids or ["E-1"],
+        }
+
+    @staticmethod
+    def evidence(
+        *,
+        evidence_id="E-1",
+        kind="test",
+        result="pass",
+        required=True,
+        provenance=None,
+        justification=None,
+    ):
+        row = {
+            "id": evidence_id,
+            "kind": kind,
+            "result": result,
+            "required": required,
+        }
+        if provenance is not None:
+            row["provenance"] = provenance
+        if justification is not None:
+            row["justification"] = justification
+        return row
+
+    def report(self, *, tier=0, criteria=None, evidence=None, commit=None):
+        row = {
+            "schema_version": 2,
+            "status": "Done",
+            "risk_tier": tier,
+            "acceptance_criteria": criteria or [self.criterion()],
+            "evidence": evidence or [self.evidence()],
+            "blockers": [],
+        }
+        if commit is not None:
+            row["commit"] = commit
+        return row
+
+    def test_done_without_schema_v2_blocks(self):
+        result = self.mod.evaluate({
             "status": "Done",
             "risk_tier": 0,
-            "acceptance_criteria": [{"id": "AC-1", "met": True}],
-            "evidence": [{"kind": "test", "result": "pass"}],
-            "blockers": [],
-        })
-        self.assertEqual(result["gate"], "PASS")
-
-
-    def test_done_requires_explicit_risk_tier(self):
-        mod = load_script("completion_gate.py")
-        result = mod.evaluate({
-            "status": "Done",
             "acceptance_criteria": [{"id": "AC-1", "met": True}],
             "evidence": [{"kind": "test", "result": "pass"}],
             "blockers": [],
         })
         self.assertEqual(result["gate"], "BLOCK")
         self.assertIn(
-            "Done requires risk_tier 0, 1, 2, or 3",
+            "Done reports require schema_version 2",
             result["failures"],
         )
 
-    def test_done_rejects_malformed_acceptance_criteria(self):
-        mod = load_script("completion_gate.py")
-        result = mod.evaluate({
-            "status": "Done",
-            "risk_tier": 0,
-            "acceptance_criteria": ["not-a-criterion-object"],
-            "evidence": [{"kind": "test", "result": "pass"}],
-            "blockers": [],
-        })
+    def test_done_with_linked_passing_evidence_passes(self):
+        result = self.mod.evaluate(self.report())
+        self.assertEqual(result["gate"], "PASS")
+
+    def test_done_rejects_unnamed_criterion(self):
+        result = self.mod.evaluate(self.report(criteria=[{
+            "description": "Behavior works.",
+            "required": True,
+            "met": True,
+            "evidence_ids": ["E-1"],
+        }]))
         self.assertEqual(result["gate"], "BLOCK")
         self.assertTrue(
-            any("must be an object" in failure for failure in result["failures"])
+            any("requires id" in failure for failure in result["failures"])
         )
 
-    def test_done_rejects_non_boolean_acceptance_state(self):
-        mod = load_script("completion_gate.py")
-        result = mod.evaluate({
-            "status": "Done",
-            "risk_tier": 0,
-            "acceptance_criteria": [{"id": "AC-1", "met": "yes"}],
-            "evidence": [{"kind": "test", "result": "pass"}],
-            "blockers": [],
-        })
+    def test_done_rejects_criterion_without_description(self):
+        result = self.mod.evaluate(self.report(criteria=[{
+            "id": "AC-1",
+            "required": True,
+            "met": True,
+            "evidence_ids": ["E-1"],
+        }]))
         self.assertEqual(result["gate"], "BLOCK")
         self.assertTrue(
-            any("requires boolean met" in failure for failure in result["failures"])
+            any("requires description" in failure for failure in result["failures"])
         )
 
+    def test_failed_required_check_blocks_even_with_other_passes(self):
+        criteria = [
+            self.criterion(["E-1"], criterion_id="AC-1"),
+        ]
+        evidence = [
+            self.evidence(evidence_id="E-1", kind="style"),
+            self.evidence(
+                evidence_id="E-2",
+                kind="integration",
+                result="fail",
+                required=True,
+            ),
+        ]
+        result = self.mod.evaluate(
+            self.report(criteria=criteria, evidence=evidence)
+        )
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "required evidence E-2 did not pass" in failure
+                for failure in result["failures"]
+            )
+        )
+
+    def test_optional_failed_check_requires_justification(self):
+        evidence = [
+            self.evidence(evidence_id="E-1"),
+            self.evidence(
+                evidence_id="E-2",
+                kind="browser",
+                result="fail",
+                required=False,
+            ),
+        ]
+        result = self.mod.evaluate(self.report(evidence=evidence))
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "requires justification" in failure
+                for failure in result["failures"]
+            )
+        )
+
+    def test_required_criterion_must_link_qualified_evidence(self):
+        criteria = [self.criterion(["E-2"])]
+        evidence = [
+            self.evidence(evidence_id="E-1", kind="style"),
+            self.evidence(
+                evidence_id="E-2",
+                kind="integration",
+                provenance=None,
+            ),
+        ]
+        result = self.mod.evaluate(
+            self.report(tier=1, criteria=criteria, evidence=evidence)
+        )
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(
+            any(
+                "has no linked passing evidence with required provenance"
+                in failure
+                for failure in result["failures"]
+            )
+        )
 
     def test_tier1_requires_source_and_reference_provenance(self):
-        mod = load_script("completion_gate.py")
-        missing = mod.evaluate({
-            "status": "Done",
-            "risk_tier": 1,
-            "acceptance_criteria": [{"id": "AC-1", "met": True}],
-            "evidence": [{"kind": "test", "result": "pass"}],
-            "blockers": [],
-        })
-        self.assertEqual(missing["gate"], "BLOCK")
-        self.assertEqual(missing["qualified_evidence_count"], 0)
-
-        complete = mod.evaluate({
-            "status": "Done",
-            "risk_tier": 1,
-            "acceptance_criteria": [{"id": "AC-1", "met": True}],
-            "evidence": [{
-                "kind": "test",
-                "result": "pass",
-                "provenance": {
+        evidence = [
+            self.evidence(
+                provenance={
                     "source": "local",
                     "reference": "python -m unittest",
                 },
-            }],
-            "blockers": [],
-        })
-        self.assertEqual(complete["gate"], "PASS")
-        self.assertEqual(complete["qualified_evidence_count"], 1)
+            )
+        ]
+        result = self.mod.evaluate(self.report(tier=1, evidence=evidence))
+        self.assertEqual(result["gate"], "PASS")
 
     def test_tier2_requires_two_distinct_revision_bound_evidence_kinds(self):
-        mod = load_script("completion_gate.py")
-        report = {
-            "status": "Done",
-            "risk_tier": 2,
-            "commit": "abc1234",
-            "acceptance_criteria": [{"id": "AC-1", "met": True}],
-            "evidence": [
-                {
-                    "kind": "test",
-                    "result": "pass",
-                    "provenance": {
-                        "source": "ci",
-                        "reference": "validate-skill/run-123",
-                        "commit": "abc1234",
-                    },
+        commit = "abc1234"
+        evidence = [
+            self.evidence(
+                evidence_id="E-1",
+                kind="test",
+                provenance={
+                    "source": "ci",
+                    "reference": "validate-skill/run-123",
+                    "commit": commit,
                 },
-                {
-                    "kind": "review",
-                    "result": "pass",
-                    "provenance": {
-                        "source": "review",
-                        "reference": "pr-42",
-                        "commit": "abc1234",
-                    },
+            ),
+            self.evidence(
+                evidence_id="E-2",
+                kind="review",
+                provenance={
+                    "source": "review",
+                    "reference": "pr-42",
+                    "commit": commit,
                 },
-            ],
-            "blockers": [],
-        }
-        result = mod.evaluate(report)
+            ),
+        ]
+        criteria = [self.criterion(["E-1", "E-2"])]
+        result = self.mod.evaluate(
+            self.report(
+                tier=2,
+                commit=commit,
+                criteria=criteria,
+                evidence=evidence,
+            )
+        )
         self.assertEqual(result["gate"], "PASS")
         self.assertEqual(result["qualified_evidence_count"], 2)
 
-        report["evidence"] = [report["evidence"][0]]
-        result = mod.evaluate(report)
-        self.assertEqual(result["gate"], "BLOCK")
-
     def test_tier2_rejects_evidence_from_different_revision(self):
-        mod = load_script("completion_gate.py")
-        result = mod.evaluate({
-            "status": "Done",
-            "risk_tier": 2,
-            "commit": "final-commit",
-            "acceptance_criteria": [{"id": "AC-1", "met": True}],
-            "evidence": [
-                {
-                    "kind": "test",
-                    "result": "pass",
-                    "provenance": {
-                        "source": "ci",
-                        "reference": "run-1",
-                        "commit": "old-commit",
-                    },
+        evidence = [
+            self.evidence(
+                evidence_id="E-1",
+                kind="test",
+                provenance={
+                    "source": "ci",
+                    "reference": "run-1",
+                    "commit": "old-commit",
                 },
-                {
-                    "kind": "review",
-                    "result": "pass",
-                    "provenance": {
-                        "source": "review",
-                        "reference": "review-1",
-                        "commit": "final-commit",
-                    },
+            ),
+            self.evidence(
+                evidence_id="E-2",
+                kind="review",
+                provenance={
+                    "source": "review",
+                    "reference": "review-1",
+                    "commit": "final-commit",
                 },
-            ],
-            "blockers": [],
-        })
+            ),
+        ]
+        result = self.mod.evaluate(
+            self.report(
+                tier=2,
+                commit="final-commit",
+                criteria=[self.criterion(["E-1", "E-2"])],
+                evidence=evidence,
+            )
+        )
         self.assertEqual(result["gate"], "BLOCK")
         self.assertTrue(
             any(
@@ -436,158 +566,42 @@ class CompletionGateTests(unittest.TestCase):
             )
         )
 
-    def test_tier2_requires_target_commit(self):
-        mod = load_script("completion_gate.py")
-        result = mod.evaluate({
-            "status": "Done",
-            "risk_tier": 2,
-            "acceptance_criteria": [{"id": "AC-1", "met": True}],
-            "evidence": [
-                {
-                    "kind": "test",
-                    "result": "pass",
-                    "provenance": {
-                        "source": "ci",
-                        "reference": "run-1",
-                        "commit": "abc1234",
-                    },
+    def test_tier3_requires_timezone_aware_provenance(self):
+        commit = "def5678"
+        evidence = [
+            self.evidence(
+                evidence_id="E-1",
+                kind="test",
+                provenance={
+                    "source": "ci",
+                    "reference": "critical-suite/run-7",
+                    "commit": commit,
+                    "captured_at": "2026-09-20T07:29:00Z",
                 },
-                {
-                    "kind": "review",
-                    "result": "pass",
-                    "provenance": {
-                        "source": "review",
-                        "reference": "review-1",
-                        "commit": "abc1234",
-                    },
+            ),
+            self.evidence(
+                evidence_id="E-2",
+                kind="recovery",
+                provenance={
+                    "source": "runtime",
+                    "reference": "rollback-drill/run-7",
+                    "commit": commit,
+                    "captured_at": "2026-09-20T07:30:00Z",
                 },
-            ],
-            "blockers": [],
-        })
-        self.assertEqual(result["gate"], "BLOCK")
-        self.assertIn(
-            "Tier 2 Done requires target commit",
-            result["failures"],
+            ),
+        ]
+        result = self.mod.evaluate(
+            self.report(
+                tier=3,
+                commit=commit,
+                criteria=[self.criterion(["E-1", "E-2"])],
+                evidence=evidence,
+            )
         )
-
-
-    def test_tier3_requires_timestamped_revision_bound_provenance(self):
-        mod = load_script("completion_gate.py")
-        base = {
-            "status": "Done",
-            "risk_tier": 3,
-            "commit": "def5678",
-            "acceptance_criteria": [{"id": "AC-1", "met": True}],
-            "evidence": [
-                {
-                    "kind": "test",
-                    "result": "pass",
-                    "provenance": {
-                        "source": "ci",
-                        "reference": "critical-suite/run-7",
-                        "commit": "def5678",
-                    },
-                },
-                {
-                    "kind": "recovery",
-                    "result": "pass",
-                    "provenance": {
-                        "source": "runtime",
-                        "reference": "rollback-drill/run-7",
-                        "commit": "def5678",
-                        "captured_at": "2026-09-20T07:30:00Z",
-                    },
-                },
-            ],
-            "blockers": [],
-        }
-        result = mod.evaluate(base)
-        self.assertEqual(result["gate"], "BLOCK")
-        self.assertTrue(result["evidence_provenance_issues"])
-
-        base["evidence"][0]["provenance"]["captured_at"] = "2026-09-20T07:29:00Z"
-        result = mod.evaluate(base)
         self.assertEqual(result["gate"], "PASS")
         self.assertEqual(
             result["required_provenance_fields"],
             ["source", "reference", "commit", "captured_at"],
-        )
-
-    def test_tier3_requires_timezone_aware_timestamp(self):
-        mod = load_script("completion_gate.py")
-        result = mod.evaluate({
-            "status": "Done",
-            "risk_tier": 3,
-            "commit": "abc1234",
-            "acceptance_criteria": [{"id": "AC-1", "met": True}],
-            "evidence": [
-                {
-                    "kind": "test",
-                    "result": "pass",
-                    "provenance": {
-                        "source": "ci",
-                        "reference": "run-a",
-                        "commit": "abc1234",
-                        "captured_at": "2026-09-20T07:30:00",
-                    },
-                },
-                {
-                    "kind": "review",
-                    "result": "pass",
-                    "provenance": {
-                        "source": "review",
-                        "reference": "review-a",
-                        "commit": "abc1234",
-                        "captured_at": "2026-09-20T07:30:00Z",
-                    },
-                },
-            ],
-            "blockers": [],
-        })
-        self.assertEqual(result["gate"], "BLOCK")
-        self.assertTrue(
-            any(
-                "invalid_captured_at" in row["issues"]
-                for row in result["evidence_provenance_issues"]
-            )
-        )
-
-
-    def test_tier3_rejects_invalid_provenance_timestamp(self):
-        mod = load_script("completion_gate.py")
-        result = mod.evaluate({
-            "status": "Done",
-            "risk_tier": 3,
-            "commit": "abc1234",
-            "acceptance_criteria": [{"id": "AC-1", "met": True}],
-            "evidence": [
-                {
-                    "kind": "test",
-                    "result": "pass",
-                    "provenance": {
-                        "source": "ci",
-                        "reference": "run-a",
-                        "commit": "abc1234",
-                        "captured_at": "not-a-time",
-                    },
-                },
-                {
-                    "kind": "review",
-                    "result": "pass",
-                    "provenance": {
-                        "source": "review",
-                        "reference": "review-a",
-                        "commit": "abc1234",
-                        "captured_at": "2026-09-20T07:30:00Z",
-                    },
-                },
-            ],
-            "blockers": [],
-        })
-        self.assertEqual(result["gate"], "BLOCK")
-        issues = result["evidence_provenance_issues"]
-        self.assertTrue(
-            any("invalid_captured_at" in row["issues"] for row in issues)
         )
 
 
