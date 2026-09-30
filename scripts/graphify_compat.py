@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contract-test a Graphify release and optionally update the approved version."""
+"""Contract-test a Graphify release."""
 
 from __future__ import annotations
 
@@ -100,6 +100,7 @@ def contract_test(version: str) -> dict[str, object]:
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser()
     ap.add_argument("--version")
     ap.add_argument("--latest", action="store_true")
     ap.add_argument("--json", action="store_true")
