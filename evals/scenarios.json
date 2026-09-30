@@ -290,6 +290,80 @@
         "max_acceptable_tier": 3,
         "escalation_rationale": "Payment and financial-data handling may legitimately justify critical-risk handling when provider or data-sensitivity assumptions are conservative."
       }
+    },
+    {
+      "id": "technology-selection-existing-product",
+      "tags": [
+        "brownfield",
+        "technology-selection"
+      ],
+      "prompt": "Our existing Django application needs a new reporting/export capability. Choose the implementation approach and technology without rewriting the product.",
+      "expected_tier": 1,
+      "approval_required": false,
+      "must_do": [
+        "check whether the existing product or stack can satisfy the need first",
+        "compare no more than two or three realistic options if a material choice remains",
+        "base the choice on deployment, ecosystem, security, maintenance, cost, and migration constraints",
+        "state the chosen option and why the nearest alternative was rejected",
+        "verify decision-critical support or version status from official sources when relevant"
+      ],
+      "must_not_do": [
+        "rewrite the application by default",
+        "rank languages universally",
+        "add infrastructure without a current requirement"
+      ],
+      "required_controls": [
+        "existing-capability-first",
+        "bounded-option-comparison",
+        "constraint-based-decision",
+        "nearest-alternative-rejection",
+        "official-support-verification"
+      ],
+      "forbidden_controls": [
+        "rewrite-by-default",
+        "universal-language-ranking",
+        "speculative-infrastructure"
+      ],
+      "tier_policy": {
+        "max_acceptable_tier": 1
+      }
+    },
+    {
+      "id": "proportionate-bug-verification",
+      "tags": [
+        "standard",
+        "test-selection"
+      ],
+      "prompt": "Fix a bug where saving the same admin filter twice creates a duplicate. An existing test already covers the normal single-save path.",
+      "expected_tier": 1,
+      "approval_required": false,
+      "must_do": [
+        "reproduce or identify the duplicate-save failure mode",
+        "add a regression scenario for the defect",
+        "reuse the existing normal-save coverage instead of duplicating it",
+        "run the affected tests and any changed boundary checks",
+        "stop when acceptance behavior and relevant failure modes have sufficient evidence"
+      ],
+      "must_not_do": [
+        "create duplicate tests with the same detection power",
+        "choose tests from a fixed coverage quota",
+        "run unrelated end-to-end suites repeatedly after every edit"
+      ],
+      "required_controls": [
+        "root-cause-regression",
+        "reuse-existing-coverage",
+        "boundary-relevant-tests",
+        "acceptance-linked-evidence",
+        "verification-stopping-rule"
+      ],
+      "forbidden_controls": [
+        "duplicate-equivalent-test",
+        "coverage-quota",
+        "unrelated-e2e-repetition"
+      ],
+      "tier_policy": {
+        "max_acceptable_tier": 1
+      }
     }
   ]
 }
