@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Vibe Coding Real Delivery Benchmark Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "benchmark",
+    "agent",
+    "agent_version",
+    "model",
+    "arm",
+    "scenario_id",
+    "repetition",
+    "skill_version",
+    "started_at",
+    "completed_at",
+    "runtime",
+    "workspace",
+    "grader",
+    "integrity",
+    "raw_files"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "benchmark": {"const": "real-delivery"},
+    "agent": {"type": "string", "minLength": 1},
+    "agent_version": {"type": ["string", "null"]},
+    "model": {"type": ["string", "null"]},
+    "arm": {"enum": ["control", "treatment"]},
+    "scenario_id": {"type": "string", "minLength": 1},
+    "repetition": {"type": "integer", "minimum": 1},
+    "skill_version": {"type": "string", "minLength": 1},
+    "started_at": {"type": "string", "minLength": 1},
+    "completed_at": {"type": "string", "minLength": 1},
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exit_code", "duration_ms", "timed_out", "usage"],
+      "properties": {
+        "exit_code": {"type": "integer"},
+        "duration_ms": {"type": "integer", "minimum": 0},
+        "timed_out": {"type": "boolean"},
+        "usage": {"type": "object"}
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline_commit",
+        "final_tree_sha256",
+        "diff_sha256",
+        "changed_paths",
+        "changed_file_count",
+        "dependency_files_changed",
+        "forbidden_path_hits"
+      ],
+      "properties": {
+        "baseline_commit": {"type": "string", "minLength": 1},
+        "final_tree_sha256": {"type": "string", "minLength": 64},
+        "diff_sha256": {"type": "string", "minLength": 64},
+        "changed_paths": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "changed_file_count": {"type": "integer", "minimum": 0},
+        "dependency_files_changed": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "forbidden_path_hits": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "grader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exit_code",
+        "timed_out",
+        "checks",
+        "metrics",
+        "failures",
+        "delivery_success"
+      ],
+      "properties": {
+        "exit_code": {"type": "integer"},
+        "timed_out": {"type": "boolean"},
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "category",
+              "required",
+              "passed",
+              "details"
+            ],
+            "properties": {
+              "id": {"type": "string"},
+              "category": {
+                "enum": [
+                  "functional",
+                  "regression",
+                  "artifact",
+                  "security",
+                  "forbidden-mutation",
+                  "delivery"
+                ]
+              },
+              "required": {"type": "boolean"},
+              "passed": {"type": "boolean"},
+              "details": {"type": "string"}
+            }
+          }
+        },
+        "metrics": {"type": "object"},
+        "failures": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "delivery_success": {"type": "boolean"}
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixture_sha256",
+        "grader_sha256",
+        "catalog_sha256",
+        "result_schema_sha256",
+        "skill_tree_sha256",
+        "skill_installed",
+        "hidden_grader_outside_workspace",
+        "prompt_sha256",
+        "executor_id"
+      ],
+      "properties": {
+        "fixture_sha256": {"type": "string", "minLength": 64},
+        "grader_sha256": {"type": "string", "minLength": 64},
+        "catalog_sha256": {"type": "string", "minLength": 64},
+        "result_schema_sha256": {"type": "string", "minLength": 64},
+        "skill_tree_sha256": {"type": "string", "minLength": 64},
+        "skill_installed": {"type": "boolean"},
+        "hidden_grader_outside_workspace": {"const": true},
+        "prompt_sha256": {"type": "string", "minLength": 64},
+        "executor_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "raw_files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stdout",
+        "stderr",
+        "grader_stdout",
+        "grader_stderr"
+      ],
+      "properties": {
+        "stdout": {"type": "string"},
+        "stderr": {"type": "string"},
+        "grader_stdout": {"type": "string"},
+        "grader_stderr": {"type": "string"}
+      }
+    }
+  }
+}
