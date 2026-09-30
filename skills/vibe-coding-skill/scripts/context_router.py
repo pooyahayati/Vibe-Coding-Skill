@@ -283,6 +283,49 @@ def task_path_roots(paths: list[str]) -> set[str]:
     return roots
 
 
+def change_scope(paths: list[str], risk: dict[str, Any]) -> dict[str, Any]:
+    normalized_paths = list(
+        dict.fromkeys(
+            raw.replace("\\", "/").lstrip("./")
+            for raw in paths
+            if raw.strip()
+        )
+    )
+    roots = task_path_roots(normalized_paths)
+    matched = {str(value) for value in risk.get("matched_rules", [])}
+    structured = risk.get("structured_facts") or {}
+    boundary = str(structured.get("change_boundary") or "").strip().lower()
+
+    reasons: list[str] = []
+    if (
+        "graph-cross-module" in matched
+        or "fact:cross-module" in matched
+        or boundary in {"cross-module", "multi-module", "system", "application-wide"}
+    ):
+        level = "cross-boundary"
+        reasons.append("explicit cross-module/system impact")
+    elif len(roots) > 1:
+        level = "cross-boundary"
+        reasons.append("affected paths span multiple top-level roots")
+    elif not normalized_paths:
+        level = "unknown"
+        reasons.append("affected paths are not known yet")
+    elif len(normalized_paths) == 1:
+        level = "local"
+        reasons.append("single known affected path")
+    else:
+        level = "bounded"
+        reasons.append("multiple known paths within one top-level root")
+
+    return {
+        "level": level,
+        "path_count": len(normalized_paths),
+        "top_level_root_count": len(roots),
+        "top_level_roots": sorted(roots),
+        "reasons": reasons,
+    }
+
+
 def project_pack_relevant(
     project_evidence: list[str],
     task_evidence: list[str],
@@ -304,6 +347,42 @@ def project_pack_relevant(
     if not evidence_roots:
         return False
     return bool(evidence_roots & task_path_roots(paths))
+
+
+def activation_requirements_met(
+    name: str,
+    pack: dict[str, Any],
+    packs: dict[str, Any],
+    project_evidence: dict[str, list[str]],
+    task_evidence: dict[str, list[str]],
+    paths: list[str],
+    complexity_level: str,
+) -> bool:
+    requirements = [
+        str(value)
+        for value in pack.get("activation_requires", [])
+        if str(value).strip()
+    ]
+    if not requirements:
+        return True
+    if "explicit-include" in task_evidence.get(name, []):
+        return True
+
+    for required in requirements:
+        required_pack = packs.get(required)
+        if not isinstance(required_pack, dict):
+            return False
+        if required_pack.get("scope", "task") == "project":
+            if not project_pack_relevant(
+                project_evidence.get(required, []),
+                task_evidence.get(required, []),
+                paths,
+                complexity_level,
+            ):
+                return False
+        elif not task_evidence.get(required):
+            return False
+    return True
 
 
 def confidence(evidence: list[str], explicit: bool = False) -> str:
@@ -350,15 +429,26 @@ def resolve_selection(
 
     for name, pack in packs.items():
         scope = pack.get("scope", "task")
+        candidate = False
         if scope == "project":
-            if project_pack_relevant(
+            candidate = project_pack_relevant(
                 project_evidence[name],
                 task_evidence[name],
                 paths,
                 complexity_level,
-            ):
-                selected.add(name)
+            )
         elif task_evidence[name]:
+            candidate = True
+
+        if candidate and activation_requirements_met(
+            name,
+            pack,
+            packs,
+            project_evidence,
+            task_evidence,
+            paths,
+            complexity_level,
+        ):
             selected.add(name)
 
     changed = True
@@ -533,6 +623,7 @@ def plan(
         str(complexity["level"]),
     )
     risk = dict(risk)
+    scope = change_scope(paths, risk)
     if effective_tier > int(risk["tier"]):
         previous_tier = int(risk["tier"])
         policy = risk_module.policy_for_tier(
@@ -626,6 +717,7 @@ def plan(
             "paths": paths,
             "explicit_pack_includes": sorted(set(include_packs)),
             "risk": risk,
+            "scope": scope,
             "routing_note": (
                 "Re-run routing when touched paths become known if the task "
                 "starts without concrete impact paths."
