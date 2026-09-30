@@ -511,6 +511,165 @@ class ContextRouterTests(unittest.TestCase):
         self.assertIn("woocommerce", names)
 
 
+    def test_same_apps_container_keeps_platform_evidence_local(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "apps/store/plugin.php", WORDPRESS_WOO)
+            write(
+                root,
+                "apps/api/report.py",
+                "def export_report():\n    return 'ok'\n",
+            )
+
+            result = self.router.plan(
+                root,
+                "Refactor the report export helper",
+                ["apps/api/report.py"],
+            )
+
+        names = {row["name"] for row in result["packs"]}
+        self.assertNotIn("php", names)
+        self.assertNotIn("wordpress", names)
+        self.assertNotIn("woocommerce", names)
+        self.assertEqual(
+            result["context_plan"]["metrics"]["scan_strategy"],
+            "path-scoped",
+        )
+        self.assertEqual(
+            result["context_plan"]["metrics"]["scan_areas"],
+            ["apps/api"],
+        )
+
+    def test_apps_siblings_are_cross_boundary_even_with_same_top_level_root(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "apps/api/report.py", "VALUE = 1\n")
+            write(root, "apps/web/report.js", "export const value = 1;\n")
+
+            result = self.router.plan(
+                root,
+                "Update report export behavior",
+                ["apps/api/report.py", "apps/web/report.js"],
+            )
+
+        scope = result["task"]["scope"]
+        self.assertEqual(scope["level"], "cross-boundary")
+        self.assertEqual(scope["top_level_root_count"], 1)
+        self.assertEqual(scope["project_area_count"], 2)
+        self.assertEqual(
+            set(scope["project_areas"]),
+            {"apps/api", "apps/web"},
+        )
+
+    def test_directory_affected_path_detects_local_platform(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "apps/store/plugin.php", WORDPRESS_WOO)
+            write(root, "apps/api/app.py", "VALUE = 1\n")
+
+            result = self.router.plan(
+                root,
+                "Update the settings screen",
+                ["apps/store"],
+            )
+
+        names = {row["name"] for row in result["packs"]}
+        self.assertIn("php", names)
+        self.assertIn("wordpress", names)
+        self.assertIn("woocommerce", names)
+        self.assertNotIn("browser-js", names)
+
+    def test_path_scoped_scan_finds_local_platform_after_large_unrelated_area(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            for index in range(700):
+                write(
+                    root,
+                    f"packages/noise-{index}/module.py",
+                    "VALUE = 1\n",
+                )
+            write(root, "plugins/store/plugin.php", WORDPRESS_WOO)
+
+            result = self.router.plan(
+                root,
+                "Update the plugin settings behavior",
+                ["plugins/store/plugin.php"],
+            )
+
+        names = {row["name"] for row in result["packs"]}
+        self.assertIn("wordpress", names)
+        self.assertIn("woocommerce", names)
+        metrics = result["context_plan"]["metrics"]
+        self.assertEqual(metrics["scan_strategy"], "path-scoped")
+        self.assertLess(metrics["project_text_files_scanned"], 700)
+
+    def test_root_agents_is_always_loaded_for_existing_project(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(
+                root,
+                "AGENTS.md",
+                "# Agent Rules\n\nAlways preserve the public contract.\n",
+            )
+            write(root, "src/app.py", "VALUE = 1\n")
+
+            result = self.router.plan(
+                root,
+                "Change one typo in local copy",
+                ["src/app.py"],
+            )
+
+        self.assertIn("AGENTS.md", result["context_plan"]["load"])
+        metrics = result["context_plan"]["metrics"]
+        self.assertGreater(metrics["persistent_context_upper_bound_bytes"], 0)
+        self.assertGreaterEqual(
+            metrics["estimated_context_upper_bound_bytes"],
+            metrics["estimated_skill_context_bytes"],
+        )
+
+    def test_local_agents_only_loads_for_affected_subtree(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "AGENTS.md", "# Root rules\n")
+            write(root, "apps/store/AGENTS.md", "# Store rules\n")
+            write(root, "apps/api/AGENTS.md", "# API rules\n")
+            write(root, "apps/store/src/settings.js", "export const value = 1;\n")
+
+            result = self.router.plan(
+                root,
+                "Update store settings behavior",
+                ["apps/store/src/settings.js"],
+            )
+
+        load = result["context_plan"]["load"]
+        self.assertIn("AGENTS.md", load)
+        self.assertIn("apps/store/AGENTS.md", load)
+        self.assertNotIn("apps/api/AGENTS.md", load)
+
+    def test_no_paths_uses_bounded_fallback_project_scan(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "src/app.py", "VALUE = 1\n")
+
+            result = self.router.plan(
+                root,
+                "Add a contained report feature",
+                [],
+            )
+
+        self.assertEqual(
+            result["context_plan"]["metrics"]["scan_strategy"],
+            "fallback-project-scan",
+        )
+
+
 class ExecutionPlanTests(unittest.TestCase):
     def setUp(self):
         self.planner = load_script("execution_plan.py")
@@ -598,6 +757,27 @@ class ExecutionPlanTests(unittest.TestCase):
         )
         self.assertTrue(result["execution_plan_required"])
         self.assertTrue(result["planning_basis"]["reasons"])
+
+
+    def test_same_container_sibling_apps_require_execution_plan(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "apps/api/report.py", "VALUE = 1\n")
+            write(root, "apps/web/report.js", "export const value = 1;\n")
+
+            result = self.planner.draft(
+                root,
+                "Update the report export behavior",
+                ["apps/api/report.py", "apps/web/report.js"],
+            )
+
+        self.assertEqual(result["context_plan"]["task"]["risk"]["tier"], 1)
+        self.assertEqual(
+            result["context_plan"]["task"]["scope"]["level"],
+            "cross-boundary",
+        )
+        self.assertTrue(result["execution_plan_required"])
 
     def test_plan_validation_rejects_unknown_dependency_and_missing_owner(self):
         result = self.planner.validate_plan({
