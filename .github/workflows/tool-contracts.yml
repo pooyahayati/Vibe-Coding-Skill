@@ -2,12 +2,35 @@ name: Tool Contract Tests
 
 on:
   workflow_dispatch:
-  pull_request:
+  push:
+    branches:
+      - main
     paths:
+      - "VERSION"
       - "config/toolchain.json"
+      - "scripts/dependency_guard.py"
+      - "scripts/live_dependency_evals.py"
       - "scripts/graphify_compat.py"
       - "scripts/trivy_compat.py"
       - "scripts/toolchain_resolution.py"
+      - "scripts/toolchain_runtime.py"
+      - "tests/test_toolchain_resolution.py"
+      - "references/security-and-dependencies.md"
+      - "references/toolchain-version-resolution.md"
+      - ".github/workflows/tool-contracts.yml"
+  pull_request:
+    paths:
+      - "VERSION"
+      - "config/toolchain.json"
+      - "scripts/dependency_guard.py"
+      - "scripts/live_dependency_evals.py"
+      - "scripts/graphify_compat.py"
+      - "scripts/trivy_compat.py"
+      - "scripts/toolchain_resolution.py"
+      - "scripts/toolchain_runtime.py"
+      - "tests/test_toolchain_resolution.py"
+      - "references/security-and-dependencies.md"
+      - "references/toolchain-version-resolution.md"
       - ".github/workflows/tool-contracts.yml"
 
 jobs:

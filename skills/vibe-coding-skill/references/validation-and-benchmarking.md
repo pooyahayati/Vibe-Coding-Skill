@@ -26,9 +26,9 @@ Run:
 python scripts/run_real_world_validations.py
 ```
 
-The catalog in `validation/real-world-projects.json` pins public repositories to exact commits. The runner verifies that local workspace initialization, repository purity, resume context, dry-run bootstrap, and risk classification behave safely on real Python, Node, and Go repository layouts.
+The catalog in `validation/real-world-projects.json` pins public repositories to exact commits. The runner verifies local workspace/repository purity plus real Context Router and Execution Plan behavior, including project complexity, task scope/risk, capability-pack selectivity, context-reduction metrics, project-intelligence preservation, integration points, and whether planning is actually required.
 
-This is a compatibility layer, not a claim that a coding agent successfully implemented a feature in those projects.
+This is a compatibility/routing layer, not a claim that a coding agent successfully implemented a feature in those projects.
 
 ## Failure injection
 
@@ -120,8 +120,8 @@ python scripts/release_readiness.py readiness.json --channel <beta|rc|stable> --
 Channels are evidence classes:
 
 - `beta`: requires a successful `Validate Skill` run for the target commit.
-- `rc`: requires both `Validate Skill` and `Cross Platform Smoke` for the target commit.
-- `stable`: requires RC evidence plus a complete, fully conformant real-agent aggregate for both `codex` and `claude-code`.
+- `rc`: requires the complete baseline on the target commit: `Validate Skill`, `Cross Platform Smoke`, `Real World Repository Validation`, `Agent Skills Spec Compatibility`, `Tool Contract Tests`, and `WordPress Artifact Contract`.
+- `stable`: requires the same baseline plus a complete, fully conformant real-agent aggregate for both `codex` and `claude-code`.
 
 Stable benchmark evidence must match the current Skill version and the exact portable Skill tree, eval catalog, and agent-output schema hashes. The aggregate's scenario ID list and each Agent's expected/completed/passed scenario counts must exactly match the current eval catalog. Release checks use the latest result for each required workflow on the target commit, and stable qualification considers the latest Real Agent Benchmark run rather than falling back to an older success. Completion of the Real Agent Benchmark itself re-triggers release evaluation, so a valid benchmark produced after the base CI checks can unlock a stable release without re-running those checks. Missing, incomplete, stale, superseded-by-failure, or non-conformant evidence blocks readiness.
 

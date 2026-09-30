@@ -1212,21 +1212,22 @@ class BenchmarkScoringTests(unittest.TestCase):
 
 class ReleaseReadinessTests(unittest.TestCase):
     def _report(self, mod, commit="abc123", include_cross=True):
+        names = list(mod.CHANNEL_CHECKS["rc"])
+        if not include_cross:
+            names = [
+                name
+                for name in names
+                if name != "Cross Platform Smoke"
+            ]
         checks = [
             {
-                "name": "Validate Skill",
+                "name": name,
                 "conclusion": "success",
                 "commit": commit,
-                "run_id": 100,
-            },
+                "run_id": 100 + index,
+            }
+            for index, name in enumerate(names)
         ]
-        if include_cross:
-            checks.append({
-                "name": "Cross Platform Smoke",
-                "conclusion": "success",
-                "commit": commit,
-                "run_id": 200,
-            })
         return {
             "version": mod.current_skill_version(),
             "commit": commit,
@@ -1303,6 +1304,33 @@ class ReleaseReadinessTests(unittest.TestCase):
 
         result = mod.evaluate(self._report(mod), "rc")
         self.assertEqual(result["gate"], "PASS")
+
+    def test_rc_requires_every_release_baseline_check(self):
+        mod = load_script("release_readiness.py")
+        for missing_name in mod.CHANNEL_CHECKS["rc"]:
+            report = self._report(mod)
+            report["checks"] = [
+                row
+                for row in report["checks"]
+                if row["name"] != missing_name
+            ]
+            result = mod.evaluate(report, "rc")
+            self.assertEqual(result["gate"], "BLOCK")
+            self.assertIn(missing_name, result["missing_checks"])
+
+    def test_release_critical_path_filtered_workflows_run_on_version_bump(self):
+        for rel in (
+            "real-world-validation.yml",
+            "agent-skills-spec.yml",
+            "tool-contracts.yml",
+            "wordpress-artifact-contract.yml",
+        ):
+            workflow = (
+                ROOT / ".github" / "workflows" / rel
+            ).read_text(encoding="utf-8")
+            self.assertIn("push:", workflow, rel)
+            self.assertIn("branches:\n      - main", workflow, rel)
+            self.assertIn('- "VERSION"', workflow, rel)
 
     def test_stable_blocks_without_real_agent_aggregate(self):
         mod = load_script("release_readiness.py")
@@ -1389,13 +1417,16 @@ class ReleaseReadinessTests(unittest.TestCase):
             ROOT / ".github" / "workflows" / "release.yml"
         ).read_text(encoding="utf-8")
         self.assertIn("python scripts/release_readiness.py", workflow)
-        self.assertIn(
-            "workflows:\n"
-            "      - Validate Skill\n"
-            "      - Cross Platform Smoke\n"
-            "      - Real Agent Benchmark",
-            workflow,
-        )
+        for workflow_name in (
+            "Validate Skill",
+            "Cross Platform Smoke",
+            "Real World Repository Validation",
+            "Agent Skills Spec Compatibility",
+            "Tool Contract Tests",
+            "WordPress Artifact Contract",
+            "Real Agent Benchmark",
+        ):
+            self.assertIn(f"      - {workflow_name}", workflow)
         self.assertIn("gh run download", workflow)
         self.assertIn("current = latest.get(name)", workflow)
         self.assertIn("candidates[0].get(\"conclusion\") == \"success\"", workflow)

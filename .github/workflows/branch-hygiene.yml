@@ -29,7 +29,14 @@ jobs:
           for pr in data:
               name = pr.get("headRefName") or ""
               oid = pr.get("headRefOid") or ""
-              if name.startswith(("feat/", "fix/", "bot/")) and oid:
+              if name.startswith((
+                  "feat/",
+                  "fix/",
+                  "refactor/",
+                  "docs/",
+                  "release/",
+                  "bot/",
+              )) and oid:
                   print(f"{name}|{oid}")
           PY
 

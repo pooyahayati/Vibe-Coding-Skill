@@ -2,12 +2,6 @@ name: Graphify Compatibility
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - "config/toolchain.json"
-      - "scripts/graphify_compat.py"
-      - "scripts/toolchain_resolution.py"
-      - ".github/workflows/graphify-compat.yml"
   schedule:
     - cron: "17 5 * * 1"
 

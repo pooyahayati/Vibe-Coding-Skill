@@ -243,6 +243,26 @@ def main() -> int:
                     f"references/{ref_name}"
                 )
 
+    reference_sources = [SKILL, *sorted((ROOT / "packs").glob("*.md"))]
+    reference_sources.extend(sorted((ROOT / "references").glob("*.md")))
+    reference_text = {
+        path: path.read_text(encoding="utf-8")
+        for path in reference_sources
+        if path.exists()
+    }
+    for ref_path in sorted((ROOT / "references").glob("*.md")):
+        token = f"references/{ref_path.name}"
+        incoming = [
+            source
+            for source, source_text in reference_text.items()
+            if source != ref_path and token in source_text
+        ]
+        if not incoming:
+            fail(
+                "orphan reference is unreachable from SKILL, packs, or other "
+                f"references: references/{ref_path.name}"
+            )
+
     agents_config = json.loads(benchmark_agents.read_text(encoding="utf-8"))
     if set((agents_config.get("agents") or {}).keys()) != {"codex", "claude-code"}:
         fail("config/agent-benchmarks.json must define codex and claude-code adapters")
