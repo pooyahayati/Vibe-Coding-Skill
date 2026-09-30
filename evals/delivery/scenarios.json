@@ -9,7 +9,11 @@
       "fixture": "fixtures/tiny-local-copy-fix",
       "grader": "graders/tiny-local-copy-fix.py",
       "network_policy": "disabled",
-      "forbidden_paths": []
+      "forbidden_paths": [],
+      "required_check_ids": [
+        "footer-exact",
+        "focused-tests"
+      ]
     },
     {
       "id": "brownfield-duplicate-filter",
@@ -17,7 +21,12 @@
       "fixture": "fixtures/brownfield-duplicate-filter",
       "grader": "graders/brownfield-duplicate-filter.py",
       "network_policy": "disabled",
-      "forbidden_paths": []
+      "forbidden_paths": [],
+      "required_check_ids": [
+        "duplicate-is-idempotent",
+        "existing-and-new-tests-pass",
+        "focused-regression-test-added"
+      ]
     },
     {
       "id": "contained-csv-export",
@@ -25,7 +34,11 @@
       "fixture": "fixtures/contained-csv-export",
       "grader": "graders/contained-csv-export.py",
       "network_policy": "disabled",
-      "forbidden_paths": []
+      "forbidden_paths": [],
+      "required_check_ids": [
+        "csv-roundtrip",
+        "existing-report-tests"
+      ]
     },
     {
       "id": "mixed-monorepo-api-normalization",
@@ -35,6 +48,11 @@
       "network_policy": "disabled",
       "forbidden_paths": [
         "apps/store/**"
+      ],
+      "required_check_ids": [
+        "api-email-normalized",
+        "api-regression-tests",
+        "store-sibling-unchanged"
       ]
     },
     {
@@ -43,7 +61,24 @@
       "fixture": "fixtures/wordpress-installable-artifact",
       "grader": "graders/wordpress-installable-artifact.py",
       "network_policy": "disabled",
-      "forbidden_paths": []
+      "forbidden_paths": [],
+      "required_check_ids": [
+        "setting-registered-and-sanitized",
+        "setting-input-escaped",
+        "plugin-header-preserved",
+        "installable-zip-shape"
+      ]
     }
-  ]
+  ],
+  "stable_readiness_profile": {
+    "version": 1,
+    "essential_scenarios": [
+      "tiny-local-copy-fix",
+      "brownfield-duplicate-filter",
+      "contained-csv-export",
+      "mixed-monorepo-api-normalization",
+      "wordpress-installable-artifact"
+    ],
+    "minimum_treatment_success_rate": 1.0
+  }
 }

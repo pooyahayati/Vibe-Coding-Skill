@@ -102,6 +102,7 @@ def draft(
     invariants: list[str] | None = None,
     include_packs: list[str] | None = None,
     context_facts: dict[str, Any] | None = None,
+    risk_facts: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     router = load_context_router()
     route = router.plan(
@@ -112,6 +113,7 @@ def draft(
         invariants or [],
         include_packs or [],
         context_facts=context_facts,
+        risk_facts=risk_facts,
     )
     complexity = route["project"]["complexity"]["level"]
     tier = int(route["task"]["risk"]["tier"])
@@ -517,6 +519,8 @@ def main() -> int:
     draft_cmd.add_argument("--context-platform", action="append", default=[])
     draft_cmd.add_argument("--context-capability", action="append", default=[])
     draft_cmd.add_argument("--context-concern", action="append", default=[])
+    for field in ("operation", "environment", "data-sensitivity", "change-boundary"):
+        draft_cmd.add_argument("--risk-" + field)
     draft_cmd.add_argument("--json", action="store_true")
 
     validate_cmd = sub.add_parser("validate")
@@ -544,6 +548,11 @@ def main() -> int:
             ns.invariant,
             ns.include_pack,
             context_facts or None,
+            risk_facts={
+                field: getattr(ns, "risk_" + field)
+                for field in ("operation", "environment", "data_sensitivity", "change_boundary")
+                if getattr(ns, "risk_" + field) is not None
+            } or None,
         )
         exit_code = 0
     elif ns.command == "validate":

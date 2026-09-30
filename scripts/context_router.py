@@ -7,6 +7,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -78,13 +79,10 @@ def git_files(root: Path) -> list[str]:
 
 def fallback_files(root: Path) -> list[str]:
     result: list[str] = []
-    for path in root.rglob("*"):
-        if not path.is_file():
-            continue
-        rel = path.relative_to(root)
-        if any(part in EXCLUDED_DIRS for part in rel.parts):
-            continue
-        result.append(rel.as_posix())
+    for directory, children, names in os.walk(root):
+        children[:] = [child for child in children if child not in EXCLUDED_DIRS]
+        for name in names:
+            result.append((Path(directory) / name).relative_to(root).as_posix())
     return sorted(result)
 
 
@@ -149,6 +147,7 @@ def validate_context_facts(
         for field, values in facts.items()
         for value in values
         if value not in supported.get(field, set())
+        and not (field == "runtime" and re.fullmatch(r"[a-z0-9][a-z0-9.+-]{0,63}", value))
     ]
     if invalid:
         raise ValueError(
@@ -174,47 +173,71 @@ def pack_context_fact_evidence(
     return evidence
 
 
-def capability_area(rel: str) -> str:
+def discover_area_roots(root: Path, files: list[str], config: dict[str, Any]) -> tuple[str, ...]:
+    """Use entry manifests/plugin headers; infer their sibling container roots."""
+    roots: set[str] = set(config.get("project_area_roots", []))
+    manifests = {"package.json", "composer.json", "pyproject.toml", "Cargo.toml", "go.mod"}
+    for rel in files:
+        path = Path(rel)
+        parent = path.parent.as_posix()
+        if parent == ".":
+            continue
+        if path.name in manifests or path.suffix == ".csproj":
+            roots.add(parent)
+        elif path.suffix == ".php" and "Plugin Name:" in safe_text(root / rel, 8192):
+            roots.add(parent)
+    containers = {str(value) for value in config.get("project_area_containers", [])}
+    containers.update(str(Path(value).parent.as_posix()) for value in roots if len(Path(value).parts) >= 2)
+    for rel in files:
+        parts = Path(rel).parts
+        for container in containers:
+            prefix = Path(container).parts
+            if parts[:len(prefix)] == prefix and len(parts) > len(prefix) + 1:
+                roots.add("/".join(parts[:len(prefix) + 1]))
+    return tuple(sorted(roots, key=lambda value: (-len(Path(value).parts), value)))
+
+
+def project_area(rel: str, area_roots: tuple[str, ...] = (), *, fallback: str = "__project__") -> str:
     parts = Path(normalize_rel(rel)).parts
+    for area in area_roots:
+        prefix = Path(area).parts
+        if parts[:len(prefix)] == prefix:
+            return area
     if len(parts) >= 3 and tuple(parts[:2]) in WORDPRESS_SCOPED_CONTAINERS:
         return "/".join(parts[:3])
     if len(parts) >= 2 and parts[0] in MONOREPO_CONTAINERS:
         return "/".join(parts[:2])
-    return "__project__"
+    return fallback
 
 
-def scope_area(rel: str) -> str:
+def capability_area(rel: str, area_roots: tuple[str, ...] = ()) -> str:
+    return project_area(rel, area_roots)
+
+
+def scope_area(rel: str, area_roots: tuple[str, ...] = ()) -> str:
     parts = Path(normalize_rel(rel)).parts
     if not parts:
         return "__root__"
-    if len(parts) >= 2 and parts[0] in MONOREPO_CONTAINERS:
-        return "/".join(parts[:2])
-    return parts[0] if len(parts) > 1 else "__root__"
+    return project_area(rel, area_roots, fallback=parts[0] if len(parts) > 1 else "__root__")
 
 
-def scan_area(rel: str) -> str:
-    parts = Path(normalize_rel(rel)).parts
-    if not parts:
-        return "__root__"
-    if len(parts) >= 3 and tuple(parts[:2]) in WORDPRESS_SCOPED_CONTAINERS:
-        return "/".join(parts[:3])
-    if len(parts) >= 2 and parts[0] in MONOREPO_CONTAINERS:
-        return "/".join(parts[:2])
-    return parts[0] if len(parts) > 1 else "__root__"
+def scan_area(rel: str, area_roots: tuple[str, ...] = ()) -> str:
+    return scope_area(rel, area_roots)
 
 
 def scan_candidate_files(
     files: list[str],
     paths: list[str],
+    area_roots: tuple[str, ...] = (),
 ) -> tuple[list[str], str]:
     if not paths:
         return files, "fallback-project-scan"
 
-    areas = {scan_area(raw) for raw in paths if normalize_rel(raw)}
+    areas = {scan_area(raw, area_roots) for raw in paths if normalize_rel(raw)}
     selected = []
     for rel in files:
         parts = Path(rel).parts
-        if len(parts) == 1 or scan_area(rel) in areas:
+        if len(parts) == 1 or scan_area(rel, area_roots) in areas:
             selected.append(rel)
     return selected, "path-scoped"
 
@@ -445,7 +468,7 @@ def project_complexity(
     }
 
 
-def evidence_location_areas(evidence: list[str]) -> set[str]:
+def evidence_location_areas(evidence: list[str], area_roots: tuple[str, ...] = ()) -> set[str]:
     areas: set[str] = set()
     for item in evidence:
         rel = ""
@@ -454,7 +477,7 @@ def evidence_location_areas(evidence: list[str]) -> set[str]:
         elif item.startswith(("marker:", "extension:")) and "@" in item:
             rel = item.rsplit("@", 1)[1]
         if rel:
-            areas.add(capability_area(rel))
+            areas.add(capability_area(rel, area_roots))
     return areas
 
 
@@ -469,23 +492,23 @@ def task_path_roots(paths: list[str]) -> set[str]:
     return roots
 
 
-def task_scope_areas(paths: list[str]) -> set[str]:
+def task_scope_areas(paths: list[str], area_roots: tuple[str, ...] = ()) -> set[str]:
     return {
-        scope_area(raw)
+        scope_area(raw, area_roots)
         for raw in paths
         if normalize_rel(raw)
     }
 
 
-def task_capability_areas(paths: list[str]) -> set[str]:
+def task_capability_areas(paths: list[str], area_roots: tuple[str, ...] = ()) -> set[str]:
     return {
-        capability_area(raw)
+        capability_area(raw, area_roots)
         for raw in paths
         if normalize_rel(raw)
     }
 
 
-def change_scope(paths: list[str], risk: dict[str, Any]) -> dict[str, Any]:
+def change_scope(paths: list[str], risk: dict[str, Any], area_roots: tuple[str, ...] = ()) -> dict[str, Any]:
     normalized_paths = list(
         dict.fromkeys(
             raw.replace("\\", "/").lstrip("./")
@@ -494,7 +517,7 @@ def change_scope(paths: list[str], risk: dict[str, Any]) -> dict[str, Any]:
         )
     )
     roots = task_path_roots(normalized_paths)
-    areas = task_scope_areas(normalized_paths)
+    areas = task_scope_areas(normalized_paths, area_roots)
     matched = {str(value) for value in risk.get("matched_rules", [])}
     structured = risk.get("structured_facts") or {}
     boundary = str(structured.get("change_boundary") or "").strip().lower()
@@ -536,6 +559,7 @@ def project_pack_relevant(
     task_evidence: list[str],
     paths: list[str],
     complexity_level: str,
+    area_roots: tuple[str, ...] = (),
 ) -> bool:
     if task_evidence:
         return True
@@ -543,12 +567,12 @@ def project_pack_relevant(
         return False
     if not paths:
         return True
-    evidence_areas = evidence_location_areas(project_evidence)
+    evidence_areas = evidence_location_areas(project_evidence, area_roots)
     if "__project__" in evidence_areas:
         return True
     if not evidence_areas:
         return False
-    return bool(evidence_areas & task_capability_areas(paths))
+    return bool(evidence_areas & task_capability_areas(paths, area_roots))
 
 
 def activation_requirements_met(
@@ -559,6 +583,7 @@ def activation_requirements_met(
     task_evidence: dict[str, list[str]],
     paths: list[str],
     complexity_level: str,
+    area_roots: tuple[str, ...] = (),
 ) -> bool:
     requirements = [
         str(value)
@@ -580,6 +605,7 @@ def activation_requirements_met(
                 task_evidence.get(required, []),
                 paths,
                 complexity_level,
+                area_roots,
             ):
                 return False
         elif not task_evidence.get(required):
@@ -625,6 +651,7 @@ def resolve_selection(
     base_tier: int,
     paths: list[str],
     complexity_level: str,
+    area_roots: tuple[str, ...] = (),
 ) -> tuple[set[str], int, list[dict[str, Any]]]:
     packs = config["packs"]
     selected: set[str] = set()
@@ -638,6 +665,7 @@ def resolve_selection(
                 task_evidence[name],
                 paths,
                 complexity_level,
+                area_roots,
             )
         elif task_evidence[name]:
             candidate = True
@@ -650,6 +678,7 @@ def resolve_selection(
             task_evidence,
             paths,
             complexity_level,
+            area_roots,
         ):
             selected.add(name)
 
@@ -861,14 +890,15 @@ def plan(
             "unknown capability pack(s): " + ", ".join(unknown_includes)
         )
     files = project_files(root)
-    scan_files, scan_strategy = scan_candidate_files(files, paths)
+    area_roots = discover_area_roots(root, files, config)
+    scan_files, scan_strategy = scan_candidate_files(files, paths, area_roots)
     texts = candidate_texts(root, scan_files)
     touched = touched_texts(root, paths, files)
 
     project_ev: dict[str, list[str]] = {}
     task_ev: dict[str, list[str]] = {}
     for name, pack in config["packs"].items():
-        project_ev[name] = pack_project_evidence(pack, files, texts)
+        project_ev[name] = pack_project_evidence(pack, scan_files, texts)
         task_ev[name] = pack_task_evidence(
             pack,
             task,
@@ -892,9 +922,10 @@ def plan(
         int(risk["tier"]),
         paths,
         str(complexity["level"]),
+        area_roots,
     )
     risk = dict(risk)
-    scope = change_scope(paths, risk)
+    scope = change_scope(paths, risk, area_roots)
     if effective_tier > int(risk["tier"]):
         previous_tier = int(risk["tier"])
         policy = risk_module.policy_for_tier(

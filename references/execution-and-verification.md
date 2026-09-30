@@ -113,6 +113,8 @@ Weak evidence:
 
 Evidence used for completion should link to the acceptance criterion it proves.
 
+`Done` requires at least one required acceptance criterion; an all-optional checklist cannot pass. For Tier 2/3 or scope-changing work, retain the approved criteria before implementation and pass that independently retained JSON array to `completion_gate.py report.json --acceptance-baseline approved-criteria.json --json`. The gate blocks removed, downgraded, or rewritten required outcomes. The caller must protect that baseline from implementation edits; the gate reports whether it was supplied and does not authenticate an agent-written checklist by itself.
+
 ### Completion evidence kinds
 
 The Completion Gate accepts a controlled semantic evidence taxonomy rather than arbitrary free-form kind names. Supported kinds map into broader families such as verification, integration, delivery, review, security, runtime, data, recovery, performance, static analysis, and manual/visual checks.

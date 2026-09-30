@@ -5,6 +5,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import importlib.util
+import re
+from datetime import datetime
 import statistics
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -33,74 +36,95 @@ def scenario_repetitions(catalog: dict[str, Any], scenario: dict[str, Any]) -> i
     return int(scenario.get("repetitions", catalog.get("default_repetitions", 1)))
 
 
-def envelope_issues(raw: Any) -> list[str]:
-    if not isinstance(raw, dict):
-        return ["delivery result must be a JSON object"]
+def schema_issues(value: Any, schema: dict[str, Any], path: str = "result") -> list[str]:
+    """Validate the JSON-schema keywords used by the maintained envelope schema."""
     issues: list[str] = []
-    if raw.get("schema_version") != 1:
-        issues.append("delivery envelope schema_version must be 1")
-    if raw.get("benchmark") != "real-delivery":
-        issues.append("delivery envelope benchmark must be real-delivery")
-    if str(raw.get("arm") or "") not in ARMS:
-        issues.append("delivery envelope arm must be control or treatment")
-    if not str(raw.get("agent") or "").strip():
-        issues.append("delivery envelope requires agent")
-    if not str(raw.get("scenario_id") or "").strip():
-        issues.append("delivery envelope requires scenario_id")
-    repetition = raw.get("repetition")
-    if not isinstance(repetition, int) or isinstance(repetition, bool) or repetition < 1:
-        issues.append("delivery envelope repetition must be a positive integer")
-    for key in ("skill_version", "started_at", "completed_at"):
-        if not str(raw.get(key) or "").strip():
-            issues.append(f"delivery envelope requires {key}")
-
-    runtime = raw.get("runtime")
-    if not isinstance(runtime, dict):
-        issues.append("delivery envelope requires runtime object")
-    elif not isinstance(runtime.get("exit_code"), int) or not isinstance(
-        runtime.get("duration_ms"), int
-    ):
-        issues.append("delivery runtime requires integer exit_code/duration_ms")
-
-    workspace = raw.get("workspace")
-    if not isinstance(workspace, dict):
-        issues.append("delivery envelope requires workspace object")
-    else:
-        for key in ("baseline_commit", "final_tree_sha256", "diff_sha256"):
-            if not str(workspace.get(key) or "").strip():
-                issues.append(f"delivery workspace requires {key}")
-        if not isinstance(workspace.get("changed_paths"), list):
-            issues.append("delivery workspace changed_paths must be an array")
-        if not isinstance(workspace.get("changed_file_count"), int):
-            issues.append("delivery workspace changed_file_count must be integer")
-
-    grader = raw.get("grader")
-    if not isinstance(grader, dict):
-        issues.append("delivery envelope requires grader object")
-    else:
-        if not isinstance(grader.get("delivery_success"), bool):
-            issues.append("delivery grader requires boolean delivery_success")
-        if not isinstance(grader.get("checks"), list):
-            issues.append("delivery grader checks must be an array")
-        if not isinstance(grader.get("failures"), list):
-            issues.append("delivery grader failures must be an array")
-
-    integrity = raw.get("integrity")
-    if not isinstance(integrity, dict):
-        issues.append("delivery envelope requires integrity object")
-    else:
-        for key in (
-            "fixture_sha256", "grader_sha256", "catalog_sha256",
-            "result_schema_sha256", "skill_tree_sha256",
-            "prompt_sha256", "executor_id",
-        ):
-            if not str(integrity.get(key) or "").strip():
-                issues.append(f"delivery integrity requires {key}")
-        if integrity.get("hidden_grader_outside_workspace") is not True:
-            issues.append("delivery integrity requires hidden grader outside workspace")
-        if integrity.get("skill_installed") is not (raw.get("arm") == "treatment"):
-            issues.append("delivery skill_installed does not match arm")
+    kinds = schema.get("type", [])
+    kinds = [kinds] if isinstance(kinds, str) else kinds
+    matches = {"object": isinstance(value, dict), "array": isinstance(value, list),
+               "string": isinstance(value, str), "boolean": isinstance(value, bool),
+               "integer": isinstance(value, int) and not isinstance(value, bool), "null": value is None}
+    if kinds and not any(matches.get(kind, False) for kind in kinds):
+        return [f"{path} has invalid type"]
+    if "const" in schema and (value != schema["const"] or type(value) is not type(schema["const"])):
+        issues.append(f"{path} has invalid constant")
+    if "enum" in schema and value not in schema["enum"]:
+        issues.append(f"{path} has invalid enum value")
+    if isinstance(value, str) and len(value) < schema.get("minLength", 0):
+        issues.append(f"{path} is too short")
+    if isinstance(value, int) and not isinstance(value, bool) and value < schema.get("minimum", value):
+        issues.append(f"{path} is below minimum")
+    if isinstance(value, dict):
+        properties = schema.get("properties", {})
+        for key in schema.get("required", []):
+            if key not in value:
+                issues.append(f"{path}.{key} is required")
+        for key, item in value.items():
+            if key in properties:
+                issues.extend(schema_issues(item, properties[key], path + "." + key))
+            elif schema.get("additionalProperties") is False:
+                issues.append(f"{path}.{key} is unsupported")
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            issues.extend(schema_issues(item, schema.get("items", {}), f"{path}[{index}]"))
     return issues
+
+
+def envelope_issues(raw: Any) -> list[str]:
+    schema = load_json(ROOT / "evals/delivery-result.schema.json")
+    issues = schema_issues(raw, schema)
+    if issues:
+        return issues
+    runtime, workspace, grader, integrity = (raw[key] for key in ("runtime", "workspace", "grader", "integrity"))
+    for key in ("agent_version", "model"):
+        if not isinstance(raw.get(key), str) or not raw[key].strip():
+            issues.append(f"delivery envelope requires identifiable {key}")
+    dates = []
+    for key in ("started_at", "completed_at"):
+        try:
+            date = datetime.fromisoformat(raw[key].replace("Z", "+00:00"))
+            if date.tzinfo is None:
+                raise ValueError("timezone missing")
+            dates.append(date)
+        except ValueError:
+            issues.append(f"delivery envelope {key} must be timezone-aware ISO timestamp")
+    if len(dates) == 2 and dates[1] < dates[0]:
+        issues.append("delivery completion precedes start")
+    for container, keys in ((workspace, ("final_tree_sha256", "diff_sha256")),
+                            (integrity, ("fixture_sha256", "grader_sha256", "catalog_sha256",
+                                         "result_schema_sha256", "skill_tree_sha256", "prompt_sha256"))):
+        for key in keys:
+            if not re.fullmatch(r"[0-9a-f]{64}", container[key]):
+                issues.append(f"delivery {key} must be SHA-256 hex")
+    paths = workspace["changed_paths"]
+    if workspace["changed_file_count"] != len(paths) or len(paths) != len(set(paths)):
+        issues.append("delivery changed-file count/paths disagree")
+    checks = grader["checks"]
+    ids = [check["id"] for check in checks]
+    if any(not cid.strip() for cid in ids) or len(ids) != len(set(ids)):
+        issues.append("delivery check IDs must be nonempty and unique")
+    required = [check for check in checks if check["required"]]
+    success = (runtime["exit_code"] == 0 and not runtime["timed_out"]
+               and grader["exit_code"] == 0 and not grader["timed_out"]
+               and bool(required) and all(check["passed"] for check in required)
+               and not grader["failures"] and not workspace["forbidden_path_hits"])
+    if grader["delivery_success"] is not success:
+        issues.append("delivery_success contradicts executor/grader/required-check outcomes")
+    if integrity["skill_installed"] is not (raw["arm"] == "treatment"):
+        issues.append("delivery skill_installed does not match arm")
+    return issues
+
+
+def expected_scenario_integrity(catalog: dict[str, Any], delivery_root: Path) -> dict[str, dict[str, str]]:
+    spec = importlib.util.spec_from_file_location("delivery_identity_helpers", ROOT / "scripts/run_delivery_benchmark.py")
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+    result = {}
+    for scenario in catalog.get("scenarios", []):
+        fixture, grader = runner.scenario_paths(scenario, delivery_root)
+        result[scenario["id"]] = {"fixture_sha256": runner.tree_hash(fixture),
+                                  "grader_sha256": runner.sha256_file(grader)}
+    return result
 
 
 def expected_keys(
@@ -126,10 +150,13 @@ def aggregate(
     catalog: dict[str, Any],
     *,
     required_agents: list[str],
+    delivery_root: Path = ROOT / "evals/delivery",
 ) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     invalid_files: list[dict[str, str]] = []
     seen: Counter[tuple[str, str, str, int]] = Counter()
+    expected_integrity = expected_scenario_integrity(catalog, delivery_root)
+    scenarios = {item["id"]: item for item in catalog.get("scenarios", [])}
 
     for path in result_files(results_dir):
         try:
@@ -138,6 +165,16 @@ def aggregate(
             invalid_files.append({"file": str(path), "error": str(exc)})
             continue
         issues = envelope_issues(raw)
+        if not issues:
+            sid = raw["scenario_id"]
+            if sid in expected_integrity:
+                for field, expected_hash in expected_integrity[sid].items():
+                    if raw["integrity"].get(field) != expected_hash:
+                        issues.append(f"delivery {field} does not match trusted current scenario")
+                expected_checks = set(scenarios[sid].get("required_check_ids", []))
+                supplied_checks = {check["id"] for check in raw["grader"]["checks"] if check["required"]}
+                if raw["grader"]["exit_code"] == 0 and not expected_checks.issubset(supplied_checks):
+                    issues.append("delivery result omits catalog-required checks")
         if issues:
             invalid_files.append({"file": str(path), "error": "; ".join(issues)})
             continue
@@ -239,10 +276,10 @@ def aggregate(
         and len(skill_hashes) == 1
         and len(catalog_hashes) == 1
         and len(schema_hashes) == 1
-        and all(len(values) <= 1 for values in agent_versions.values())
-        and all(len(values) <= 1 for values in models.values())
+        and all(len(values) == 1 for values in agent_versions.values())
+        and all(len(values) == 1 for values in models.values())
     )
-    evidence_complete = (
+    framework_complete = (
         bool(required_agents)
         and bool(catalog.get("scenarios"))
         and not invalid_files
@@ -252,6 +289,12 @@ def aggregate(
         and identity_consistent
         and all(row["effect"] != "incomplete" for row in comparisons)
     )
+
+    real_execution = bool(rows) and all(
+        row["agent"] in {"codex", "claude-code"}
+        and row["integrity"]["executor_id"] == "real-" + row["agent"] for row in rows
+    )
+    evidence_complete = framework_complete and real_execution
 
     def render(keys: list[tuple[str, str, str, int]]) -> list[dict[str, Any]]:
         return [
@@ -274,6 +317,8 @@ def aggregate(
         "expected_run_count": len(expected),
         "observed_valid_run_count": len(rows),
         "evidence_complete": evidence_complete,
+        "framework_complete": framework_complete,
+        "execution_class": "real" if real_execution else "framework",
         "missing_runs": render(missing),
         "unexpected_runs": render(unexpected),
         "duplicate_runs": render(duplicates),
@@ -296,6 +341,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("results_dir")
     ap.add_argument("--catalog", default=str(CATALOG_PATH))
+    ap.add_argument("--delivery-root", default=str(ROOT / "evals/delivery"))
     ap.add_argument("--required-agent", action="append", default=[])
     ap.add_argument("--require-complete", action="store_true")
     ap.add_argument("--json", action="store_true")
@@ -305,6 +351,7 @@ def main() -> int:
         Path(ns.results_dir),
         load_json(Path(ns.catalog)),
         required_agents=ns.required_agent,
+        delivery_root=Path(ns.delivery_root),
     )
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 2 if ns.require_complete and not result["evidence_complete"] else 0

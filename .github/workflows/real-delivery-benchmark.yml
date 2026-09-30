@@ -30,6 +30,7 @@ jobs:
           python-version: "3.12"
       - name: Validate deterministic delivery contracts
         run: |
+          php --version
           python scripts/run_delivery_benchmark.py validate --json
           python scripts/run_delivery_benchmark.py self-test --json
           python -m unittest tests.test_delivery_benchmark
@@ -49,6 +50,10 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      CODEX_CLI_VERSION: ${{ vars.CODEX_BENCHMARK_CLI_VERSION }}
+      CLAUDE_CLI_VERSION: ${{ vars.CLAUDE_BENCHMARK_CLI_VERSION }}
+      CODEX_MODEL_ID: ${{ vars.CODEX_BENCHMARK_MODEL }}
+      CLAUDE_MODEL_ID: ${{ vars.CLAUDE_BENCHMARK_MODEL }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -62,17 +67,28 @@ jobs:
       - name: Install Codex CLI
         if: ${{ matrix.agent == 'codex' }}
         run: |
-          npm install -g @openai/codex@latest
+          test -n "$CODEX_CLI_VERSION" && test -n "$CODEX_MODEL_ID"
+          npm install -g "@openai/codex@$CODEX_CLI_VERSION"
           codex --version
       - name: Install Claude Code CLI
         if: ${{ matrix.agent == 'claude-code' }}
         run: |
-          npm install -g @anthropic-ai/claude-code@latest
+          test -n "$CLAUDE_CLI_VERSION" && test -n "$CLAUDE_MODEL_ID"
+          npm install -g "@anthropic-ai/claude-code@$CLAUDE_CLI_VERSION"
           claude --version
+      - name: Prepare Claude sandbox dependencies
+        if: ${{ matrix.agent == 'claude-code' }}
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap socat
       - name: Preflight real delivery adapter
         run: |
+          if [ "${{ matrix.agent }}" = "codex" ]; then
+            CLI_VERSION="$CODEX_CLI_VERSION"
+          else
+            CLI_VERSION="$CLAUDE_CLI_VERSION"
+          fi
           python scripts/run_delivery_benchmark.py preflight \
             --agent "${{ matrix.agent }}" \
+            --expected-version "$CLI_VERSION" \
             --require-env-auth \
             --json
       - name: Run real delivery benchmark
@@ -91,7 +107,9 @@ jobs:
             --json
           )
           if [ "${{ matrix.agent }}" = "claude-code" ]; then
-            args+=(--max-budget-usd 1.00)
+            args+=(--max-budget-usd 1.00 --model "$CLAUDE_MODEL_ID" --expected-version "$CLAUDE_CLI_VERSION")
+          else
+            args+=(--model "$CODEX_MODEL_ID" --expected-version "$CODEX_CLI_VERSION")
           fi
           python scripts/run_delivery_benchmark.py "${args[@]}"
       - name: Upload per-agent delivery evidence

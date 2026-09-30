@@ -1,0 +1,2 @@
+# Benchmark fixture hashes must not depend on the checkout operating system.
+evals/delivery/fixtures/** text eol=lf
