@@ -135,6 +135,7 @@ def validate_routing_expectations(
     detail = {
         "complexity": complexity,
         "tier": tier,
+        "task_scope": route.get("task", {}).get("scope", {}).get("level"),
         "packs": packs,
         "candidate_packs": candidate_packs,
         "packs_loaded": loaded_packs,
@@ -157,6 +158,7 @@ def validate_routing_expectations(
         ),
         "execution_plan_required": plan.get("execution_plan_required"),
         "execution_plan_mode": plan.get("mode"),
+        "execution_plan_reasons": plan.get("planning_basis", {}).get("reasons", []),
         "execution_workstreams": len(plan.get("workstreams", [])),
     }
     return checks, detail
