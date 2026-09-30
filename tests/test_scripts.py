@@ -1530,6 +1530,19 @@ class ReleaseReadinessTests(unittest.TestCase):
                 rel,
             )
 
+    def test_real_benchmark_workflows_support_exact_main_commit_trigger(self):
+        for rel in (
+            "agent-benchmark.yml",
+            "real-delivery-benchmark.yml",
+        ):
+            workflow = (
+                ROOT / ".github" / "workflows" / rel
+            ).read_text(encoding="utf-8")
+            self.assertIn("push:", workflow, rel)
+            self.assertIn("branches:", workflow, rel)
+            self.assertIn("- main", workflow, rel)
+            self.assertIn('.github/benchmark-trigger', workflow, rel)
+
     def test_stable_blocks_without_real_agent_aggregate(self):
         mod = load_script("release_readiness.py")
         result = mod.evaluate(self._report(mod), "stable")
