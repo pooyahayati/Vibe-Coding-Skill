@@ -19,10 +19,19 @@ PORTABLE_SKILL = (
     else ROOT
 )
 
+BASE_RELEASE_CHECKS = (
+    "Validate Skill",
+    "Cross Platform Smoke",
+    "Real World Repository Validation",
+    "Agent Skills Spec Compatibility",
+    "Tool Contract Tests",
+    "WordPress Artifact Contract",
+)
+
 CHANNEL_CHECKS = {
     "beta": ("Validate Skill",),
-    "rc": ("Validate Skill", "Cross Platform Smoke"),
-    "stable": ("Validate Skill", "Cross Platform Smoke"),
+    "rc": BASE_RELEASE_CHECKS,
+    "stable": BASE_RELEASE_CHECKS,
 }
 
 STABLE_AGENTS = {"codex", "claude-code"}
