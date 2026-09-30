@@ -57,7 +57,7 @@ Example:
 ```json
 {
   "provider": "graphify",
-  "provider_version": "0.9.64",
+  "provider_version": "<installed-or-approved-version>",
   "source_commit": "abc123",
   "generated_at": "2026-09-19T00:00:00Z",
   "schema_version": 1
