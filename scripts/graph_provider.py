@@ -39,14 +39,7 @@ def head(root: Path) -> str | None:
 
 def provider_version(root: Path, version: str | None = None) -> str | None:
     if version:
-        try:
-            cmd = toolchain_runtime.command(PROVIDER, version, ["--version"])
-        except (RuntimeError, ValueError):
-            return None
-        rc, out = run(cmd, root, timeout=180)
-        if rc != 0:
-            return None
-        return out.splitlines()[0].strip() if out.strip() else version
+        return version
     executable = shutil.which(PROVIDER)
     if not executable:
         return None
