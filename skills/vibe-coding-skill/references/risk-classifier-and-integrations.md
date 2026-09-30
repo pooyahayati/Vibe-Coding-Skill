@@ -23,6 +23,17 @@ python scripts/risk_classifier.py "Delete customer records" \
 
 Supported structured dimensions are operation, environment, data sensitivity, and change boundary. The agent should derive these facts from the request and relevant project evidence rather than asking the user for implementation details that can be inferred.
 
+Canonical values (defined in `scripts/risk_classifier.py`):
+
+| Dimension | Values |
+| --- | --- |
+| `operation` | `tiny`, `feature`, `read-only`, `refactor`, `destructive`, `auth`, `migration`, `external-integration`, `dependency`, `security`, `payment` |
+| `environment` | `local`, `development`, `test`, `staging`, `production`, `control-plane` |
+| `data_sensitivity` | `none`, `public`, `internal`, `personal`, `sensitive`, `financial`, `payment`, `health`, `credentials`, `private-key`, `secret` |
+| `change_boundary` | `local`, `module`, `cross-module`, `system`, `application-wide` |
+
+Bounded aliases such as `delete-all`, `live`, and `pii` normalize to canonical values. Unsupported nonempty values remain unresolved; they do not count as evidence that a dimension is safe. Preserve the same facts in routing and planning: `execution_plan.py draft` accepts `--risk-operation`, `--risk-environment`, `--risk-data-sensitivity`, and `--risk-change-boundary`.
+
 Structured facts are authoritative inputs to the workflow floor. Text/keyword detection is supplemental and supports English plus selected Persian risk phrases. Unknown or unresolved facts must be surfaced as uncertainty; absence of a keyword is not evidence that a sensitive operation is low risk.
 
 Context routing may raise the tier. Whenever it does, the final tier, approval requirement, reasons, and required controls are rebuilt from the same risk-policy source of truth.
@@ -41,6 +52,8 @@ The executable dependency guard supports:
 Registry checks verify package/version existence. OSV checks use ecosystem-native identifiers.
 
 Metadata availability differs by ecosystem. Missing license/provenance evidence returns `REVIEW REQUIRED`.
+
+PyPI and crates.io license evidence belongs to the selected release. Latest-release dates are separate maintenance signals. crates.io repository metadata is project-wide and is labeled accordingly; do not interpret it as proof of the selected artifact's source commit.
 
 ## Integration guard
 

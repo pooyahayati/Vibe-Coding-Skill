@@ -95,6 +95,11 @@ def lookup_pypi(name: str, version: str | None) -> dict[str, Any]:
         (x.get("upload_time_iso_8601") for x in latest_files if x.get("upload_time_iso_8601")),
         default=None,
     )
+    selected_info = info
+    if version and version != latest:
+        selected_info = http_json(
+            f"https://pypi.org/pypi/{quoted}/{urllib.parse.quote(version, safe='')}/json"
+        ).get("info", {}) if version in releases else {}
     return {
         "supported": True,
         "exists": True,
@@ -102,10 +107,11 @@ def lookup_pypi(name: str, version: str | None) -> dict[str, Any]:
         "version_exists": version in releases if version else None,
         "latest_version": latest,
         "latest_published_at": latest_published,
-        "repository": (info.get("project_urls") or {}).get("Source")
-        or (info.get("project_urls") or {}).get("Repository")
-        or info.get("home_page"),
-        "license": info.get("license") or None,
+        "metadata_version": version or latest,
+        "repository": (selected_info.get("project_urls") or {}).get("Source")
+        or (selected_info.get("project_urls") or {}).get("Repository")
+        or selected_info.get("home_page"),
+        "license": selected_info.get("license") or None,
     }
 
 
@@ -139,16 +145,19 @@ def lookup_crates(name: str, version: str | None) -> dict[str, Any]:
     crate = data.get("crate", {})
     versions = {v.get("num") for v in data.get("versions", [])}
     latest = crate.get("max_stable_version") or crate.get("max_version")
-    selected_meta = next((v for v in data.get("versions", []) if v.get("num") == latest), {})
+    latest_meta = next((v for v in data.get("versions", []) if v.get("num") == latest), {})
+    selected_meta = next((v for v in data.get("versions", []) if v.get("num") == (version or latest)), {})
     return {
         "supported": True,
         "exists": True,
         "canonical_name": crate.get("name") or name,
         "version_exists": version in versions if version else None,
         "latest_version": latest,
-        "latest_published_at": selected_meta.get("created_at") or crate.get("updated_at"),
+        "latest_published_at": latest_meta.get("created_at") or crate.get("updated_at"),
+        "metadata_version": version or latest,
         "repository": crate.get("repository"),
-        "license": crate.get("license"),
+        "repository_scope": "project",
+        "license": selected_meta.get("license"),
     }
 
 

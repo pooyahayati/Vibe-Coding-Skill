@@ -26,7 +26,7 @@ RULES = [
         re.compile(
             r"\b(truncate|delete all|wipe|destroy|purge)\b"
             r"|\bdrop\s+(?:the\s+)?(?:[\w-]+\s+){0,2}(table|database|schema|collection|index)\b"
-            r"|حذف\s+(همه|کامل)|پاک\s*کردن\s+(همه|کامل)|پاکسازی\s+کامل|از\s+بین\s+بردن",
+            r"|حذف\s+(همه|تمام|کامل)|پاک\s*کردن\s+(همه|تمام|کامل)|پاکسازی\s+کامل|از\s+بین\s+بردن",
             re.I,
         ),
         "destructive data operation",
@@ -158,6 +158,24 @@ CONTROLS_BY_TIER = {
 }
 
 FACT_FIELDS = ("operation", "environment", "data_sensitivity", "change_boundary")
+FACT_VALUES = {
+    "operation": {"tiny", "feature", "read-only", "refactor", "destructive", "auth",
+                  "migration", "external-integration", "dependency", "security", "payment"},
+    "environment": {"local", "development", "test", "staging", "production", "control-plane"},
+    "data_sensitivity": {"none", "public", "internal", "personal", "sensitive", "financial",
+                         "payment", "health", "credentials", "private-key", "secret"},
+    "change_boundary": {"local", "module", "cross-module", "system", "application-wide"},
+}
+FACT_ALIASES = {
+    "operation": {"delete": "destructive", "delete-all": "destructive", "wipe": "destructive",
+                  "purge": "destructive", "drop-data": "destructive", "authentication": "auth",
+                  "authorization": "auth", "schema-migration": "migration", "data-migration": "migration",
+                  "webhook": "external-integration", "public-api": "external-integration",
+                  "package-change": "dependency"},
+    "environment": {"prod": "production", "live": "production", "dev": "development"},
+    "data_sensitivity": {"pii": "personal", "medical": "health"},
+    "change_boundary": {"single-module": "module", "multi-module": "cross-module"},
+}
 
 
 def policy_for_tier(tier: int, approval_required: bool = False) -> dict[str, object]:
@@ -175,12 +193,20 @@ def normalize_fact(value: Any) -> str:
     return re.sub(r"[\s_]+", "-", str(value or "").strip().lower())
 
 
+def normalized_facts(facts: dict[str, Any] | None) -> dict[str, str]:
+    return {
+        field: FACT_ALIASES[field].get(normalize_fact((facts or {}).get(field)),
+                                       normalize_fact((facts or {}).get(field)))
+        for field in FACT_FIELDS
+    }
+
+
 def structured_fact_signals(facts: dict[str, Any] | None) -> list[dict[str, object]]:
     if not facts:
         return []
 
     signals: list[dict[str, object]] = []
-    normalized = {key: normalize_fact(facts.get(key)) for key in FACT_FIELDS}
+    normalized = normalized_facts(facts)
 
     operation = normalized["operation"]
     if operation in {"destructive", "delete-all", "wipe", "purge", "drop-data"}:
@@ -193,6 +219,8 @@ def structured_fact_signals(facts: dict[str, Any] | None) -> list[dict[str, obje
         signals.append({"name": "fact:external-integration", "tier": 2, "reason": "structured fact: external/public contract impact", "approval": True})
     elif operation in {"dependency", "package-change"}:
         signals.append({"name": "fact:dependency", "tier": 1, "reason": "structured fact: dependency change", "approval": False})
+    elif operation in {"security", "payment"}:
+        signals.append({"name": "fact:security", "tier": 2, "reason": "structured fact: security/payment behavior", "approval": False})
 
     environment = normalized["environment"]
     if environment in {"production", "prod", "control-plane"}:
@@ -245,10 +273,12 @@ def classify(
     uncertainties: list[str] = []
     supplied_facts = facts or {}
     if supplied_facts:
+        canonical = normalized_facts(supplied_facts)
         for field in FACT_FIELDS:
-            value = normalize_fact(supplied_facts.get(field))
-            if not value or value == "unknown":
+            if canonical[field] not in FACT_VALUES[field]:
                 uncertainties.append(f"structured fact unresolved: {field}")
+        for field in sorted(set(supplied_facts) - set(FACT_FIELDS)):
+            uncertainties.append(f"unsupported structured risk field: {field}")
     elif not matches and not fact_signals and not TINY.search(normalized_text):
         uncertainties.append(
             "no explicit risk signal was recognized; provide structured risk facts when operation, environment, data sensitivity, or change boundary may affect risk"
@@ -259,7 +289,7 @@ def classify(
         "reasons": list(dict.fromkeys(reasons)),
         "matched_rules": [rule.name for rule in matches]
         + [str(row["name"]) for row in fact_signals],
-        "structured_facts": {key: supplied_facts.get(key) for key in FACT_FIELDS if key in supplied_facts},
+        "structured_facts": {key: normalized_facts(supplied_facts)[key] for key in FACT_FIELDS if key in supplied_facts},
         "uncertainties": uncertainties,
         "decision_basis": "structured-facts+text-signals" if fact_signals else "text-signals",
         "note": (

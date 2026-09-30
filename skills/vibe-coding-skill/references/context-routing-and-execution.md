@@ -43,6 +43,8 @@ For mixed repositories, project-scoped evidence is kept local to the affected ar
 
 Directory paths are valid affected-path evidence. The router inspects a bounded subset of text/source files inside that directory so a caller does not need an exact file path before routing.
 
+Custom sibling areas are inferred from package manifests and WordPress plugin headers. For layouts that cannot be inferred, set `project_area_roots` (for example `["components/api", "components/store"]`) or `project_area_containers` (for example `["components"]`) in the routing configuration. Each WordPress plugin under `wp-content/plugins/` is a distinct area. These are discovery hints, not proof of dependency isolation; confirm actual shared contracts during impact analysis.
+
 ### Structured context facts
 
 When platform/runtime/capability/concern semantics are known but wording is ambiguous or language-dependent, pass canonical facts instead of adding more natural-language keyword variants:
@@ -54,7 +56,7 @@ When platform/runtime/capability/concern semantics are known but wording is ambi
 --context-concern payments
 ```
 
-Supported fact fields are `runtime`, `platform`, `capability`, and `concern`. Values are config-driven by each capability pack and invalid values fail explicitly instead of being silently ignored. Structured facts are semantic routing evidence; text/path/source signals remain supplemental discovery evidence.
+Supported fact fields are `runtime`, `platform`, `capability`, and `concern`. Ordinary runtime identifiers such as `python`, `go`, and `rust` are valid even when no specialist pack exists; they do not manufacture a pack. Platform/capability/concern values remain config-driven and invalid values fail explicitly. Structured facts are semantic routing evidence; text/path/source signals remain supplemental discovery evidence.
 
 Equivalent requests in different human languages should select the same packs when supplied the same structured context facts.
 
@@ -109,6 +111,8 @@ python scripts/execution_plan.py draft \
 ```
 
 The draft is a coordination skeleton, not an approved architecture. Candidate integration boundaries must be confirmed and assigned concrete contract/evidence expectations before parallel execution or shared-contract changes.
+
+Pass the same structured risk facts used for routing through the planner's `--risk-*` options. Reclassifying ambiguous task text without those facts can lose a previously established workflow floor.
 
 The default remains one lead implementation agent. Parallel agents require disjoint ownership or stable producer/consumer contracts. Shared schemas, auth, manifests, central configuration, and shared contracts keep one writer.
 

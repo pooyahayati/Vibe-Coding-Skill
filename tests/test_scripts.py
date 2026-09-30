@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -22,6 +23,31 @@ def load_script(name: str):
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def fake_cli(bindir: Path, name: str, body: str) -> None:
+    script = bindir / (name + ".py")
+    script.write_text(body, encoding="utf-8")
+    if os.name == "nt":
+        (bindir / (name + ".cmd")).write_text(
+            '@echo off\n"' + sys.executable + '" "%~dp0' + name + '.py" %*\n',
+            encoding="utf-8",
+        )
+    else:
+        launcher = bindir / name
+        launcher.write_text("#!" + sys.executable + "\n" + body, encoding="utf-8")
+        launcher.chmod(launcher.stat().st_mode | stat.S_IEXEC)
+
+
+def isolated_cli_path(bindir: Path) -> str:
+    # Keep Git and OS utilities; never fall through to host gh/Graphify/uvx.
+    git = shutil.which("git")
+    directories = [str(bindir), str(Path(git).parent)] if git else [str(bindir)]
+    if os.name == "nt":
+        directories.append(str(Path(os.environ["SYSTEMROOT"]) / "System32"))
+    else:
+        directories.extend(["/usr/bin", "/bin"])
+    return os.pathsep.join(dict.fromkeys(directories))
 
 
 class InstallCheckTests(unittest.TestCase):
@@ -1426,6 +1452,7 @@ class ReleaseReadinessTests(unittest.TestCase):
         return {
             "schema_version": 1,
             "benchmark": "real-delivery-aggregate",
+            "execution_class": "real",
             "required_agents": ["codex", "claude-code"],
             "expected_scenarios": scenario_ids,
             "expected_run_count": expected_runs,
@@ -1446,8 +1473,8 @@ class ReleaseReadinessTests(unittest.TestCase):
                     "claude-code": ["claude-test"],
                 },
                 "models": {
-                    "codex": [],
-                    "claude-code": [],
+                    "codex": ["codex-model-test"],
+                    "claude-code": ["claude-model-test"],
                 },
             },
             "effect_counts": {effect: len(comparisons)},
@@ -1570,6 +1597,25 @@ class ReleaseReadinessTests(unittest.TestCase):
                 for row in result["benchmark"]["agents"].values()
             )
         )
+
+    def test_stable_rejects_zero_delivery_success_even_when_neutral(self):
+        mod = load_script("release_readiness.py")
+        delivery = self._stable_delivery_benchmark(mod)
+        for comparison in delivery["comparisons"]:
+            for arm in ("control", "treatment"):
+                comparison[arm].update(successful_runs=0, success_rate=0.0)
+        result = mod.evaluate(self._report(mod), "stable", self._stable_benchmark(mod), delivery)
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(any("success floor" in failure for failure in result["failures"]))
+
+    def test_stable_rejects_contradictory_rates_and_missing_model(self):
+        mod = load_script("release_readiness.py")
+        delivery = self._stable_delivery_benchmark(mod)
+        delivery["comparisons"][0]["treatment"]["successful_runs"] = 0
+        delivery["identity"]["models"]["codex"] = []
+        result = mod.evaluate(self._report(mod), "stable", self._stable_benchmark(mod), delivery)
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertTrue(any("rate/count mismatch" in failure for failure in result["failures"]))
 
     def test_stable_blocks_without_real_delivery_aggregate(self):
         mod = load_script("release_readiness.py")
@@ -1900,32 +1946,24 @@ class LocalWorkspacePurityTests(unittest.TestCase):
 
 class GraphProviderContractTests(unittest.TestCase):
     def _fake_graphify(self, bindir: Path) -> None:
-        path = bindir / "graphify"
-        path.write_text(
-            """#!/bin/sh
-set -eu
-if [ "$1" = "--version" ]; then
-  echo "graphify 0.9.64"
-  exit 0
-fi
-case "$1" in
-  extract|update)
-    mkdir -p graphify-out
-    printf '%s\n' '{"nodes":[{"id":"alpha","label":"alpha"},{"id":"beta","label":"beta"}],"links":[{"source":"alpha","target":"beta"}]}' > graphify-out/graph.json
-    echo "built"
-    ;;
-  query|explain|path)
-    echo "$1-ok"
-    ;;
-  *)
-    echo "unknown" >&2
-    exit 2
-    ;;
-esac
-""",
-            encoding="utf-8",
-        )
-        path.chmod(path.stat().st_mode | stat.S_IEXEC)
+        fake_cli(bindir, "graphify", """import json, sys
+from pathlib import Path
+command = sys.argv[1]
+if command == "--version":
+    print("graphify 0.9.64")
+elif command in {"extract", "update"}:
+    output = Path("graphify-out")
+    output.mkdir(exist_ok=True)
+    (output / "graph.json").write_text(json.dumps({
+        "nodes": [{"id": "alpha", "label": "alpha"}, {"id": "beta", "label": "beta"}],
+        "links": [{"source": "alpha", "target": "beta"}],
+    }))
+    print("built")
+elif command in {"query", "explain", "path"}:
+    print(command + "-ok")
+else:
+    raise SystemExit(2)
+""")
 
     def test_refresh_uses_shadow_workspace_and_detects_working_tree_staleness(self):
         with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd, tempfile.TemporaryDirectory() as bd:
@@ -1940,7 +1978,7 @@ esac
             subprocess.run(["git", "commit", "-qm", "init"], cwd=root, check=True)
             self._fake_graphify(bindir)
             env = os.environ.copy()
-            env["PATH"] = str(bindir) + os.pathsep + env["PATH"]
+            env["PATH"] = isolated_cli_path(bindir)
             env["VIBE_CODING_HOME"] = str(local_home)
             env["VIBE_TOOLCHAIN_GRAPHIFY_SESSION_VERSION"] = "0.9.64"
 
@@ -1987,10 +2025,7 @@ esac
 
 class GitHubTraceabilityTests(unittest.TestCase):
     def _fake_gh(self, bindir: Path) -> None:
-        path = bindir / "gh"
-        path.write_text(
-            """#!/usr/bin/env python3
-import json, sys
+        fake_cli(bindir, "gh", """import json, sys
 args = sys.argv[1:]
 if args[:2] == ["auth", "status"]:
     raise SystemExit(0)
@@ -2014,10 +2049,7 @@ if args and args[0] == "api":
 if args[:2] == ["issue", "create"]:
     print("https://github.com/acme/demo/issues/99"); raise SystemExit(0)
 raise SystemExit(2)
-""",
-            encoding="utf-8",
-        )
-        path.chmod(path.stat().st_mode | stat.S_IEXEC)
+""")
 
     def test_record_snapshot_verify_and_dry_run_stay_local(self):
         with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd, tempfile.TemporaryDirectory() as bd:
@@ -2027,7 +2059,7 @@ raise SystemExit(2)
             subprocess.run(["git", "remote", "add", "origin", "https://github.com/acme/demo.git"], cwd=root, check=True)
             self._fake_gh(bindir)
             env = os.environ.copy()
-            env["PATH"] = str(bindir) + os.pathsep + env["PATH"]
+            env["PATH"] = isolated_cli_path(bindir)
             env["VIBE_CODING_HOME"] = hd
 
             record = subprocess.run(

@@ -409,6 +409,16 @@ def runtime_check(
 
     steps: list[dict[str, Any]] = []
     slug = str(current["slug"])
+    initial = run_wp(wp_bin, wordpress_root, ["plugin", "list", "--format=json"])
+    require_wp_step(initial, "initial plugin state")
+    try:
+        installed_plugins = json.loads(str(initial["output"]))
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError("initial plugin state is not valid JSON") from exc
+    if not isinstance(installed_plugins, list) or not all(isinstance(item, dict) for item in installed_plugins):
+        raise RuntimeError("initial plugin state must be a plugin array")
+    plugin_present_before = any(item.get("name") == slug for item in installed_plugins)
+    steps.append(initial)
 
     if previous_artifact and previous:
         step = run_wp(
@@ -501,7 +511,15 @@ def runtime_check(
         ),
         "previous_version": previous["version"] if previous else None,
         "installed_version": installed,
-        "fresh_install_checked": previous is None,
+        "fresh_install_checked": False,
+        "fresh_plugin_install_checked": previous is None and not plugin_present_before,
+        "plugin_present_before": plugin_present_before,
+        "data_freshness_verified": False,
+        "fresh_install_limitation": (
+            "Plugin absence is checked. A generic helper cannot verify absence of "
+            "plugin-owned data; full fresh-install evidence requires a known-clean "
+            "fixture and project-specific data assertions."
+        ),
         "upgrade_checked": previous is not None,
         "deactivate_reactivate_checked": True,
         "uninstall_checked": uninstalled,

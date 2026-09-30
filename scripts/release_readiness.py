@@ -314,6 +314,22 @@ def validate_stable_delivery_benchmark(
         failures.append(
             "stable requires complete real-delivery benchmark evidence"
         )
+    if benchmark.get("execution_class") != "real":
+        failures.append("stable delivery evidence must come from real executors")
+    catalog = json.loads(DELIVERY_CATALOG_PATH.read_text(encoding="utf-8"))
+    profile = catalog.get("stable_readiness_profile", {})
+    floor = profile.get("minimum_treatment_success_rate")
+    essentials = profile.get("essential_scenarios")
+    profile_valid = (profile.get("version") == 1 and isinstance(floor, (int, float))
+                     and not isinstance(floor, bool) and 0 < floor <= 1
+                     and isinstance(essentials, list) and bool(essentials)
+                     and set(essentials).issubset(delivery_scenario_ids()))
+    if not profile_valid:
+        failures.append("stable delivery readiness profile is invalid or absent")
+    repetitions = {
+        row["id"]: int(row.get("repetitions", catalog.get("default_repetitions", 1)))
+        for row in catalog["scenarios"]
+    }
 
     expected_ids = delivery_scenario_ids()
     if benchmark.get("expected_scenarios") != expected_ids:
@@ -361,6 +377,14 @@ def validate_stable_delivery_benchmark(
             "stable delivery aggregate identity is inconsistent"
         )
         identity = identity if isinstance(identity, dict) else {}
+    for key in ("agent_versions", "models"):
+        values = identity.get(key)
+        if not isinstance(values, dict) or any(
+            not isinstance(values.get(agent), list) or len(values[agent]) != 1
+            or not isinstance(values[agent][0], str) or not values[agent][0].strip()
+            for agent in STABLE_AGENTS
+        ):
+            failures.append(f"stable delivery requires one recorded {key} identity per agent")
 
     expected_lists = {
         "skill_versions": [expected_identity["skill_version"]],
@@ -401,6 +425,33 @@ def validate_stable_delivery_benchmark(
         )
         observed_pairs.add(pair)
         effect = str(row.get("effect") or "")
+        expected_repetitions = repetitions.get(pair[1])
+        rates: dict[str, float] = {}
+        if row.get("expected_repetitions") != expected_repetitions:
+            failures.append(f"stable delivery repetition mismatch: {pair}")
+        for arm in ("control", "treatment"):
+            result = row.get(arm)
+            if not isinstance(result, dict):
+                failures.append(f"stable delivery missing {arm} outcome: {pair}")
+                continue
+            count = result.get("successful_runs")
+            valid_count = (isinstance(count, int) and not isinstance(count, bool)
+                           and expected_repetitions is not None and 0 <= count <= expected_repetitions)
+            if (result.get("complete") is not True or result.get("completed_runs") != expected_repetitions
+                    or not valid_count):
+                failures.append(f"stable delivery invalid {arm} counts: {pair}")
+                continue
+            rate = count / expected_repetitions
+            rates[arm] = rate
+            if result.get("success_rate") != rate:
+                failures.append(f"stable delivery {arm} rate/count mismatch: {pair}")
+        if len(rates) == 2:
+            delta = rates["treatment"] - rates["control"]
+            computed = "improved" if delta > 0 else "regressed" if delta < 0 else "neutral"
+            if effect != computed or row.get("success_rate_delta") != delta:
+                failures.append(f"stable delivery effect/rate mismatch: {pair}")
+            if profile_valid and pair[1] in essentials and rates["treatment"] < floor:
+                failures.append(f"stable essential delivery success floor not met: {pair}")
         if effect == "regressed":
             regressions.append(row)
         if effect == "incomplete":
@@ -410,6 +461,8 @@ def validate_stable_delivery_benchmark(
         failures.append(
             "stable delivery comparison set does not match required agent/scenario pairs"
         )
+    if len(comparisons) != len(expected_pairs):
+        failures.append("stable delivery comparison pairs must be unique")
     if regressions:
         failures.append(
             "stable delivery benchmark contains treatment regressions"

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
+import copy
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -479,6 +481,28 @@ class DeliveryRunnerTests(unittest.TestCase):
             ]
         )
 
+    def test_local_commit_cannot_hide_changes_or_forbidden_rename(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            delivery_root, scenario, _, _, _, portable = setup_contract(base)
+            workspace = base / "workspace"
+            fixture, _ = self.runner.scenario_paths(scenario, delivery_root)
+            info = self.runner.prepare_workspace(fixture, workspace, arm="control",
+                agent="fake", portable_skill=portable)
+            baseline = info["baseline_commit"]
+            (workspace / "secrets").mkdir()
+            (workspace / "message.txt").rename(workspace / "secrets/message.txt")
+            paths = self.runner.changed_paths(workspace, baseline)
+            digest = self.runner.diff_hash(workspace, paths, baseline)
+            self.runner.git(workspace, "add", "-A")
+            committed = self.runner.git(workspace, "commit", "-qm", "agent local commit")
+            self.assertEqual(committed.returncode, 0, committed.stderr)
+            self.assertEqual(self.runner.changed_paths(workspace, baseline), paths)
+            self.assertEqual(self.runner.diff_hash(workspace, paths, baseline), digest)
+            self.assertEqual(paths, ["message.txt", "secrets/message.txt"])
+            self.assertEqual(self.runner.forbidden_path_hits(paths, ["secrets/**"]),
+                             ["secrets/message.txt"])
+
 
 class RealDeliveryAdapterTests(unittest.TestCase):
     def setUp(self):
@@ -497,7 +521,7 @@ class RealDeliveryAdapterTests(unittest.TestCase):
         self.assertIn("never", command)
         self.assertNotIn("danger-full-access", command)
 
-    def test_claude_delivery_command_disables_shell_and_web(self):
+    def test_claude_delivery_command_allows_only_sandboxed_shell(self):
         command = self.runner.build_real_command(
             "claude-code",
             {"binary": "claude"},
@@ -509,7 +533,13 @@ class RealDeliveryAdapterTests(unittest.TestCase):
         joined = " ".join(command)
         self.assertIn("--permission-mode acceptEdits", joined)
         self.assertIn("Read,Edit,Write,Glob,Grep", joined)
-        self.assertIn("Bash,WebFetch,WebSearch", joined)
+        self.assertIn("WebFetch,WebSearch,mcp__*", joined)
+        self.assertIn("Bash", command[command.index("--tools") + 1].split(","))
+        settings = json.loads(command[command.index("--settings") + 1])
+        self.assertTrue(settings["sandbox"]["enabled"])
+        self.assertTrue(settings["sandbox"]["failIfUnavailable"])
+        self.assertFalse(settings["sandbox"]["allowUnsandboxedCommands"])
+        self.assertEqual(settings["sandbox"]["network"]["allowedDomains"], [])
 
     def test_real_executor_redacts_credentials_and_flags_workspace_leak(self):
         with tempfile.TemporaryDirectory() as td:
@@ -610,6 +640,7 @@ class DeliveryAggregatorTests(unittest.TestCase):
                     results,
                     catalog,
                     required_agents=["fake"],
+                    delivery_root=delivery_root,
                 )
             )
 
@@ -689,13 +720,16 @@ class DeliveryAggregatorTests(unittest.TestCase):
                     results,
                     catalog,
                     required_agents=["fake"],
+                    delivery_root=delivery_root,
                 )
             )
 
         self.assertTrue(
-            aggregate["evidence_complete"],
+            aggregate["framework_complete"],
             aggregate,
         )
+        self.assertFalse(aggregate["evidence_complete"])
+        self.assertEqual(aggregate["execution_class"], "framework")
         comparison = aggregate[
             "comparisons"
         ][0]
@@ -721,6 +755,74 @@ class DeliveryAggregatorTests(unittest.TestCase):
             ],
             1.0,
         )
+
+    def test_contradictory_or_unidentifiable_envelopes_are_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            delivery_root, scenario, _, catalog_path, schema_path, portable = setup_contract(base)
+            row = self.runner.run_one(agent="fake", scenario=scenario, arm="control",
+                repetition=1, result_dir=base / "results", executor=good_executor,
+                timeout=5, grader_timeout=5, delivery_root=delivery_root,
+                portable_skill=portable, catalog_path=catalog_path, result_schema_path=schema_path)
+        self.assertEqual(self.aggregator.envelope_issues(row), [])
+        mutations = [
+            ("runtime", "exit_code", 9), ("runtime", "timed_out", True),
+            ("runtime", "duration_ms", -1), ("runtime", "exit_code", False),
+            ("grader", "failures", ["failed"]), ("grader", "timed_out", True),
+            ("workspace", "diff_sha256", "z" * 64), ("workspace", "changed_file_count", 99),
+            ("integrity", "skill_installed", True),
+            (None, "model", None), (None, "agent_version", ""),
+            (None, "completed_at", "2000-01-01T00:00:00Z"),
+        ]
+        for section, key, value in mutations:
+            with self.subTest(section=section, key=key):
+                changed = copy.deepcopy(row)
+                (changed[section] if section else changed)[key] = value
+                self.assertTrue(self.aggregator.envelope_issues(changed))
+        for checks in ([], [dict(row["grader"]["checks"][0], required=False)],
+                       [dict(row["grader"]["checks"][0], passed=False)]):
+            changed = copy.deepcopy(row)
+            changed["grader"]["checks"] = checks
+            self.assertTrue(self.aggregator.envelope_issues(changed))
+        failed = copy.deepcopy(row)
+        failed["runtime"]["exit_code"] = 9
+        failed["grader"]["delivery_success"] = False
+        self.assertEqual(self.aggregator.envelope_issues(failed), [])
+
+    def test_injected_executor_cannot_self_declare_real_execution(self):
+        def spoof_executor(*args):
+            return dict(good_executor(*args), executor_id="real-codex")
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            delivery_root, scenario, _, catalog_path, schema_path, portable = setup_contract(base)
+            row = self.runner.run_one(agent="codex", scenario=scenario, arm="control",
+                repetition=1, result_dir=base / "results", executor=spoof_executor,
+                timeout=5, grader_timeout=5, delivery_root=delivery_root,
+                portable_skill=portable, catalog_path=catalog_path, result_schema_path=schema_path)
+        self.assertEqual(row["integrity"]["executor_id"], "injected-executor")
+
+    def test_scenario_identity_and_required_checks_are_bound_to_catalog(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            delivery_root, scenario, catalog, catalog_path, schema_path, portable = setup_contract(base)
+            results = base / "results"
+            row = self.runner.run_one(agent="fake", scenario=scenario, arm="control",
+                repetition=1, result_dir=results, executor=good_executor,
+                timeout=5, grader_timeout=5, delivery_root=delivery_root,
+                portable_skill=portable, catalog_path=catalog_path, result_schema_path=schema_path)
+            envelope = next(results.rglob("*.json"))
+            row["integrity"]["grader_sha256"] = "0" * 64
+            envelope.write_text(json.dumps(row), encoding="utf-8")
+            aggregate = self.aggregator.aggregate(results, catalog, required_agents=["fake"],
+                                                 delivery_root=delivery_root)
+            self.assertTrue(aggregate["invalid_files"])
+            self.assertFalse(aggregate["framework_complete"])
+            catalog["scenarios"][0]["required_check_ids"] = ["independent-outcome"]
+            row["integrity"]["grader_sha256"] = self.runner.sha256_file(delivery_root / "graders/demo.py")
+            envelope.write_text(json.dumps(row), encoding="utf-8")
+            aggregate = self.aggregator.aggregate(results, catalog, required_agents=["fake"],
+                                                 delivery_root=delivery_root)
+            self.assertIn("catalog-required", aggregate["invalid_files"][0]["error"])
 
 
 
@@ -872,6 +974,7 @@ class RepresentativeDeliveryFixtureTests(unittest.TestCase):
         good = self.grade("mixed-monorepo-api-normalization", fix)
         self.assertTrue(self.required_passed(good))
 
+    @unittest.skipUnless(shutil.which("php"), "PHP CLI required for executed WordPress behavior")
     def test_wordpress_artifact_good_passes_and_baseline_fails(self):
         broken = self.grade("wordpress-installable-artifact")
         self.assertFalse(self.required_passed(broken))
@@ -906,6 +1009,28 @@ class RepresentativeDeliveryFixtureTests(unittest.TestCase):
 
         good = self.grade("wordpress-installable-artifact", fix)
         self.assertTrue(self.required_passed(good))
+
+    def test_wordpress_comment_only_feature_is_rejected(self):
+        def fake_fix(workspace):
+            (workspace / "sample-plugin/includes/admin.php").write_text(
+                "<?php\n// sample_label register_setting sanitize_text_field esc_attr\n"
+                "function sample_plugin_render_label_field(): void {}\n", encoding="utf-8")
+        checks = self.grade("wordpress-installable-artifact", fake_fix)
+        self.assertFalse(self.required_passed(checks))
+        self.assertFalse(next(row for row in checks if row["id"] == "setting-registered-and-sanitized")["passed"])
+
+    @unittest.skipUnless(shutil.which("php"), "PHP CLI required for executed WordPress behavior")
+    def test_wordpress_registered_but_unsafe_output_is_rejected(self):
+        def unsafe_fix(workspace):
+            (workspace / "sample-plugin/includes/admin.php").write_text(
+                "<?php\nadd_action('admin_init', function() { register_setting('general', 'sample_label', "
+                "['sanitize_callback' => 'sanitize_text_field']); });\n"
+                "function sample_plugin_render_label_field(): void { "
+                "echo '<input type=\"text\" name=\"sample_label\" value=\"' . get_option('sample_label') . '\" />'; }\n",
+                encoding="utf-8")
+        checks = self.grade("wordpress-installable-artifact", unsafe_fix)
+        self.assertTrue(next(row for row in checks if row["id"] == "setting-registered-and-sanitized")["passed"])
+        self.assertFalse(next(row for row in checks if row["id"] == "setting-input-escaped")["passed"])
 
 
 if __name__ == "__main__":

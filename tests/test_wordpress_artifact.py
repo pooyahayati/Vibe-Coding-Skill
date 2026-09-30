@@ -195,6 +195,8 @@ class WordPressArtifactTests(unittest.TestCase):
 
             def fake_run(command, **kwargs):
                 args = list(command)
+                if "list" in args and "--format=json" in args:
+                    return Result(0, stdout="[]")
                 if "install" in args:
                     artifact_arg = Path(args[args.index("install") + 1])
                     if artifact_arg == old_zip.resolve():

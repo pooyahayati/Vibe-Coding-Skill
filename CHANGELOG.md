@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — Independent 0.10.7 review fixes
+
+- Preserve unresolved risk facts, normalize bounded aliases, recognize the reported Persian destructive request, and carry structured risk into execution planning.
+- Keep custom sibling projects and WordPress plugins distinct; accept ordinary runtime facts without requiring a specialist pack.
+- Require a required completion outcome and optionally bind completion to independently retained approved criteria.
+- Execute WordPress benchmark behavior from the exact ZIP with a trusted PHP harness; reject comment-only and unsafe-output implementations. Report real install preconditions without claiming database freshness.
+- Validate delivery envelopes, recompute success, bind scenario/check identities, distinguish simulated framework tests from real-agent evidence, and require a predefined essential-scenario success floor for Stable.
+- Fix Codex option placement, enable fail-closed sandboxed Claude shell checks, preflight parser/version/isolation capabilities, and require explicit campaign CLI/model pins.
+- Read selected-release dependency metadata, isolate offline CLI stubs on Windows/POSIX, retain immutable-baseline change evidence after agent commits/renames, normalize fixture line endings, and let compatibility CI reach the supported fallback resolver.
+
 ## 0.10.7 — Real-delivery benchmark framework and stable dual-evidence gate
 
 - Added the Real Delivery Benchmark as a second evidence class alongside the existing behavior-selection benchmark.

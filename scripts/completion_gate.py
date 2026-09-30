@@ -204,6 +204,8 @@ def acceptance_criteria_failures(
 
     failures: list[str] = []
     seen: set[str] = set()
+    if not any(isinstance(item, dict) and item.get("required") is True for item in criteria):
+        failures.append("Done requires at least one required acceptance criterion")
     for index, item in enumerate(criteria):
         if not isinstance(item, dict):
             failures.append(f"acceptance criterion {index} must be an object")
@@ -251,7 +253,10 @@ def acceptance_criteria_failures(
     return failures
 
 
-def evaluate(report: dict[str, Any]) -> dict[str, Any]:
+def evaluate(
+    report: dict[str, Any],
+    acceptance_baseline: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     status = str(report.get("status") or "").strip().lower()
     raw_criteria = report.get("acceptance_criteria")
     raw_evidence = report.get("evidence")
@@ -290,6 +295,28 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
         failures.extend(
             acceptance_criteria_failures(raw_criteria, set(evidence_by_id))
         )
+        if acceptance_baseline is not None:
+            if not isinstance(acceptance_baseline, list) or not acceptance_baseline:
+                failures.append("acceptance baseline must be a nonempty criteria array")
+            else:
+                current = {item["id"]: item for item in criteria
+                           if isinstance(item, dict) and isinstance(item.get("id"), str)}
+                baseline_ids: set[str] = set()
+                if not any(isinstance(item, dict) and item.get("required") is True for item in acceptance_baseline):
+                    failures.append("acceptance baseline requires a required outcome")
+                for criterion in acceptance_baseline:
+                    if (not isinstance(criterion, dict) or not isinstance(criterion.get("id"), str)
+                            or not criterion["id"].strip() or criterion["id"] in baseline_ids
+                            or not isinstance(criterion.get("description"), str)
+                            or not criterion["description"].strip()
+                            or not isinstance(criterion.get("required"), bool)):
+                        failures.append("acceptance baseline contains an invalid criterion")
+                        continue
+                    baseline_ids.add(criterion["id"])
+                    if criterion["required"]:
+                        actual = current.get(criterion["id"], {})
+                        if actual.get("required") is not True or actual.get("description") != criterion.get("description"):
+                            failures.append(f"approved required criterion changed or removed: {criterion['id']}")
 
         if raw_blockers is not None and not isinstance(raw_blockers, list):
             failures.append("blockers must be an array")
@@ -397,6 +424,7 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
         "qualified_evidence_families": sorted(qualified_evidence_families),
         "supported_evidence_kinds": sorted(EVIDENCE_KIND_FAMILIES),
         "criteria_count": len(criteria),
+        "acceptance_baseline_checked": acceptance_baseline is not None,
         "required_provenance_fields": required_fields,
         "evidence_provenance_issues": evidence_provenance_issues,
     }
@@ -406,10 +434,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("report_json")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--acceptance-baseline", help="independently retained approved criteria JSON array")
     ns = ap.parse_args()
 
     report = json.loads(Path(ns.report_json).read_text(encoding="utf-8"))
-    result = evaluate(report)
+    baseline = json.loads(Path(ns.acceptance_baseline).read_text(encoding="utf-8")) if ns.acceptance_baseline else None
+    result = evaluate(report, baseline)
     if ns.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:

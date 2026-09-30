@@ -13,6 +13,7 @@ import fnmatch
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -37,6 +38,8 @@ Executor = Callable[
     [Path, str, str, dict[str, Any], int, dict[str, str]],
     dict[str, Any],
 ]
+# Classification belongs to the runner, never to injected executor output.
+REAL_EXECUTORS: dict[Executor, str] = {}
 
 
 def utc_now() -> str:
@@ -129,6 +132,9 @@ def validate_catalog(
                 "disabled or scenario-required"
             )
         forbidden = scenario.get("forbidden_paths", [])
+        required_checks = scenario.get("required_check_ids", [])
+        if not isinstance(required_checks, list) or not all(isinstance(value, str) and value.strip() for value in required_checks):
+            failures.append(f"scenario {sid or index} required_check_ids must be an array of strings")
         if not isinstance(forbidden, list) or not all(
             isinstance(value, str) and value.strip() for value in forbidden
         ):
@@ -234,39 +240,38 @@ def build_prompt(scenario: dict[str, Any], *, arm: str, skill_dir: str | None) -
     return f"{text}\n\nTask:\n{scenario['prompt']}\n"
 
 
-def changed_paths(workspace: Path) -> list[str]:
-    result = git(workspace, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+def changed_paths(workspace: Path, baseline_commit: str = "HEAD") -> list[str]:
+    result = git(workspace, "diff", "--name-only", "--no-renames", "-z", baseline_commit)
     if result.returncode != 0:
-        raise RuntimeError(result.stderr or "git status failed")
-    rows: list[str] = []
-    parts = [value for value in result.stdout.split("\0") if value]
-    index = 0
-    while index < len(parts):
-        row = parts[index]
-        if len(row) >= 4:
-            status, path = row[:2], row[3:]
-            if status[0] in {"R", "C"} and index + 1 < len(parts):
-                index += 1
-                path = parts[index]
-            rows.append(path.replace("\\", "/"))
-        index += 1
+        raise RuntimeError(result.stderr or "git diff failed")
+    untracked = git(workspace, "ls-files", "--others", "--exclude-standard", "-z")
+    if untracked.returncode != 0:
+        raise RuntimeError(untracked.stderr or "git untracked discovery failed")
+    rows = [value.replace("\\", "/") for value in (result.stdout + untracked.stdout).split("\0") if value]
     return sorted(dict.fromkeys(rows))
 
 
-def diff_hash(workspace: Path, paths: list[str]) -> str:
+def diff_hash(workspace: Path, paths: list[str], baseline_commit: str = "HEAD") -> str:
+    """Canonical before/after evidence independent of staging or local commits."""
     digest = hashlib.sha256()
-    tracked = git(workspace, "diff", "--binary", "HEAD")
-    if tracked.returncode != 0:
-        raise RuntimeError(tracked.stderr or "git diff failed")
-    digest.update(tracked.stdout.encode("utf-8", "surrogateescape"))
-    tracked_names = set(git(workspace, "diff", "--name-only", "HEAD").stdout.splitlines())
-    for rel in paths:
-        if rel in tracked_names:
-            continue
-        path = workspace / rel
+    before = git(workspace, "ls-tree", "-r", "-z", baseline_commit, "--", *paths)
+    if before.returncode != 0:
+        raise RuntimeError(before.stderr or "git baseline tree failed")
+    entries = {}
+    for entry in before.stdout.split("\0"):
+        if "\t" in entry:
+            metadata, rel = entry.split("\t", 1)
+            entries[rel] = metadata
+    for rel in sorted(paths):
         digest.update(rel.encode("utf-8") + b"\0")
-        if path.is_file():
-            digest.update(path.read_bytes())
+        digest.update(entries.get(rel, "absent").encode("utf-8") + b"\0")
+        path = workspace / rel
+        if path.is_symlink():
+            digest.update(b"symlink\0" + os.readlink(path).encode("utf-8"))
+        elif path.is_file():
+            digest.update(b"file\0" + path.read_bytes())
+        else:
+            digest.update(b"absent")
         digest.update(b"\0")
     return digest.hexdigest()
 
@@ -345,12 +350,14 @@ def auth_values(spec: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def preflight(agent: str, require_env_auth: bool = True) -> dict[str, Any]:
+def preflight(agent: str, require_env_auth: bool = True, expected_version: str | None = None) -> dict[str, Any]:
     spec = load_agent(agent)
     base_env = os.environ.copy()
     binary = shutil.which(str(spec["binary"]))
     credentials = auth_values(spec)
     blockers: list[str] = []
+    version = cli_version(spec, base_env) if binary else None
+    parser_ok = False
     if not binary:
         blockers.append(
             f"{spec['display_name']} binary {spec['binary']!r} is not installed; "
@@ -361,11 +368,46 @@ def preflight(agent: str, require_env_auth: bool = True) -> dict[str, Any]:
             "no non-interactive credential environment variable is available; "
             f"expected one of {spec.get('auth_env', [])}"
         )
+    if binary:
+        try:
+            command = build_real_command(agent, {**spec, "binary": binary}, "parser-only",
+                                         model=None, max_turns=1, max_budget_usd=None)
+            parsed = subprocess.run(command[:-1] + ["--help"], env=base_env,
+                                    capture_output=True, text=True, timeout=15)
+            parser_ok = parsed.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            parser_ok = False
+        if not parser_ok:
+            blockers.append("installed CLI cannot parse the delivery adapter; no model execution attempted")
+    detected = re.search(r"\b(\d+\.\d+\.\d+)\b", version or "")
+    if not detected:
+        blockers.append("installed CLI version could not be identified")
+    elif expected_version and detected.group(1) != expected_version:
+        blockers.append("installed CLI differs from the pinned campaign version")
+    if agent == "claude-code":
+        if not detected or tuple(map(int, detected.group(1).split("."))) < (2, 1, 260):
+            blockers.append("Claude delivery requires the restricted/sandbox CLI contract (2.1.260+)" )
+        if sys.platform == "win32":
+            blockers.append("Claude Bash sandbox requires Linux/macOS/WSL2; native Windows is unsupported")
+        elif sys.platform.startswith("linux"):
+            if not shutil.which("bwrap") or not shutil.which("socat"):
+                blockers.append("Claude Bash sandbox requires bubblewrap and socat")
+            else:
+                try:
+                    probe = subprocess.run(["bwrap", "--ro-bind", "/", "/", "--unshare-user",
+                                            "--unshare-pid", "--unshare-net", "--die-with-parent", "/bin/true"],
+                                           capture_output=True, timeout=15)
+                    if probe.returncode != 0:
+                        blockers.append("bubblewrap isolation is unavailable on this host")
+                except (OSError, subprocess.TimeoutExpired):
+                    blockers.append("bubblewrap isolation probe failed")
     return {
         "agent": agent,
         "display_name": spec["display_name"],
         "binary": binary,
-        "version": cli_version(spec, base_env) if binary else None,
+        "version": version,
+        "parser_contract_verified": parser_ok,
+        "expected_version": expected_version,
         "auth_env_present": sorted(credentials),
         "ready": not blockers,
         "blockers": blockers,
@@ -405,19 +447,21 @@ def build_real_command(
     model: str | None,
     max_turns: int,
     max_budget_usd: float | None,
+    workspace: Path | None = None,
+    temp_dir: Path | None = None,
 ) -> list[str]:
     binary = str(spec["binary"])
     if agent == "codex":
         command = [
             binary,
+            "--ask-for-approval",
+            "never",
             "exec",
             "--ephemeral",
             "--ignore-user-config",
             "--ignore-rules",
             "--sandbox",
             "workspace-write",
-            "--ask-for-approval",
-            "never",
         ]
         if model:
             command.extend(["--model", model])
@@ -425,6 +469,22 @@ def build_real_command(
         return command
 
     if agent == "claude-code":
+        settings = {
+            "sandbox": {
+                "enabled": True, "failIfUnavailable": True,
+                "autoAllowBashIfSandboxed": True, "allowUnsandboxedCommands": False,
+                "excludedCommands": [],
+                "network": {"allowedDomains": []},
+                "filesystem": {"denyRead": ["/"], "allowRead": [
+                    str((workspace or Path.cwd()).resolve()),
+                    str((temp_dir or Path(tempfile.gettempdir())).resolve()),
+                    "/usr", "/bin", "/lib", "/lib64", "/dev", "/proc",
+                ]},
+                "credentials": {"envVars": [
+                    {"name": name, "mode": "deny"} for name in spec.get("auth_env", [])
+                ]},
+            },
+        }
         command = [
             binary,
             "-p",
@@ -432,12 +492,19 @@ def build_real_command(
             "json",
             "--permission-mode",
             "acceptEdits",
+            "--restricted",
+            "--permission-prompts",
+            "none",
+            "--settings",
+            json.dumps(settings, separators=(",", ":")),
+            "--tools",
+            "Read,Edit,Write,Glob,Grep,Bash",
             "--max-turns",
             str(max_turns),
             "--allowedTools",
-            "Read,Edit,Write,Glob,Grep",
+            "Read,Edit,Write,Glob,Grep,Bash",
             "--disallowedTools",
-            "Bash,WebFetch,WebSearch",
+            "WebFetch,WebSearch,mcp__*",
         ]
         if max_budget_usd is not None:
             command.extend(["--max-budget-usd", str(max_budget_usd)])
@@ -482,6 +549,8 @@ def real_executor(
             model=model,
             max_turns=max_turns,
             max_budget_usd=max_budget_usd,
+            workspace=workspace,
+            temp_dir=Path(env.get("TEMP", str(workspace))),
         )
         try:
             completed = subprocess.run(
@@ -538,6 +607,7 @@ def real_executor(
             ),
         }
 
+    REAL_EXECUTORS[execute] = agent
     return execute
 
 
@@ -593,6 +663,8 @@ def validate_grader_output(raw: Any) -> tuple[dict[str, Any], list[str]]:
             "passed": check.get("passed") is True,
             "details": str(check.get("details") or ""),
         })
+    if not any(check["required"] for check in normalized):
+        failures.append("grader requires at least one required behavior check")
     return {
         "checks": normalized,
         "metrics": raw.get("metrics") if isinstance(raw.get("metrics"), dict) else {},
@@ -694,7 +766,7 @@ def run_one(
         if not isinstance(exit_code, int) or isinstance(exit_code, bool):
             raise RuntimeError("executor requires integer exit_code")
 
-        paths = changed_paths(workspace)
+        paths = changed_paths(workspace, info["baseline_commit"])
         operational_root = info["operational_root"]
         product_paths = [
             rel for rel in paths
@@ -707,7 +779,7 @@ def run_one(
         )
         excluded = {operational_root} if operational_root else set()
         final_tree_sha256 = tree_hash(workspace, excluded)
-        product_diff_sha256 = diff_hash(workspace, product_paths)
+        product_diff_sha256 = diff_hash(workspace, product_paths, info["baseline_commit"])
         dependency_changes = dependency_files_changed(product_paths)
 
         grader_workspace = base / "grader-workspace"
@@ -728,6 +800,8 @@ def run_one(
         )
         if exit_code != 0:
             failures.append(f"executor_exit_code:{exit_code}")
+        if raw.get("timed_out"):
+            failures.append("executor_timeout")
         if forbidden:
             failures.append("forbidden_path_mutation:" + ",".join(forbidden))
         failures.extend(
@@ -797,7 +871,8 @@ def run_one(
                 "skill_installed": arm == "treatment",
                 "hidden_grader_outside_workspace": True,
                 "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
-                "executor_id": str(raw.get("executor_id") or "injected-executor"),
+                "executor_id": (f"real-{agent}" if REAL_EXECUTORS.get(executor) == agent
+                                else "injected-executor"),
             },
             "raw_files": raw_files,
         }
@@ -912,6 +987,7 @@ def main() -> int:
     pre.add_argument("--agent", choices=["codex", "claude-code"], required=True)
     pre.add_argument("--require-env-auth", action="store_true")
     pre.add_argument("--json", action="store_true")
+    pre.add_argument("--expected-version")
 
     run_cmd = sub.add_parser("run")
     run_cmd.add_argument("--agent", choices=["codex", "claude-code"], required=True)
@@ -919,6 +995,7 @@ def main() -> int:
     run_cmd.add_argument("--arm", choices=["control", "treatment", "all"], default="all")
     run_cmd.add_argument("--results-dir", required=True)
     run_cmd.add_argument("--model")
+    run_cmd.add_argument("--expected-version")
     run_cmd.add_argument("--timeout", type=int, default=600)
     run_cmd.add_argument("--grader-timeout", type=int, default=120)
     run_cmd.add_argument("--max-turns", type=int, default=8)
@@ -940,10 +1017,13 @@ def main() -> int:
         result = self_test()
         exit_code = 0 if result.get("passed") else 2
     elif ns.command == "preflight":
-        result = preflight(ns.agent, ns.require_env_auth)
+        result = preflight(ns.agent, ns.require_env_auth, ns.expected_version)
         exit_code = 0 if result["ready"] else 2
     else:
-        readiness = preflight(ns.agent, ns.require_env_auth)
+        if not ns.model:
+            print(json.dumps({"gate": "BLOCK", "failures": ["real delivery requires an explicit --model identity"]}))
+            return 2
+        readiness = preflight(ns.agent, ns.require_env_auth, ns.expected_version)
         if not readiness["ready"]:
             print(json.dumps(readiness, indent=2, ensure_ascii=False))
             return 2
