@@ -4,6 +4,11 @@ A short, human-readable summary of what changed in each release.
 
 For full technical details, see [CHANGELOG.md](CHANGELOG.md).
 
+## 0.10.6 — More reliable multilingual routing and completion evidence
+- Known platform/capability facts can now drive context routing directly, so equivalent tasks in different languages select the same relevant packs without growing keyword lists.
+- Execution planning uses the same structured context facts as the router.
+- Completion evidence now uses defined semantic kinds and families, preventing arbitrary labels or duplicate test variants from satisfying higher-risk evidence diversity.
+
 ## 0.10.5 — Smarter context locality in large projects
 - Mixed and monorepo projects now keep platform rules local to the application or package actually being changed, reducing irrelevant WordPress/WooCommerce context in neighboring services.
 - Known affected paths now use bounded local scanning, including directory paths, while cross-application changes are recognized as real planning boundaries.
