@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -15,6 +16,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def resolve(tool: str) -> dict[str, Any]:
+    session_key = f"VIBE_TOOLCHAIN_{tool.upper()}_SESSION_VERSION"
+    session_version = os.environ.get(session_key, "").strip()
+    if session_version:
+        return {
+            "tool": tool,
+            "selected_version": session_version,
+            "source": "session-pin",
+            "fallback_used": False,
+        }
     return toolchain_resolution.resolve(tool, toolchain_resolution.load_config())
 
 
