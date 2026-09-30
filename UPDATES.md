@@ -4,6 +4,12 @@ A short, human-readable summary of what changed in each release.
 
 For full technical details, see [CHANGELOG.md](CHANGELOG.md).
 
+## 0.10.3 — More reliable decisions, lighter context, real WordPress delivery
+- Risk, completion, routing, and tool-version controls were tightened so the Skill's reported policy matches what it actually enforces.
+- Large projects now keep project intelligence without forcing heavy planning for small local work, and the core Skill instructions are much shorter.
+- Technology selection, testing, and code structure now favor requirement-driven decisions and explicitly avoid architecture/test ceremony.
+- WordPress plugin delivery can now build and verify the exact installable ZIP, test real install/upgrade behavior, and release validation now requires the full baseline on the same commit.
+
 ## 0.10.2 — Safer automatic tool versions
 - `Graphify` and `Trivy` now use the latest stable release only after compatibility checks pass.
 - Runtime execution stays on the exact verified version, with a verified fallback when needed.
