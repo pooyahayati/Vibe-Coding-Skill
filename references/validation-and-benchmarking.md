@@ -195,7 +195,11 @@ python scripts/run_delivery_benchmark.py self-test --json
 
 Phase 9B provides five representative product fixtures/graders: tiny local change, brownfield bug regression, contained feature, mixed-monorepo locality, and WordPress installable artifact. Every grader is deterministically proven to reject its broken baseline and accept a known-good implementation. Graders execute against a snapshot copy of the Agent workspace so grader-side build artifacts cannot contaminate captured final-tree/diff evidence.
 
-Real Codex/Claude workspace-write adapters, OS/network sandbox enforcement, and credentialed repetitions belong to Phase 9C. Do not describe Phase 9A or 9B as real-Agent delivery evidence.
+Phase 9C provides real Codex/Claude workspace-write adapters and a credentialed manual GitHub Actions workflow. Codex uses its workspace-write sandbox with approval escalation disabled; the offline Claude Code adapter restricts tools to file reading/editing and explicitly disables Bash/Web tools. Raw Agent output is redacted against provider credential values, and writing a credential value into the workspace blocks that delivery run.
+
+Run `.github/workflows/real-delivery-benchmark.yml` only with real provider credentials. The workflow executes every catalog scenario in both control/treatment arms for the catalog repetition count, uploads per-Agent raw evidence, and requires a complete aggregate for `codex` and `claude-code`.
+
+Do not describe Phase 9A or 9B deterministic tests as real-Agent delivery evidence. Phase 9C is evidence only when the real workflow actually completes with provenance-bound results.
 
 Aggregate completed delivery runs with:
 

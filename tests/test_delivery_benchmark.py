@@ -480,6 +480,95 @@ class DeliveryRunnerTests(unittest.TestCase):
         )
 
 
+class RealDeliveryAdapterTests(unittest.TestCase):
+    def setUp(self):
+        self.runner = load_script("run_delivery_benchmark.py")
+
+    def test_codex_delivery_command_is_workspace_bounded(self):
+        command = self.runner.build_real_command(
+            "codex",
+            {"binary": "codex"},
+            "implement",
+            model=None,
+            max_turns=8,
+            max_budget_usd=None,
+        )
+        self.assertIn("workspace-write", command)
+        self.assertIn("never", command)
+        self.assertNotIn("danger-full-access", command)
+
+    def test_claude_delivery_command_disables_shell_and_web(self):
+        command = self.runner.build_real_command(
+            "claude-code",
+            {"binary": "claude"},
+            "implement",
+            model=None,
+            max_turns=8,
+            max_budget_usd=1.0,
+        )
+        joined = " ".join(command)
+        self.assertIn("--permission-mode acceptEdits", joined)
+        self.assertIn("Read,Edit,Write,Glob,Grep", joined)
+        self.assertIn("Bash,WebFetch,WebSearch", joined)
+
+    def test_real_executor_redacts_credentials_and_flags_workspace_leak(self):
+        with tempfile.TemporaryDirectory() as td:
+            workspace = Path(td)
+            secret = "benchmark-secret-value"
+
+            def fake_run(command, cwd, env, text, capture_output, timeout):
+                (cwd / "leak.txt").write_text(secret, encoding="utf-8")
+                return self.runner.subprocess.CompletedProcess(
+                    command,
+                    0,
+                    stdout=f"token={secret}",
+                    stderr=f"error={secret}",
+                )
+
+            spec = {
+                "display_name": "Fake",
+                "binary": "codex",
+                "version_args": ["--version"],
+                "auth_env": ["OPENAI_API_KEY"],
+            }
+            with mock.patch.dict(
+                os.environ,
+                {"OPENAI_API_KEY": secret},
+                clear=False,
+            ), mock.patch.object(
+                self.runner,
+                "load_agent",
+                return_value=spec,
+            ), mock.patch.object(
+                self.runner.subprocess,
+                "run",
+                side_effect=fake_run,
+            ), mock.patch.object(
+                self.runner,
+                "cli_version",
+                return_value="fake-1",
+            ):
+                executor = self.runner.real_executor(
+                    "codex",
+                    model=None,
+                    max_turns=8,
+                    max_budget_usd=None,
+                )
+                result = executor(
+                    workspace,
+                    "implement",
+                    "control",
+                    {"id": "demo"},
+                    10,
+                    {"PATH": os.environ.get("PATH", "")},
+                )
+
+        self.assertNotIn(secret, result["stdout"])
+        self.assertNotIn(secret, result["stderr"])
+        self.assertTrue(result["security_failures"])
+        self.assertIn("leak.txt", result["security_failures"][0])
+
+
 class DeliveryAggregatorTests(unittest.TestCase):
     def setUp(self):
         self.runner = load_script(

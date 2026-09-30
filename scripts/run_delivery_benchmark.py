@@ -312,6 +312,249 @@ def sanitized_env(base: Path) -> dict[str, str]:
     return env
 
 
+def load_agent(agent: str) -> dict[str, Any]:
+    agents = load_json(AGENTS_PATH).get("agents", {})
+    if agent not in agents:
+        raise RuntimeError(f"unknown delivery benchmark agent: {agent}")
+    return dict(agents[agent])
+
+
+def cli_version(spec: dict[str, Any], env: dict[str, str]) -> str | None:
+    binary = shutil.which(str(spec["binary"]), path=env.get("PATH"))
+    if not binary:
+        return None
+    try:
+        result = subprocess.run(
+            [binary, *spec.get("version_args", ["--version"])],
+            env=env,
+            text=True,
+            capture_output=True,
+            timeout=30,
+        )
+    except Exception:
+        return None
+    output = ((result.stdout or "") + "\n" + (result.stderr or "")).strip()
+    return output.splitlines()[0].strip() if output else None
+
+
+def auth_values(spec: dict[str, Any]) -> dict[str, str]:
+    return {
+        str(name): str(os.environ[name])
+        for name in spec.get("auth_env", [])
+        if os.environ.get(str(name))
+    }
+
+
+def preflight(agent: str, require_env_auth: bool = True) -> dict[str, Any]:
+    spec = load_agent(agent)
+    base_env = os.environ.copy()
+    binary = shutil.which(str(spec["binary"]))
+    credentials = auth_values(spec)
+    blockers: list[str] = []
+    if not binary:
+        blockers.append(
+            f"{spec['display_name']} binary {spec['binary']!r} is not installed; "
+            f"hint: {spec.get('install_hint')}"
+        )
+    if require_env_auth and not credentials:
+        blockers.append(
+            "no non-interactive credential environment variable is available; "
+            f"expected one of {spec.get('auth_env', [])}"
+        )
+    return {
+        "agent": agent,
+        "display_name": spec["display_name"],
+        "binary": binary,
+        "version": cli_version(spec, base_env) if binary else None,
+        "auth_env_present": sorted(credentials),
+        "ready": not blockers,
+        "blockers": blockers,
+    }
+
+
+def redact_text(text: str, secrets: list[str]) -> str:
+    result = text
+    for secret in sorted({value for value in secrets if value}, key=len, reverse=True):
+        result = result.replace(secret, "<redacted-secret>")
+    return result
+
+
+def workspace_secret_hits(workspace: Path, secrets: list[str]) -> list[str]:
+    encoded = [value.encode("utf-8") for value in secrets if value]
+    if not encoded:
+        return []
+    hits: list[str] = []
+    for path in sorted(p for p in workspace.rglob("*") if p.is_file()):
+        rel = path.relative_to(workspace)
+        if ".git" in rel.parts:
+            continue
+        try:
+            data = path.read_bytes()
+        except OSError:
+            continue
+        if any(secret in data for secret in encoded):
+            hits.append(rel.as_posix())
+    return hits
+
+
+def build_real_command(
+    agent: str,
+    spec: dict[str, Any],
+    prompt: str,
+    *,
+    model: str | None,
+    max_turns: int,
+    max_budget_usd: float | None,
+) -> list[str]:
+    binary = str(spec["binary"])
+    if agent == "codex":
+        command = [
+            binary,
+            "exec",
+            "--ephemeral",
+            "--ignore-user-config",
+            "--ignore-rules",
+            "--sandbox",
+            "workspace-write",
+            "--ask-for-approval",
+            "never",
+        ]
+        if model:
+            command.extend(["--model", model])
+        command.append(prompt)
+        return command
+
+    if agent == "claude-code":
+        command = [
+            binary,
+            "-p",
+            "--output-format",
+            "json",
+            "--permission-mode",
+            "acceptEdits",
+            "--max-turns",
+            str(max_turns),
+            "--allowedTools",
+            "Read,Edit,Write,Glob,Grep",
+            "--disallowedTools",
+            "Bash,WebFetch,WebSearch",
+        ]
+        if max_budget_usd is not None:
+            command.extend(["--max-budget-usd", str(max_budget_usd)])
+        if model:
+            command.extend(["--model", model])
+        command.append(prompt)
+        return command
+
+    raise RuntimeError(f"unsupported delivery benchmark adapter: {agent}")
+
+
+def real_executor(
+    agent: str,
+    *,
+    model: str | None,
+    max_turns: int,
+    max_budget_usd: float | None,
+) -> Executor:
+    spec = load_agent(agent)
+    credentials = auth_values(spec)
+    secret_values = list(credentials.values())
+
+    def execute(
+        workspace: Path,
+        prompt: str,
+        arm: str,
+        scenario: dict[str, Any],
+        timeout: int,
+        env: dict[str, str],
+    ) -> dict[str, Any]:
+        process_env = dict(env)
+        process_env.update(credentials)
+        if agent == "claude-code":
+            process_env.setdefault("CLAUDE_CODE_AUTO_CONNECT_IDE", "false")
+            process_env.setdefault("DISABLE_AUTOUPDATER", "1")
+            process_env.setdefault("MCP_CONNECTION_NONBLOCKING", "true")
+
+        command = build_real_command(
+            agent,
+            spec,
+            prompt,
+            model=model,
+            max_turns=max_turns,
+            max_budget_usd=max_budget_usd,
+        )
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=workspace,
+                env=process_env,
+                text=True,
+                capture_output=True,
+                timeout=timeout,
+            )
+            timed_out = False
+        except subprocess.TimeoutExpired as exc:
+            completed = subprocess.CompletedProcess(
+                command,
+                124,
+                exc.stdout or "",
+                exc.stderr or f"delivery benchmark timed out after {timeout}s",
+            )
+            timed_out = True
+
+        stdout = redact_text(completed.stdout or "", secret_values)
+        stderr = redact_text(completed.stderr or "", secret_values)
+        usage: dict[str, Any] = {}
+        resolved_model = model
+        if agent == "claude-code" and stdout.strip():
+            try:
+                outer = json.loads(stdout)
+                if isinstance(outer, dict):
+                    for source, target in (
+                        ("total_cost_usd", "total_cost_usd"),
+                        ("num_turns", "turns"),
+                        ("duration_api_ms", "duration_api_ms"),
+                    ):
+                        if source in outer:
+                            usage[target] = outer[source]
+                    if not resolved_model and outer.get("model"):
+                        resolved_model = str(outer["model"])
+            except Exception:
+                pass
+
+        leak_hits = workspace_secret_hits(workspace, secret_values)
+        return {
+            "exit_code": completed.returncode,
+            "stdout": stdout,
+            "stderr": stderr,
+            "timed_out": timed_out,
+            "agent_version": cli_version(spec, process_env),
+            "model": resolved_model,
+            "executor_id": f"real-{agent}",
+            "usage": usage,
+            "security_failures": (
+                ["credential_value_written_to_workspace:" + ",".join(leak_hits)]
+                if leak_hits else []
+            ),
+        }
+
+    return execute
+
+
+def selected_scenarios(
+    catalog: dict[str, Any],
+    requested: list[str],
+) -> list[dict[str, Any]]:
+    scenarios = list(catalog.get("scenarios") or [])
+    if not requested or "all" in requested:
+        return scenarios
+    mapping = {str(row["id"]): row for row in scenarios}
+    missing = [value for value in requested if value not in mapping]
+    if missing:
+        raise RuntimeError("unknown delivery scenarios: " + ", ".join(missing))
+    return [mapping[value] for value in requested]
+
+
 def validate_grader_output(raw: Any) -> tuple[dict[str, Any], list[str]]:
     if not isinstance(raw, dict):
         return {"checks": [], "metrics": {}}, ["grader output must be a JSON object"]
@@ -429,7 +672,22 @@ def run_one(
         )
         prompt = build_prompt(scenario, arm=arm, skill_dir=info["skill_dir"])
         env = sanitized_env(base)
-        raw = executor(workspace, prompt, arm, scenario, timeout, env)
+        try:
+            raw = executor(workspace, prompt, arm, scenario, timeout, env)
+        except Exception as exc:
+            raw = {
+                "exit_code": 125,
+                "stdout": "",
+                "stderr": f"{type(exc).__name__}: {exc}",
+                "timed_out": False,
+                "agent_version": None,
+                "model": model,
+                "executor_id": "executor-error",
+                "usage": {},
+                "security_failures": [
+                    f"executor_internal_error:{type(exc).__name__}:{exc}"
+                ],
+            }
         if not isinstance(raw, dict):
             raise RuntimeError("executor must return an object")
         exit_code = raw.get("exit_code")
@@ -463,6 +721,11 @@ def run_one(
         )
 
         failures = list(grader["failures"])
+        failures.extend(
+            str(value)
+            for value in raw.get("security_failures", [])
+            if str(value).strip()
+        )
         if exit_code != 0:
             failures.append(f"executor_exit_code:{exit_code}")
         if forbidden:
@@ -644,6 +907,24 @@ def main() -> int:
     sub = ap.add_subparsers(dest="command", required=True)
     sub.add_parser("validate").add_argument("--json", action="store_true")
     sub.add_parser("self-test").add_argument("--json", action="store_true")
+
+    pre = sub.add_parser("preflight")
+    pre.add_argument("--agent", choices=["codex", "claude-code"], required=True)
+    pre.add_argument("--require-env-auth", action="store_true")
+    pre.add_argument("--json", action="store_true")
+
+    run_cmd = sub.add_parser("run")
+    run_cmd.add_argument("--agent", choices=["codex", "claude-code"], required=True)
+    run_cmd.add_argument("--scenario", action="append", default=[])
+    run_cmd.add_argument("--arm", choices=["control", "treatment", "all"], default="all")
+    run_cmd.add_argument("--results-dir", required=True)
+    run_cmd.add_argument("--model")
+    run_cmd.add_argument("--timeout", type=int, default=600)
+    run_cmd.add_argument("--grader-timeout", type=int, default=120)
+    run_cmd.add_argument("--max-turns", type=int, default=8)
+    run_cmd.add_argument("--max-budget-usd", type=float)
+    run_cmd.add_argument("--require-env-auth", action="store_true")
+    run_cmd.add_argument("--json", action="store_true")
     ns = ap.parse_args()
 
     if ns.command == "validate":
@@ -655,9 +936,70 @@ def main() -> int:
             "failures": failures,
         }
         exit_code = 2 if failures else 0
-    else:
+    elif ns.command == "self-test":
         result = self_test()
         exit_code = 0 if result.get("passed") else 2
+    elif ns.command == "preflight":
+        result = preflight(ns.agent, ns.require_env_auth)
+        exit_code = 0 if result["ready"] else 2
+    else:
+        readiness = preflight(ns.agent, ns.require_env_auth)
+        if not readiness["ready"]:
+            print(json.dumps(readiness, indent=2, ensure_ascii=False))
+            return 2
+
+        catalog = load_json(CATALOG_PATH)
+        failures = validate_catalog(catalog)
+        if failures:
+            print(json.dumps({"gate": "BLOCK", "failures": failures}, indent=2))
+            return 2
+
+        scenarios = selected_scenarios(catalog, ns.scenario)
+        arms = ["control", "treatment"] if ns.arm == "all" else [ns.arm]
+        executor = real_executor(
+            ns.agent,
+            model=ns.model,
+            max_turns=ns.max_turns,
+            max_budget_usd=ns.max_budget_usd,
+        )
+        result_root = Path(ns.results_dir) / ns.agent
+        rows: list[dict[str, Any]] = []
+        for scenario in scenarios:
+            repetitions = int(
+                scenario.get(
+                    "repetitions",
+                    catalog.get("default_repetitions", 1),
+                )
+            )
+            for arm in arms:
+                for repetition in range(1, repetitions + 1):
+                    rows.append(
+                        run_one(
+                            agent=ns.agent,
+                            scenario=scenario,
+                            arm=arm,
+                            repetition=repetition,
+                            result_dir=result_root,
+                            executor=executor,
+                            model=ns.model,
+                            timeout=ns.timeout,
+                            grader_timeout=ns.grader_timeout,
+                        )
+                    )
+
+        result = {
+            "agent": ns.agent,
+            "scenario_count": len(scenarios),
+            "run_count": len(rows),
+            "successful_deliveries": sum(
+                row["grader"]["delivery_success"] is True for row in rows
+            ),
+            "failed_deliveries": sum(
+                row["grader"]["delivery_success"] is not True for row in rows
+            ),
+            "results_dir": str(result_root),
+        }
+        exit_code = 0
 
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return exit_code
