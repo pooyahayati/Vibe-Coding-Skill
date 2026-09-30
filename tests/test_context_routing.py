@@ -632,6 +632,24 @@ class ContextRouterTests(unittest.TestCase):
             metrics["estimated_skill_context_bytes"],
         )
 
+    def test_root_agents_does_not_suppress_standard_readme_context(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "AGENTS.md", "# Agent Rules\n")
+            write(root, "README.md", "# Project Overview\n")
+            write(root, "src/app.py", "VALUE = 1\n")
+
+            result = self.router.plan(
+                root,
+                "Add a contained report export feature",
+                ["src/app.py"],
+            )
+
+        load = result["context_plan"]["load"]
+        self.assertIn("AGENTS.md", load)
+        self.assertIn("README.md", load)
+
     def test_local_agents_only_loads_for_affected_subtree(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
