@@ -10,7 +10,11 @@ Use:
 python scripts/risk_classifier.py "Change authentication from sessions to JWTs" --json
 ```
 
-It must not replace engineering judgment. Context may raise a tier; automated classification should not silently lower an explicitly recognized risk.
+It must not replace engineering judgment. The classifier first derives structured risk facts such as operation type, environment, data sensitivity, and change boundary; keyword matches are supplemental evidence rather than the sole decision mechanism. Callers may also provide verified facts explicitly with `--facts-json`.
+
+If wording cannot be interpreted confidently, the result exposes uncertainty instead of treating the absence of a keyword as proof of low risk. Context may raise a tier; automated classification must not silently lower an explicitly recognized risk.
+
+Tier policy is generated from one shared source of truth. When the Context Router raises the workflow floor, it must rebuild the full final-tier policy so controls, approval requirements, reasons, and the reported tier cannot drift apart.
 
 ## Dependency adapters
 
