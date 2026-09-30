@@ -2,7 +2,7 @@
 
 [![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
 [![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-0.10.6-blue)
+![Version](https://img.shields.io/badge/version-0.10.7-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A risk-adaptive Agent Skill for turning AI-assisted **vibe coding** into controlled, evidence-based software engineering.
@@ -18,7 +18,7 @@ Designed for **OpenAI Codex**, **Claude Code**, and other Agent Skills-compatibl
 - **Full technical changelog:** [CHANGELOG.md](CHANGELOG.md)
 - **Skill operating instructions:** [SKILL.md](SKILL.md)
 
-Current version: `0.10.6`
+Current version: `0.10.7`
 
 ## What it does
 
