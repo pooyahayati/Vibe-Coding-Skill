@@ -534,7 +534,11 @@ def plan(
     risk = dict(risk)
     if effective_tier > int(risk["tier"]):
         base_tier = int(risk["tier"])
-        base_reasons = list(risk.get("reasons") or [])
+        base_reasons = [
+            reason
+            for reason in list(risk.get("reasons") or [])
+            if reason != "standard change with no higher-risk fact detected"
+        ]
         policy = risk_module.policy_for_tier(effective_tier)
         risk.update(policy)
         risk["router_floor_from"] = base_tier
