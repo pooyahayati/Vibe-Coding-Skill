@@ -61,9 +61,13 @@ Large-project context reduction means selective reading, not loss of project int
 
 Clarify only what is necessary: problem, primary user, core outcome, core workflow, MVP boundary, critical constraints, and observable success criteria.
 
-Estimate expected project complexity from the problem, integrations, deployment boundaries, data ownership, and known growth needs—not from an empty directory. Choose the simplest viable stack and prove one runnable vertical slice early.
+Estimate expected project complexity from the problem, integrations, deployment boundaries, data ownership, and known growth needs—not from an empty directory.
 
-Read `references/operating-model.md` for discovery and architecture decisions.
+Before implementation, summarize the deliverable, recommended approach and why, first visible result, and acceptance condition. Prefer an existing capability/stack when it is adequate. When a material technology choice remains, compare at most 2–3 realistic options, verify decision-critical support/version facts, choose one, and state why the nearest alternative was rejected.
+
+Do not ask the user for inferable implementation details. Prove one runnable vertical slice early.
+
+Read `references/operating-model.md` for discovery, technology selection, architecture, and stage interaction decisions.
 
 ## Risk and controls
 
