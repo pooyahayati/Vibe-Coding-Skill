@@ -34,6 +34,12 @@ PROJECT_DOCS = [
     "ROADMAP.md",
     "README.md",
 ]
+MONOREPO_CONTAINERS = {"apps", "packages", "services", "plugins", "themes"}
+WORDPRESS_SCOPED_CONTAINERS = {
+    ("wp-content", "plugins"),
+    ("wp-content", "themes"),
+    ("wp-content", "mu-plugins"),
+}
 
 
 def load_config() -> dict[str, Any]:
@@ -86,6 +92,55 @@ def project_files(root: Path) -> list[str]:
     return files if files else fallback_files(root)
 
 
+def normalize_rel(raw: str) -> str:
+    return raw.replace("\\", "/").lstrip("./").rstrip("/")
+
+
+def capability_area(rel: str) -> str:
+    parts = Path(normalize_rel(rel)).parts
+    if len(parts) >= 3 and tuple(parts[:2]) in WORDPRESS_SCOPED_CONTAINERS:
+        return "/".join(parts[:3])
+    if len(parts) >= 2 and parts[0] in MONOREPO_CONTAINERS:
+        return "/".join(parts[:2])
+    return "__project__"
+
+
+def scope_area(rel: str) -> str:
+    parts = Path(normalize_rel(rel)).parts
+    if not parts:
+        return "__root__"
+    if len(parts) >= 2 and parts[0] in MONOREPO_CONTAINERS:
+        return "/".join(parts[:2])
+    return parts[0] if len(parts) > 1 else "__root__"
+
+
+def scan_area(rel: str) -> str:
+    parts = Path(normalize_rel(rel)).parts
+    if not parts:
+        return "__root__"
+    if len(parts) >= 3 and tuple(parts[:2]) in WORDPRESS_SCOPED_CONTAINERS:
+        return "/".join(parts[:3])
+    if len(parts) >= 2 and parts[0] in MONOREPO_CONTAINERS:
+        return "/".join(parts[:2])
+    return parts[0] if len(parts) > 1 else "__root__"
+
+
+def scan_candidate_files(
+    files: list[str],
+    paths: list[str],
+) -> tuple[list[str], str]:
+    if not paths:
+        return files, "fallback-project-scan"
+
+    areas = {scan_area(raw) for raw in paths if normalize_rel(raw)}
+    selected = []
+    for rel in files:
+        parts = Path(rel).parts
+        if len(parts) == 1 or scan_area(rel) in areas:
+            selected.append(rel)
+    return selected, "path-scoped"
+
+
 def safe_text(path: Path, max_bytes: int = 262_144) -> str:
     try:
         if not path.is_file() or path.stat().st_size > max_bytes:
@@ -126,13 +181,49 @@ def candidate_texts(
     return result
 
 
-def touched_texts(root: Path, paths: list[str]) -> list[tuple[str, str]]:
+def touched_texts(
+    root: Path,
+    paths: list[str],
+    files: list[str],
+    limit: int = 120,
+    max_total_bytes: int = 1_048_576,
+) -> list[tuple[str, str]]:
     result: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    total = 0
     for raw in paths:
-        rel = raw.replace("\\", "/").lstrip("./")
+        rel = normalize_rel(raw)
+        if not rel:
+            continue
         path = root / rel
+        candidates: list[str] = []
         if path.exists() and path.is_file():
-            result.append((rel, safe_text(path)))
+            candidates = [rel]
+        elif path.exists() and path.is_dir():
+            prefix = rel + "/"
+            candidates = [
+                item
+                for item in files
+                if item.startswith(prefix)
+                and Path(item).suffix.lower() in TEXT_SUFFIXES
+            ]
+            candidates.sort(
+                key=lambda item: (
+                    len(Path(item).parts),
+                    0 if Path(item).suffix.lower() == ".php" else 1,
+                    item,
+                )
+            )
+        for item in candidates:
+            if item in seen or len(result) >= limit:
+                continue
+            text = safe_text(root / item, 65_536)
+            size = len(text.encode("utf-8", "ignore"))
+            if total + size > max_total_bytes:
+                return result
+            result.append((item, text))
+            seen.add(item)
+            total += size
     return result
 
 
@@ -147,16 +238,31 @@ def pack_project_evidence(
     texts: list[tuple[str, str]],
 ) -> list[str]:
     evidence: list[str] = []
-    suffixes = {Path(rel).suffix.lower() for rel in files}
 
     for name in pack.get("files", []):
+        seen_areas: set[str] = set()
         for rel in files:
-            if Path(rel).name == name:
-                evidence.append(f"file:{rel}")
+            if Path(rel).name != name:
+                continue
+            area = capability_area(rel)
+            if area in seen_areas:
+                continue
+            evidence.append(f"file:{rel}")
+            seen_areas.add(area)
+            if len(seen_areas) >= 8:
                 break
     for suffix in pack.get("extensions", []):
-        if suffix.lower() in suffixes:
-            evidence.append(f"extension:{suffix}")
+        seen_areas: set[str] = set()
+        for rel in files:
+            if Path(rel).suffix.lower() != suffix.lower():
+                continue
+            area = capability_area(rel)
+            if area in seen_areas:
+                continue
+            evidence.append(f"extension:{suffix}@{rel}")
+            seen_areas.add(area)
+            if len(seen_areas) >= 8:
+                break
     markers = pack.get("project_markers", [])
     if markers:
         for rel, text in texts:
@@ -257,19 +363,17 @@ def project_complexity(
     }
 
 
-def evidence_location_roots(evidence: list[str]) -> set[str]:
-    roots: set[str] = set()
+def evidence_location_areas(evidence: list[str]) -> set[str]:
+    areas: set[str] = set()
     for item in evidence:
         rel = ""
-        if item.startswith("marker:") and "@" in item:
-            rel = item.rsplit("@", 1)[1]
-        elif item.startswith("file:"):
+        if item.startswith("file:"):
             rel = item.split(":", 1)[1]
-        if not rel:
-            continue
-        parts = Path(rel).parts
-        roots.add(parts[0] if len(parts) > 1 else "__root__")
-    return roots
+        elif item.startswith(("marker:", "extension:")) and "@" in item:
+            rel = item.rsplit("@", 1)[1]
+        if rel:
+            areas.add(capability_area(rel))
+    return areas
 
 
 def task_path_roots(paths: list[str]) -> set[str]:
@@ -283,6 +387,22 @@ def task_path_roots(paths: list[str]) -> set[str]:
     return roots
 
 
+def task_scope_areas(paths: list[str]) -> set[str]:
+    return {
+        scope_area(raw)
+        for raw in paths
+        if normalize_rel(raw)
+    }
+
+
+def task_capability_areas(paths: list[str]) -> set[str]:
+    return {
+        capability_area(raw)
+        for raw in paths
+        if normalize_rel(raw)
+    }
+
+
 def change_scope(paths: list[str], risk: dict[str, Any]) -> dict[str, Any]:
     normalized_paths = list(
         dict.fromkeys(
@@ -292,6 +412,7 @@ def change_scope(paths: list[str], risk: dict[str, Any]) -> dict[str, Any]:
         )
     )
     roots = task_path_roots(normalized_paths)
+    areas = task_scope_areas(normalized_paths)
     matched = {str(value) for value in risk.get("matched_rules", [])}
     structured = risk.get("structured_facts") or {}
     boundary = str(structured.get("change_boundary") or "").strip().lower()
@@ -304,9 +425,9 @@ def change_scope(paths: list[str], risk: dict[str, Any]) -> dict[str, Any]:
     ):
         level = "cross-boundary"
         reasons.append("explicit cross-module/system impact")
-    elif len(roots) > 1:
+    elif len(areas) > 1:
         level = "cross-boundary"
-        reasons.append("affected paths span multiple top-level roots")
+        reasons.append("affected paths span multiple project areas")
     elif not normalized_paths:
         level = "unknown"
         reasons.append("affected paths are not known yet")
@@ -322,6 +443,8 @@ def change_scope(paths: list[str], risk: dict[str, Any]) -> dict[str, Any]:
         "path_count": len(normalized_paths),
         "top_level_root_count": len(roots),
         "top_level_roots": sorted(roots),
+        "project_area_count": len(areas),
+        "project_areas": sorted(areas),
         "reasons": reasons,
     }
 
@@ -338,15 +461,12 @@ def project_pack_relevant(
         return False
     if not paths:
         return True
-    if complexity_level != "large":
+    evidence_areas = evidence_location_areas(project_evidence)
+    if "__project__" in evidence_areas:
         return True
-
-    evidence_roots = evidence_location_roots(project_evidence)
-    if "__root__" in evidence_roots:
-        return True
-    if not evidence_roots:
+    if not evidence_areas:
         return False
-    return bool(evidence_roots & task_path_roots(paths))
+    return bool(evidence_areas & task_capability_areas(paths))
 
 
 def activation_requirements_met(
@@ -519,9 +639,45 @@ def extract_invariants(text: str) -> list[str]:
     return list(dict.fromkeys(values))
 
 
-def detected_project_invariants(root: Path) -> list[dict[str, str]]:
+def applicable_agent_docs(
+    root: Path,
+    files: list[str],
+    paths: list[str],
+) -> list[str]:
+    candidates = [
+        rel for rel in files if Path(rel).name == "AGENTS.md"
+    ]
+    selected: list[str] = []
+    if (root / "AGENTS.md").exists():
+        selected.append("AGENTS.md")
+    if not paths:
+        return selected
+
+    normalized_paths = [normalize_rel(raw) for raw in paths if normalize_rel(raw)]
+    for rel in candidates:
+        if rel == "AGENTS.md":
+            continue
+        parent = Path(rel).parent.as_posix()
+        if any(
+            path == parent or path.startswith(parent + "/")
+            for path in normalized_paths
+        ):
+            selected.append(rel)
+    return list(
+        dict.fromkeys(
+            sorted(selected, key=lambda rel: (len(Path(rel).parts), rel))
+        )
+    )
+
+
+def detected_project_invariants(
+    root: Path,
+    agent_docs: list[str] | None = None,
+) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
-    for name in ("AGENTS.md", "PROJECT.md", "ARCHITECTURE.md", "STATUS.md"):
+    sources = list(agent_docs or [])
+    sources.extend(["PROJECT.md", "ARCHITECTURE.md", "STATUS.md"])
+    for name in dict.fromkeys(sources):
         path = root / name
         if not path.exists():
             continue
@@ -532,11 +688,14 @@ def detected_project_invariants(root: Path) -> list[dict[str, str]]:
 
 def persistent_context(
     root: Path,
+    files: list[str],
+    paths: list[str],
     complexity: str,
     tier: int,
 ) -> list[dict[str, str]]:
     present = [name for name in PROJECT_DOCS if (root / name).exists()]
-    selected: list[str] = []
+    agent_docs = applicable_agent_docs(root, files, paths)
+    selected: list[str] = list(agent_docs)
     if complexity in {"medium", "large"} or tier >= 2:
         for name in ("STATUS.md", "PROJECT.md"):
             if name in present:
@@ -552,15 +711,31 @@ def persistent_context(
     return [
         {
             "path": name,
-            "mode": "relevant-sections",
+            "mode": "full" if Path(name).name == "AGENTS.md" else "relevant-sections",
             "reason": (
-                "project invariant/current-state source"
-                if name in {"AGENTS.md", "STATUS.md", "PROJECT.md"}
-                else "architecture/impact source"
+                "applicable agent instructions"
+                if Path(name).name == "AGENTS.md"
+                else (
+                    "project invariant/current-state source"
+                    if Path(name).name in {"STATUS.md", "PROJECT.md"}
+                    else "architecture/impact source"
+                )
             ),
         }
         for name in dict.fromkeys(selected)
     ]
+
+
+def project_file_bytes(root: Path, paths: list[str]) -> int:
+    total = 0
+    for rel in paths:
+        path = root / rel
+        try:
+            if path.is_file():
+                total += path.stat().st_size
+        except OSError:
+            pass
+    return total
 
 
 def file_bytes(paths: list[str]) -> int:
@@ -597,8 +772,9 @@ def plan(
             "unknown capability pack(s): " + ", ".join(unknown_includes)
         )
     files = project_files(root)
-    texts = candidate_texts(root, files)
-    touched = touched_texts(root, paths)
+    scan_files, scan_strategy = scan_candidate_files(files, paths)
+    texts = candidate_texts(root, scan_files)
+    touched = touched_texts(root, paths, files)
 
     project_ev: dict[str, list[str]] = {}
     task_ev: dict[str, list[str]] = {}
@@ -644,7 +820,8 @@ def plan(
             )
         )
 
-    detected_invariants = detected_project_invariants(root)
+    agent_docs = applicable_agent_docs(root, files, paths)
+    detected_invariants = detected_project_invariants(root, agent_docs)
     core_mode = selected_core_mode(int(risk["tier"]))
     core_refs = list(config["core_context"][core_mode])
     if (
@@ -685,6 +862,8 @@ def plan(
 
     persistent = persistent_context(
         root,
+        files,
+        paths,
         str(complexity["level"]),
         int(risk["tier"]),
     )
@@ -700,6 +879,13 @@ def plan(
         pack["path"] for pack in config["packs"].values()
     ]
     skipped = sorted(set(all_pack_paths) - set(pack_paths))
+    selected_reference_bytes = file_bytes(core_refs)
+    selected_pack_bytes = file_bytes(pack_paths)
+    persistent_context_upper_bound_bytes = project_file_bytes(
+        root,
+        [entry["path"] for entry in persistent],
+    )
+    skill_core_bytes = file_bytes(["SKILL.md"])
 
     return {
         "schema_version": 1,
@@ -746,8 +932,24 @@ def plan(
                 "references_selected": len(core_refs),
                 "persistent_sources": len(persistent),
                 "context_files_selected": len(load_paths),
-                "estimated_skill_context_bytes": file_bytes(
-                    core_refs + pack_paths
+                "estimated_skill_context_bytes": (
+                    selected_reference_bytes + selected_pack_bytes
+                ),
+                "skill_core_bytes": skill_core_bytes,
+                "selected_reference_bytes": selected_reference_bytes,
+                "selected_pack_bytes": selected_pack_bytes,
+                "persistent_context_upper_bound_bytes": (
+                    persistent_context_upper_bound_bytes
+                ),
+                "estimated_context_upper_bound_bytes": (
+                    skill_core_bytes
+                    + selected_reference_bytes
+                    + selected_pack_bytes
+                    + persistent_context_upper_bound_bytes
+                ),
+                "scan_strategy": scan_strategy,
+                "scan_areas": sorted(
+                    {scan_area(raw) for raw in paths if normalize_rel(raw)}
                 ),
                 "integration_points": len(set(integrations)),
                 "project_files_considered": len(files),
