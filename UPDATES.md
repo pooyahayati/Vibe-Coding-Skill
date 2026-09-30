@@ -4,6 +4,11 @@ A short, human-readable summary of what changed in each release.
 
 For full technical details, see [CHANGELOG.md](CHANGELOG.md).
 
+## 0.10.5 — Smarter context locality in large projects
+- Mixed and monorepo projects now keep platform rules local to the application or package actually being changed, reducing irrelevant WordPress/WooCommerce context in neighboring services.
+- Known affected paths now use bounded local scanning, including directory paths, while cross-application changes are recognized as real planning boundaries.
+- Applicable `AGENTS.md` instructions and clearer context-size metrics make selective context safer and easier to audit.
+
 ## 0.10.4 — More reliable release automation
 - Release creation now handles GitHub Actions' short-lived workflow-status lag without skipping an otherwise complete validated release.
 - Live dependency checks now treat unavailable optional GitHub source-health as an explicit review state instead of a false pass or a flaky hard failure.
