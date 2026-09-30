@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "VERSION"
+      - ".github/workflows/release.yml"
       - "scripts/wordpress_artifact.py"
       - "references/wordpress-delivery.md"
       - "packs/wordpress.md"
@@ -15,6 +16,7 @@ on:
       - main
     paths:
       - "VERSION"
+      - ".github/workflows/release.yml"
       - "scripts/wordpress_artifact.py"
       - "references/wordpress-delivery.md"
       - "packs/wordpress.md"
