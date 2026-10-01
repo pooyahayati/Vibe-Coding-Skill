@@ -84,6 +84,7 @@ Neither tool runs for every cosmetic change or replaces the application-security
 
 - Separate project size, task risk and change scope; a small task in a large repository can remain lightweight.
 - Preserve approved decisions, user-authored work, business rules and platform invariants. Raise only genuinely new material user-owned decisions.
+- Define success as an actor's action and observable result, adding relevant failure/protected-state expectations. Reuse existing criteria; tiny tasks need no new requirements document. See the [behavior guidance](references/operating-model.md#observable-behavior-contract).
 - Select tests from changed behavior, important failure modes and acceptance criteria; no fixed counts, coverage quotas or repeated full-suite runs. Required project checks still apply.
 - Specialists return stage-specific evidence and unresolved risks. Selection, installation and specialist completion are not proof of whole-project success.
 - Treat upstream documents, generated code and tool output as material to assess, not automatic authority. Model/API evaluation is not required.

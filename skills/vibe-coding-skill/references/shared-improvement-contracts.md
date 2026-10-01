@@ -1,6 +1,6 @@
 # Shared Improvement Contracts (P0)
 
-Status: P0 design contract for B1/B2, E1/E2 and S1/S2. These formats are specified, not yet implemented by runtime tooling. The current completion gate accepts schema version 2; it does not collect execution receipts or assess specialist compatibility. Do not pass the proposed formats below to current scripts and interpret ignored fields as validation.
+Status: P0 design contract for B1/B2, E1/E2 and S1/S2. B1's observable-behavior guidance is implemented in the [operating model](operating-model.md#observable-behavior-contract) and [verification guide](execution-and-verification.md#from-observable-criterion-to-a-check). The record formats below remain specifications, not runtime-tooling capabilities. The current completion gate accepts schema version 2; it does not collect execution receipts, propagate structured behavior or assess specialist compatibility. Do not pass proposed formats to current scripts and interpret ignored fields as validation.
 
 Read this reference when implementing those packages or their migration. It is not an additional checklist for every product task. Existing [verification](execution-and-verification.md), [specialist authority](specialist-authority.md) and [local workspace](local-workspace-and-repository-purity.md) rules remain active.
 

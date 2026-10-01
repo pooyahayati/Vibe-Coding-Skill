@@ -112,6 +112,8 @@ Within the skill hierarchy, Head controls override specialist defaults. System/d
 
 ## Planning and coordination
 
+During Define, reuse existing criteria and state the actor's action and observable result, adding only material failure/protected-state expectations. A tiny task can use one short statement; read the behavior-contract section in `references/operating-model.md` for examples and conditional persistence.
+
 A new execution plan is REQUIRED when:
 
 - final risk is Tier 2 or Tier 3; or

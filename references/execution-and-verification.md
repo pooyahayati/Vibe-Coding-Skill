@@ -6,6 +6,8 @@ For a new application, prove the narrowest useful end-to-end path early:
 
 `App → Infrastructure → Data Store → Core Request → Persist → Read → Response/UI`
 
+Choose this slice from the agreed [observable behavior contract](operating-model.md#observable-behavior-contract): exercise the actor's action and inspect the promised result, including state preservation where relevant.
+
 Do not build broad horizontal layers before one useful vertical slice works.
 
 ## Testing policy
@@ -29,6 +31,14 @@ Use:
 An existing test is sufficient when it exercises the same behavior and would detect the same meaningful failure mode. Do not rewrite or duplicate equivalent tests merely to increase evidence volume.
 
 A new test should expose behavior or a failure mode, not mirror internal implementation structure.
+
+### From observable criterion to a check
+
+For each required outcome, identify the observable assertion and choose the cheapest check that could falsify it. Inspect existing coverage first: a passing build or unrelated test is not evidence for a save, permission or data-retention outcome. A rendered/manual check can suffice for a visual correction. A denied write requires evidence that the protected value stayed unchanged, not just an error message.
+
+Use the exact reported state/action for defects and the applicable boundary for material failures. Keep intended behavior separate from the actual result; a criterion stays unmet or unverified when its check fails or cannot run. Do not add new cases solely to populate an example, stage or risk-tier quota.
+
+In current schema-2 completion reports, keep observable required outcomes in the existing criterion `description`, with stable `id`, `required`, actual `met` and linked `evidence_ids`. Use separate criteria only for distinct required outcomes. The current gate does not validate P0's proposed `behavior` fields or propagate them into plans; extra fields cannot substitute for a clear description, retained baseline or meaningful evidence. B2/E2 will add those capabilities separately.
 
 ## Verification by change type
 
