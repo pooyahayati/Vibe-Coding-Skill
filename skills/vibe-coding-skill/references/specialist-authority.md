@@ -32,3 +32,5 @@ Use the actual project stack and platform APIs. Generic JavaScript/TypeScript ex
 Input: current stage, objective, affected surfaces/files, settled decisions, platform/runtime, protected invariants, risk floor, authorized actions, acceptance criteria, and evidence expectations.
 
 Output: domain decisions, changed surfaces, preserved constraints, evidence and its revision/environment, checks not performed, required versus optional findings, unresolved risks, and next action for Vibe. Debugging returns a reproduction, root cause or remaining hypothesis, bounded fix, and meaningful regression evidence. Specialist completion never establishes whole-project completion.
+
+The roadmap's [shared improvement contracts](shared-improvement-contracts.md) specifies future assignment/return identities and separate Head acceptance. Current installation/package validation does not implement that semantic acceptance; P0 does not change specialist authority or freshness policy.

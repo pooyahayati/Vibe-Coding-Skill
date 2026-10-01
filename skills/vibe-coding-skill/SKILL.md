@@ -155,6 +155,8 @@ Use `scripts/completion_gate.py` for structured completion reports. Failed requi
 
 If evidence is unavailable, report `Unverified` rather than complete.
 
+Maintainers implementing the roadmap's behavior, receipt or specialist-acceptance changes should read `references/shared-improvement-contracts.md`; its proposed formats are not yet runtime gate capabilities.
+
 Task completion does not automatically imply workstream or objective completion when dependencies/integration evidence remain.
 
 ## Dependencies and security
