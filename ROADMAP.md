@@ -24,7 +24,7 @@ Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](doc
 | ID | Phase | Work | Status | Implementation evidence |
 |---|---|---|---|---|
 | P0 | 0 | Shared formats, trust limits and compatibility/migration policy. | Complete | [Contract design](references/shared-improvement-contracts.md); [merged PR #62](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/62), merge `a3e58725133b282ef60cc76066493deb7d9cf0c8`. Relevant contract/package checks passed. |
-| B1 | 1 | Short observable behavior contract. | In progress | [Behavior guidance](references/operating-model.md#observable-behavior-contract), [verification mapping](references/execution-and-verification.md#from-observable-criterion-to-a-check); [review branch](https://github.com/pooyahayati/Vibe-Coding-Skill/compare/main...codex/b1-observable-behavior). Merge pending. |
+| B1 | 1 | Short observable behavior contract. | In progress | [Behavior guidance](references/operating-model.md#observable-behavior-contract), [verification mapping](references/execution-and-verification.md#from-observable-criterion-to-a-check); [PR #63](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/63). Focused structure/link/package checks passed; merge pending. |
 | B2 | 1 | Behavior/acceptance propagation into plans and handoffs. | Not started | None yet; depends on B1. |
 | E1 | 2 | Bounded execution-receipt collector. | Not started | None yet; depends on P0 and B1. |
 | E2 | 2 | Completion validation against actual receipts. | Not started | None yet; depends on B2 and E1. |
