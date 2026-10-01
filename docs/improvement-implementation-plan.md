@@ -1,6 +1,6 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: P0/B1 merged; B2 propagation prepared for review. Receipt collection/validation and specialist acceptance remain unimplemented. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
+Status: P0/B1/B2 complete with PR #64's merge; no later package has started. Receipt collection/validation and specialist acceptance remain unimplemented. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
 Baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
 
@@ -93,4 +93,4 @@ Each review unit must include its changed behavior, acceptance results, relevant
 
 ## Readiness
 
-P0/B1 are merged in PRs #62/#63; B2 is prepared for review. After B2 merge, E1 is next. Receipt collection/validation and specialist acceptance remain later packages. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.
+P0/B1 are merged in PRs #62/#63; B2's completion takes effect with PR #64's merge. Stop after B2 as requested by the user. E1 is the next planned package and remains Not started until the user requests further implementation. Receipt collection/validation and specialist acceptance remain later packages. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.
