@@ -1,16 +1,16 @@
 # Improvement Roadmap
 
-Status: P0 complete; B1 ready to start. This is the canonical improvement-progress record. The completion update in PR #62 takes effect when merged.
+Status: P0 merged; B1 behavior guidance prepared for review. This is the canonical improvement-progress record.
 Baseline: version `1.1.0`; repository main commit `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](docs/improvement-implementation-plan.md).
 
 ## Current position
 
-- **Current phase:** Phase 1; B1 observable behavior guidance is ready to start.
+- **Current phase:** Phase 1; B1 observable behavior guidance is prepared, with merge pending.
 - **Completed in this improvement cycle:** roadmap/planning and P0 shared contract design.
-- **Implementation progress:** 1 of 9 work packages complete once PR #62 is merged. This counts work packages, not software quality or test coverage.
-- **Next action:** B1 - observable behavior guidance and conditional persistence. Collection and specialist acceptance remain later packages.
-- **Blockers:** none identified for B1. P0 settles contracts; collection and new validators remain unimplemented.
+- **Implementation progress:** 1 of 9 work packages complete; B1 stays In progress until merged. This counts work packages, not software quality or test coverage.
+- **Next action:** review/merge B1, then B2 - behavior/acceptance propagation into plans and handoffs. Collection and specialist acceptance remain later packages.
+- **Blockers:** none identified. B1 supplies guidance; automatic propagation, collection and new validators remain unimplemented.
 - **Next release:** version/date not assigned; publication and installation remain separate delivery states.
 
 ## Completed baseline
@@ -23,8 +23,8 @@ Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](doc
 
 | ID | Phase | Work | Status | Implementation evidence |
 |---|---|---|---|---|
-| P0 | 0 | Shared formats, trust limits and compatibility/migration policy. | Complete | [Contract design](references/shared-improvement-contracts.md); [PR #62](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/62). Relevant contract/package checks passed; completion takes effect on merge. |
-| B1 | 1 | Short observable behavior contract. | Not started | None yet; depends on P0. |
+| P0 | 0 | Shared formats, trust limits and compatibility/migration policy. | Complete | [Contract design](references/shared-improvement-contracts.md); [merged PR #62](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/62), merge `a3e58725133b282ef60cc76066493deb7d9cf0c8`. Relevant contract/package checks passed. |
+| B1 | 1 | Short observable behavior contract. | In progress | [Behavior guidance](references/operating-model.md#observable-behavior-contract), [verification mapping](references/execution-and-verification.md#from-observable-criterion-to-a-check); [review branch](https://github.com/pooyahayati/Vibe-Coding-Skill/compare/main...codex/b1-observable-behavior). Merge pending. |
 | B2 | 1 | Behavior/acceptance propagation into plans and handoffs. | Not started | None yet; depends on B1. |
 | E1 | 2 | Bounded execution-receipt collector. | Not started | None yet; depends on P0 and B1. |
 | E2 | 2 | Completion validation against actual receipts. | Not started | None yet; depends on B2 and E1. |
@@ -60,7 +60,7 @@ The impact ranking is not the implementation order. Define behavior first so exe
 | Phase | Status | Work | Owner | Deliverable | Exit condition | Dependency |
 |---|---|---|---|---|---|---|
 | 0 | Complete | Set shared contracts and compatibility rules. | Head / maintainer. | [P0 design](references/shared-improvement-contracts.md): small behavior, receipt and specialist-return formats; policy for legacy reports and acceptance snapshots. | Minimal formats, trust limits and migration specified; relevant checks passed in PR #62. Runtime delivery remains later work. | Existing source inspection. |
-| 1 | Not started | Carry the user scenario through Define, Plan, Build and Verify. | Head; relevant specialist contributes domain detail. | Reusable behavior contract, linked acceptance IDs and a plain-language handoff. | Scope and observable expectations survive planning and handoff; no blanket extra approval. | Phase 0. |
+| 1 | In progress | Carry the user scenario through Define, Plan, Build and Verify. | Head; relevant specialist contributes domain detail. | B1 behavior guidance prepared; B2 linked acceptance IDs and handoff propagation remain pending. | Scope and observable expectations survive planning and handoff; no blanket extra approval. | Phase 0. |
 | 2 | Not started | Record real execution and validate required receipts at completion. | Head and local tooling. | Bounded evidence collector and completion integration. | Failed/missing/stale receipts and mismatched artifacts do not qualify; sufficient evidence is reused. | Phase 1. |
 | 3 | Not started | Accept specialist updates and task output against the shared contracts. | Head accepts; selected specialist supplies domain work. | Update-change assessment and stage-specific acceptance record. | Required conflicts are resolved or the affected workflow remains blocked; no standalone specialist lifecycle. | Phases 1 and 2. |
 | 4 | Not started | Integrate, document and prepare delivery. | Head / maintainer. | Focused regression evidence, synchronized portable package, installation evidence and user-facing examples. | Changed behavior passes relevant checks; documentation matches runtime and risk routes stay proportionate. | Phases 1-3. |

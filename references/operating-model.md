@@ -37,6 +37,38 @@ Classify requirements as Must, Should, Could, Later, or Rejected. Do not silentl
 
 After MVP approval, new non-essential features go to backlog unless the core outcome cannot work without them.
 
+## Observable behavior contract
+
+During Define, reuse the current requirements/acceptance criteria and express the smallest observable outcome needed to choose an implementation and a useful check:
+
+`Given <relevant starting state>, when <actor action>, then <observable result>; on <material failure>, <expected response and protected state>.`
+
+This is a thinking aid, not a required template. Omit irrelevant starting/failure clauses. The actor can be a user, API caller, background job or downstream system; do not invent a UI for backend work. One clear existing description can be sufficient. Add a separate criterion only for a distinct necessary outcome, not to fill a checklist.
+
+The Head translates intent into this contract from project evidence. Ask the user only for an unresolved material product decision, in ordinary language; infer implementation details and platform controls. Treat vague terms such as "fast", "easy" or "secure" as goals until tied to relevant observable behavior. Reuse supplied targets or existing service expectations; do not invent performance thresholds, roles, retention rules or new product features to make a criterion look precise.
+
+For a defect, preserve the reported reproduction and supplied boundary values. For changed authorization, data or integration behavior, include the relevant denial, state preservation or failure result. Do not require a success/failure pair for a copy correction or add unrelated cases merely because the repository is large. Protected existing behavior remains part of the change boundary.
+
+### Examples and the smallest useful check
+
+| Changed behavior | Observable criterion | Relevant verification |
+|---|---|---|
+| Supplied label correction | Opening the affected settings page shows the supplied label; setting behavior remains unchanged. | Inspect that rendered page; reuse a relevant existing check. Usually no new automated test. |
+| Duplicate-save defect | In the reported starting state, the reported repeated Save action creates one record and displays the saved result. | Reproduce that action and assert the stored record count/result; reuse coverage that detects the same defect. Add failure/retry cases only if the root cause or boundary warrants them. |
+| WordPress protected-setting change | A user without the required capability attempts the change: it is denied and the stored value is unchanged; an authorized user can make the intended change. | Relevant allow/deny and stored-state checks using the actual platform capability. A message alone is not proof that data stayed unchanged. |
+
+The examples illustrate how to choose evidence, not mandatory feature requirements or fixed test counts. Medium and large changes apply this reasoning to affected vertical slices and shared boundaries; project size does not require a contract for every file.
+
+### Persistence proportional to risk
+
+- For a tiny/local task, reuse a short task note or existing criterion; do not create a new project document or JSON record merely for this section.
+- Keep durable product outcomes in the project's existing requirements, issue or `PROJECT.md` when they need to survive the task. Update an existing source of truth rather than copying requirements into several documents.
+- For Tier 2/3 or scope-changing work, retain the accepted criteria before implementation using the existing [acceptance-baseline guidance](execution-and-verification.md#evidence-hierarchy). Local execution snapshots stay outside product source control. Reopen only a genuinely changed material user-owned decision.
+
+Choose the first runnable slice and its check from the agreed action/result, then proceed once scope, observable expectations and material decisions are clear. Writing the contract is not evidence that the software satisfies it. Missing access or execution remains unverified.
+
+This section implements B1's behavior guidance. B2's automatic propagation, E1/E2's receipt collection/validation and S1/S2's specialist acceptance remain separate work. [Shared improvement contracts](shared-improvement-contracts.md) defines their future record fields; users do not need to fill those records or choose a testing framework.
+
 ## Solution and technology selection
 
 Technology selection is a short decision, not a language popularity exercise.

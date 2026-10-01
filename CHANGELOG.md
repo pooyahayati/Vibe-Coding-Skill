@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Implement B1's observable-behavior guidance: reuse acceptance criteria, express actor/action/result and only material failure/protected-state expectations, keep tiny tasks inline and persist durable/high-risk decisions in existing appropriate locations. Choose checks from those outcomes; schema-2 reports use existing descriptions and evidence links until B2/E2 implement structured propagation/receipts.
+
 - Specify P0's shared behavior, receipt, specialist assignment/return and Head-acceptance contracts, trust limits and explicit completion-schema migration. Runtime collection/validation remains future work; schema 2 and release version 1.1.0 are unchanged.
 - Link the design from relevant operating references and maintain the roadmap's implementation/merge status separately from release and installation.
 

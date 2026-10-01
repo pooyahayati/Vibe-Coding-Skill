@@ -1,6 +1,6 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: P0 contract design complete on merge of PR #62; B1 ready. Runtime packages not started. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
+Status: P0 merged in PR #62; B1 behavior guidance prepared. Automatic propagation and runtime receipt/specialist validators are not implemented. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
 Baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
 
@@ -35,6 +35,8 @@ The current completion report is schema version 2. E2 will introduce completion 
 For significant/critical or scope-changing work, retain the accepted criteria before implementation using the existing acceptance-baseline mechanism. Detect meaningful criterion changes against that baseline. A checksum detects differences; it is not proof of user approval or a tamper-resistant boundary. Use host/writer controls when independent protection is required. Reopen only a material user-owned decision, once, with a concrete option.
 
 ## Phase 1: behavior before broad implementation
+
+B1's guidance is implemented in the [observable behavior contract](../references/operating-model.md#observable-behavior-contract) and [criterion-to-check mapping](../references/execution-and-verification.md#from-observable-criterion-to-a-check). It reuses current acceptance descriptions and conditional persistence; the P0 JSON formats remain design specifications. B2 will carry structured fields/IDs into plan/state/handoff tooling and is not part of B1.
 
 Extend existing discovery/acceptance guidance rather than create a second lifecycle. Write the smallest scenario that lets the user and Head recognize success. Translate it into the first runnable slice and verification target. Preserve the scenario when passing work to a specialist.
 
@@ -91,4 +93,4 @@ Each review unit must include its changed behavior, acceptance results, relevant
 
 ## Readiness
 
-Planning artifacts and the P0 contract design are linked and verified in PR #62. Runtime implementation has not started. Publishing the design does not implement the planned collector/validators or create a new release/installation. Next is B1 observable behavior guidance, then B2 propagation; later packages consume the shared contract. Update the canonical roadmap at meaningful progress changes.
+P0 is merged in PR #62 and B1's behavior guidance is prepared for review. Structured propagation, receipt collection/validation and specialist acceptance remain later packages. No new release/installation follows from these instruction changes. After B1 merge, begin B2 propagation; later packages consume the shared contract. Update the canonical roadmap at meaningful progress changes.
