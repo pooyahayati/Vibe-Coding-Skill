@@ -12,6 +12,8 @@ Graphify, Trivy, and GitHub CLI are optional and only required for their respect
 
 ## Offline installation check
 
+For managed non-Git installations, use `scripts/specialist_manager.py prepare --task "<task>" --project-root <project> --apply --json` before new work. It verifies the current Head and required specialists, preserves backups/local edits, and records provenance outside product source. Read `references/specialist-composition.md`; Head changes require reload before delegation. Existing Git lifecycle commands remain available for explicit checkout maintenance and rollback, but an older checkout is not proof of upstream currency.
+
 Run:
 
 ```bash

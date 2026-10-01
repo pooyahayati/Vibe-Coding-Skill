@@ -1,102 +1,43 @@
 # Vibe Coding Skill
 
-[![Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/validate-skill.yml)
-[![Graphify Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml/badge.svg)](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/workflows/graphify-compat.yml)
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-
-A risk-adaptive Agent Skill for turning AI-assisted **vibe coding** into controlled, evidence-based software engineering.
-
-Designed for **OpenAI Codex**, **Claude Code**, and other Agent Skills-compatible tools.
-
-> Use the minimum process required by the current risk.
-
-## Start here
-
-- **Install:** [HOW_TO_INSTALL.md](HOW_TO_INSTALL.md)
-- **What changed in each version:** [UPDATES.md](UPDATES.md)
-- **Full technical changelog:** [CHANGELOG.md](CHANGELOG.md)
-- **Skill operating instructions:** [SKILL.md](SKILL.md)
+An engineering skill for reliable AI-assisted development of small, medium, and large software projects, including WordPress plugins. Works with OpenAI Codex, Claude Code, and compatible skill-based agents.
 
 Current version: `1.0.0`
 
-## What it does
+## Start
 
-- adapts workflow depth to task risk;
-- keeps large-project context focused instead of loading everything;
-- preserves architecture, dependency, integration, and project-intelligence awareness;
-- plans significant work before implementation;
-- verifies dependencies and security-sensitive changes;
-- requires evidence before declaring work complete;
-- keeps generated graph, scan, benchmark, cache, and agent state outside product repositories;
-- supports recovery, handoff, Git/GitHub traceability, and controlled multi-agent work.
-
-## Workflow levels
-
-| Tier | Typical work | Process |
-|---|---|---|
-| 0 — Tiny | copy, isolated fix | Understand → Change → Focused Check |
-| 1 — Standard | normal feature | Objective → Impact → Implement → Test → Review |
-| 2 — Significant | auth, schema, multi-module, integration | Spec → Impact → Plan → Implement → Review → Regression/Security |
-| 3 — Critical | destructive, sensitive, production-critical | Tier 2 + approvals + rollback/recovery + stronger evidence |
-
-## Large and mixed projects
-
-The `Context Router` keeps **project complexity**, **task risk**, and **change scope** separate and loads only the minimum relevant capability packs.
-
-Current packs cover:
-
-`PHP` · `WordPress` · `WooCommerce` · browser JavaScript · WordPress REST · external HTTP · payments · web security · web performance
-
-Large repositories retain project intelligence even when a local low-risk task stays lightweight. A new execution plan is driven by Tier 2/3 risk or demonstrated cross-boundary scope—not repository size alone.
-
-## Tooling
-
-Core requirement: `Git`.
-
-Recommended when relevant:
-
-- `Graphify` — project/code graph and impact analysis
-- `Trivy` — vulnerabilities, secrets, containers, IaC, and licenses
-
-Managed tools use a **latest-compatible-stable** policy:
+Install the skill outside your product repository using [the installation guide](HOW_TO_INSTALL.md), then ask your agent:
 
 ```text
-Latest Stable Published
-→ Compatibility Contract
-→ Exact Runtime Version
-→ Use
+Use $vibe-coding-skill to inspect and build this project.
 ```
 
-If the newest stable version fails compatibility checks, the Skill falls back to a verified last-known-good version.
+Vibe inspects the existing system, chooses a suitable approach, implements a small working slice, and verifies the outcome. Workflow depth follows the task's risk and affected boundaries; project size alone does not force extra planning or testing.
 
-## Clean repository policy
+## Engineering controls
 
-Product repositories contain product code, real tests, migrations, manifests, lock files, and meaningful project documentation.
+- Reuse the existing stack and the simplest architecture that meets the requirements.
+- Load relevant context, preserve project constraints, and plan significant changes.
+- Choose tests from changed behavior and material failure modes; no fixed test or coverage quota.
+- Require actual evidence before completion, with recovery and approval controls where risk warrants them.
+- Keep generated graphs, scans, caches, and agent state outside product source control.
 
-Generated Vibe/Graphify/Trivy/coverage/benchmark/cache/agent-state artifacts stay local under:
+## UI/UX specialist — unreleased
 
-```text
-~/.vibe-coding/projects/<project-id>/
-```
+Vibe remains the project manager and senior engineering Head. The sole design specialist is [UI-UX-Skill](https://github.com/pooyahayati/UI-UX-Skill), which owns UI/UX methods and product routing for supported websites, apps, dashboards, WordPress settings, and other interfaces. Vibe retains scope, architecture, risk, integration, and final acceptance.
+
+For affected UI, the agent must load and use the specialist in Head-delegated mode. The new preflight checks the latest stable Head and required specialists, installs/updates within authorization, and reconciles installed registered skills daily during active tasks. It preserves local edits and records provenance without fixed specialist version pins. See [the composition contract](references/specialist-composition.md).
+
+This functionality is not included in the published `1.0.0` release. Idle update checks require a host scheduler.
+
+## Requirements
+
+Python 3.10+ and Git. Graphify supports impact analysis; Trivy supports security scanning. These tools are optional and used when relevant. Latest-source and dependency checks need network access.
 
 ## Documentation
 
-- [Installation and lifecycle](HOW_TO_INSTALL.md)
-- [Human-readable update catalog](UPDATES.md)
+- [Operating instructions](SKILL.md)
+- [Version updates](UPDATES.md)
 - [Technical changelog](CHANGELOG.md)
-- [Context routing and execution](references/context-routing-and-execution.md)
-- [Project intelligence](references/project-intelligence.md)
-- [Security and dependencies](references/security-and-dependencies.md)
-- [Validation and release checks](references/validation-and-benchmarking.md)
-- [Toolchain version resolution](references/toolchain-version-resolution.md)
 
-## License
-
-`MIT`
-
-## Author
-
-**Pooya Hayati | پویا حیاتی**
-
-https://Pooyahayati.com
+MIT · [Pooya Hayati](https://Pooyahayati.com)

@@ -25,6 +25,7 @@ RUNTIME_SCRIPTS = [
     "risk_classifier.py",
     "integration_guard.py",
     "context_router.py",
+    "specialist_manager.py",
     "execution_plan.py",
     "completion_gate.py",
     "release_readiness.py",
@@ -63,9 +64,11 @@ REQUIRED_REFS = [
     "context-routing-and-execution.md",
     "toolchain-version-resolution.md",
     "wordpress-delivery.md",
+    "specialist-composition.md",
 ]
 
 REQUIRED_RUNTIME_FILES = [
+    "config/specialists.json",
     "config/toolchain.json",
     "config/context-routing.json",
     "evals/scenarios.json",
@@ -91,6 +94,7 @@ REQUIRED_RUNTIME_FILES = [
 ]
 
 JSON_RUNTIME_FILES = [
+    "config/specialists.json",
     "config/toolchain.json",
     "config/context-routing.json",
     "evals/scenarios.json",

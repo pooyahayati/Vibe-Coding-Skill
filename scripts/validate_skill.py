@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "SKILL.md"
 REQUIRED_REFS = [
+    "references/specialist-composition.md",
     "references/operating-model.md",
     "references/risk-and-autonomy.md",
     "references/project-intelligence.md",
@@ -28,6 +29,7 @@ REQUIRED_REFS = [
     "references/context-routing-and-execution.md",
 ]
 REQUIRED_SCRIPTS = [
+    "specialist_manager.py",
     "doctor.py",
     "change_budget.py",
     "graphify_compat.py",
@@ -379,6 +381,9 @@ def main() -> int:
         if not path.exists():
             fail(f"missing script: scripts/{script}")
         compile(path.read_text(encoding="utf-8"), str(path), "exec")
+
+    import specialist_manager
+    specialist_manager.registry()
 
     print("Vibe Coding Skill validation passed.")
     return 0

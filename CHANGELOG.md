@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Specialist composition
+
+- Keep Vibe as the engineering Head and require the sole UI/UX specialist, `pooyahayati/UI-UX-Skill`, for affected product interfaces across app, website, dashboard, and WordPress settings work.
+- Add offline specialist selection to context plans and a scoped, latest-source resolver/installer with daily inventory, provenance, protected local edits, atomic replacement/rollback, and Head reload handling.
+- Keep specialist methods in the specialist; preserve Head scope, architecture, risk, acceptance, and final delivery controls. No fixed specialist revisions or model evaluations.
+
 ## 1.0.0 — Reviewed release and software-based publication checks
 
 - Remove model-evaluation requirements and automatic credentialed workflows from publication. Stable releases retain the complete same-commit software validation baseline.
