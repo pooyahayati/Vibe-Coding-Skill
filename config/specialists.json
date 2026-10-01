@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "version_strategy": "latest-stable-release-or-default-branch",
+    "allow_version_pins": false,
+    "head_precedence": true,
+    "inventory_interval_hours": 24
+  },
+  "head": {
+    "id": "vibe-coding-skill",
+    "skill_name": "vibe-coding-skill",
+    "repository": "pooyahayati/Vibe-Coding-Skill",
+    "skill_path": "skills/vibe-coding-skill"
+  },
+  "primary_ui_specialist": "ui-ux-skill",
+  "ui_concerns": ["ui", "ux", "accessibility", "responsive", "rtl", "design"],
+  "ui_extensions": [".css", ".scss", ".html", ".jsx", ".tsx", ".vue", ".svelte", ".dart", ".xaml"],
+  "ui_terms": ["ui", "ux", "ui/ux", "frontend", "dashboard", "responsive", "accessibility", "rtl", "interface design", "website design", "app design", "طراحی سایت", "طراحی اپلیکیشن", "داشبورد", "رابط کاربری", "تجربه کاربری", "طراحی رابط", "پنل مدیریت", "راست‌چین", "راست چین"],
+  "specialists": [
+    {
+      "id": "ui-ux-skill",
+      "skill_name": "ui-ux-skill",
+      "repository": "pooyahayati/UI-UX-Skill",
+      "skill_path": "skills/ui-ux-skill",
+      "capability": "product-ui-ux",
+      "mode": "head-delegated",
+      "requirement": "required-on-match"
+    }
+  ]
+}

@@ -1,5 +1,9 @@
 # Context Routing and Execution Planning
 
+## Required specialists
+
+The router's `required_specialists` field is an offline selection, not installation or execution evidence. UI/UX concerns (`ui`, `ux`, `design`, `responsive`, `accessibility`, `rtl`) select the sole registered `ui-ux-skill` without activating unrelated platform packs. The execution plan retains these requirements in its context plan. Before implementation, resolve/install/read the selected specialist and enter Head-delegated mode according to `references/specialist-composition.md`. Infer and pass `--context-concern ui` when the user-facing deliverable is clear but task wording or known paths are not. Backend-only changes do not require a design specialist.
+
 The router reduces irrelevant context without weakening project intelligence or risk controls.
 
 ## Independent dimensions

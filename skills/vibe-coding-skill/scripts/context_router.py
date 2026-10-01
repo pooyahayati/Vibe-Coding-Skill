@@ -59,6 +59,16 @@ def load_risk_classifier():
     return module
 
 
+def load_specialist_manager():
+    path = ROOT / "scripts" / "specialist_manager.py"
+    spec = importlib.util.spec_from_file_location("_vibe_specialist_manager", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load specialist manager")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def git_files(root: Path) -> list[str]:
     p = subprocess.run(
         ["git", "ls-files", "-co", "--exclude-standard", "-z"],
@@ -132,6 +142,7 @@ def validate_context_facts(
     supported: dict[str, set[str]] = {
         field: set() for field in CONTEXT_FACT_FIELDS
     }
+    supported["concern"].update(load_specialist_manager().registry()["ui_concerns"])
     for pack in config.get("packs", {}).values():
         for field, values in pack.get("context_facts", {}).items():
             if field not in supported:
@@ -1054,6 +1065,7 @@ def plan(
         "interactions": interactions,
         "integration_points": sorted(set(integrations)),
         "optional_specialists": sorted(set(specialists)),
+        "required_specialists": load_specialist_manager().select_specialists(task, paths, normalized_context_facts),
         "context_plan": {
             "load": load_paths,
             "skip_packs": skipped,

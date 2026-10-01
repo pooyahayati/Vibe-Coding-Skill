@@ -98,6 +98,20 @@ Current packs cover PHP, WordPress, WooCommerce, browser JavaScript, WordPress R
 
 Read `references/context-routing-and-execution.md` for routing precedence, context metrics, and pack composition.
 
+## Specialist delegation and freshness
+
+Vibe is the engineering Head: it owns scope, architecture, risk, integration, acceptance, and final delivery. Specialist methodology belongs to the specialist, not to duplicated rules in Vibe.
+
+Before each new task, run `scripts/specialist_manager.py prepare --task "<task>" --project-root <project> --json --apply` from the installed Head. Include known `--path` values or `--concern ui` when the deliverable contains UI; this applies to new projects too. Install/update only within the user's existing authorization and environment permissions.
+
+The sole UI/UX specialist is `pooyahayati/UI-UX-Skill`, installed from `skills/ui-ux-skill`. For affected UI, MUST read its current `SKILL.md`, enter Head-delegated mode, and follow its product routing for websites, apps, dashboards, WordPress settings, and other supported interfaces. A routing result or successful installation alone is not specialist use.
+
+Resolve the latest stable release, or the latest default-branch commit when no release exists; never put specialist version pins in Head policy. Check the Head at task start and selected specialists before use; reconcile registered installed skills when the daily inventory is due. Record observed revisions outside the product repository and keep them stable during the operation.
+
+`RELOAD` requires reading the updated Head and rerunning its preflight before delegation. `BLOCK` stops the affected required workflow; an unrelated inventory `WARN` does not block unaffected work. Never call unavailable, incompatible, or unverified installations current.
+
+Within the skill hierarchy, Head controls override specialist defaults. System/developer/user instructions and applicable project rules remain authoritative. Pass settled constraints to the specialist; assess its scoped handoff before final completion. Read `references/specialist-composition.md` for installation, precedence, nested requests, and handoffs.
+
 ## Planning and coordination
 
 A new execution plan is REQUIRED when:
