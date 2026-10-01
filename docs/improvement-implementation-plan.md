@@ -1,6 +1,6 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: P0 contract design prepared; runtime packages not started. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
+Status: P0 contract design complete on merge of PR #62; B1 ready. Runtime packages not started. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
 Baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
 
@@ -91,4 +91,4 @@ Each review unit must include its changed behavior, acceptance results, relevant
 
 ## Readiness
 
-Planning artifacts and the P0 contract design are linked. Runtime implementation has not started. Publishing the design does not implement the planned collector/validators or create a new release/installation. Once P0 is merged, begin B1/B2; later packages consume the shared contract. Update the canonical roadmap at meaningful progress changes.
+Planning artifacts and the P0 contract design are linked and verified in PR #62. Runtime implementation has not started. Publishing the design does not implement the planned collector/validators or create a new release/installation. Next is B1 observable behavior guidance, then B2 propagation; later packages consume the shared contract. Update the canonical roadmap at meaningful progress changes.
