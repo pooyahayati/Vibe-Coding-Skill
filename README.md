@@ -4,22 +4,6 @@ A risk-adaptive engineering Head for reliable AI-assisted development of small, 
 
 Current version: `1.1.0`. This release includes the eight-stage lifecycle and four scoped specialists. Updating repository source or publishing a release does not automatically update local installations.
 
-## Author
-
-Created and maintained by **PooyaHayati | پویا حیاتی**.
-
-Website: [https://Pooyahayati.com](https://Pooyahayati.com)
-
-## Start
-
-Install outside the product repository using [the installation guide](HOW_TO_INSTALL.md), then ask:
-
-```text
-Use $vibe-coding-skill to inspect and build this project.
-```
-
-Describe the outcome, important constraints and how success will be recognized. The agent inspects available evidence and asks only for material information it cannot infer.
-
 ## One engineering Head, focused specialists
 
 Vibe is the project manager and senior engineer. It owns scope, stack, architecture, risk, approvals, test selection, integration and final delivery. Specialists own their assigned domain methods, keeping the Head concise and drawing on maintained expertise.
@@ -40,6 +24,31 @@ Vibe is the project manager and senior engineer. It owns scope, stack, architect
 | **8 · Ship** | Deliver the authorized artifact/release/deployment and verify its actual state. | **Head**; **Supporting:** retained domain evidence, relevant artifact scans, debugging on delivery failure. | Delivery is requested/authorized and required gates pass; local handoff can be the delivery. |
 
 These are eight responsibilities, not eight mandatory documents, meetings or approval questions. Small tasks combine stages; medium/large work iterates vertical slices. A failed check returns to the affected decision, not the beginning of the whole project. Post-delivery incidents and feedback become new bounded objectives.
+
+## Project size and risk tiers
+
+The Head chooses a project route from complexity, then scales each task by its risk and affected scope. Project size is not a risk tier: a small plugin can contain a critical payment change, while a copy correction in a large application can remain tiny.
+
+### Project routes
+
+| Project size | Typical shape | How the Head guides delivery |
+|---|---|---|
+| **Small** | A focused outcome with few components, such as a simple site, utility or narrowly scoped plugin. | Use the simplest adequate stack, work directly in small runnable steps and check the changed behavior. Keep planning brief unless risk or cross-boundary impact requires more. |
+| **Medium** | Several features, modules or integrations, such as a business app or plugin with external services. | Define module boundaries and deliver vertical slices; decompose when it improves ownership or verification. Check affected contracts, integrations and regressions. |
+| **Large** | Multiple domains, teams, services or operational/data boundaries. | Decompose before implementation, confirm ownership and contracts, map consequential impact and integrate verifiable slices. Keep a local low-risk task lightweight. |
+
+WordPress plugins use the same routes plus platform-specific authorization, public APIs, compatibility, data-preservation and installable-package checks. Size alone does not dictate a language, framework, specialist or test count. [Detailed operating model](references/operating-model.md).
+
+### Task risk tiers
+
+| Tier | When it applies | Required depth and verification |
+|---|---|---|
+| **0 · Tiny** | A small, local, reversible change with no security, data or architecture effect. | Understand → change → focused check. A documentation check or rendered inspection may be sufficient; add automated tests only when they provide needed evidence. |
+| **1 · Standard** | A normal feature with bounded module impact. | Objective → acceptance → impact → implement → test → review. Use checks relevant to changed behavior and protected behavior. |
+| **2 · Significant** | Auth, schema/migrations, multiple modules, external integrations, public contracts, meaningful dependencies or production-affecting configuration. | Explicit specification, impact analysis, implementation plan, stronger relevant tests and security/regression checks; independent review where possible. |
+| **3 · Critical** | Destructive or irreversible operations, material production impact, sensitive data, IAM/secrets or safety-critical behavior. | Required approval within existing authorization, recovery/rollback planning and strong evidence; human review when available. Stop when critical verification is missing. |
+
+Risk and affected scope determine the necessary checks; there are no fixed test counts or mandatory full-suite reruns for every change. Existing required project checks still apply. [Risk and autonomy rules](references/risk-and-autonomy.md).
 
 ## Registered specialists
 
@@ -101,3 +110,9 @@ Approved registered packages can be installed/updated within existing authorizat
 ## License
 
 [MIT](LICENSE)
+
+## Author
+
+Created and maintained by **PooyaHayati | پویا حیاتی**.
+
+Website: [https://Pooyahayati.com](https://Pooyahayati.com)
