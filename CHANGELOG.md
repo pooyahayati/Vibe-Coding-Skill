@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — Lifecycle and scoped specialists
+## 1.1.0 — Lifecycle and scoped specialists
 
 - Consolidate the Head workflow into Discover, Define, Plan, Design, Build, Verify, Review and Ship with explicit stage outputs and conditional specialist ownership.
 - Register application security, interface-contract and systematic-debugging specialists alongside the sole UI/UX specialist; add multi-domain, stage-aware routing and domain-only authority contracts.

@@ -4,6 +4,14 @@ A short, human-readable summary of what changed in each release.
 
 For full technical details, see [CHANGELOG.md](CHANGELOG.md).
 
+## 1.1.0 — One Head, eight stages and focused specialists
+- Establishes Discover, Define, Plan, Design, Build, Verify, Review and Ship with clear ownership and stage outputs; small changes keep a short path.
+- Adds application-security, API/interface-contract and systematic-debugging specialists alongside the sole UI-UX-Skill design specialist.
+- Keeps architecture, scope, risk, approvals, test selection and final delivery under Vibe; specialist methods remain in current upstream packages.
+- Adds stage-aware multi-specialist routing, safe shared-resource packaging and a Head-delegation contract. Latest-source checks preserve local edits and installation recovery.
+- Documents the workflow, specialist permissions and Graphify/Trivy purposes in clear README tables; retains author attribution and important guides.
+- Provides an installation-checked portable ZIP and SHA-256 checksums. No model evaluation or provider API key is required for publication.
+
 ## 1.0.0 — Reviewed release with simpler publication
 - Includes all 13 reproduced independent-review fixes for risk, routing, completion, dependencies, WordPress artifacts, and evidence integrity.
 - Keeps small changes lightweight while preserving stronger controls for sensitive and cross-project work.
