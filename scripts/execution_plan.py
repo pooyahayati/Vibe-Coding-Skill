@@ -32,6 +32,13 @@ def load_context_router():
     return module
 
 
+def load_behavior_contract():
+    spec = importlib.util.spec_from_file_location("_vibe_behavior", ROOT / "scripts" / "behavior_contract.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def slug(value: str) -> str:
     text = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return text or "integration"
@@ -104,7 +111,16 @@ def draft(
     context_facts: dict[str, Any] | None = None,
     risk_facts: dict[str, Any] | None = None,
     stage: str = "plan",
+    task_contract: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    behavior = load_behavior_contract()
+    contract = behavior.validate(task_contract) if task_contract is not None else None
+    if contract is not None:
+        if task != contract["objective"]:
+            raise ValueError("task differs from retained contract objective")
+        paths = paths or contract["scope"]
+        if "." not in contract["scope"] and any(not path_covered(p, contract["scope"]) for p in paths):
+            raise ValueError("draft paths exceed retained task scope")
     router = load_context_router()
     route = router.plan(
         root,
@@ -119,6 +135,9 @@ def draft(
     )
     complexity = route["project"]["complexity"]["level"]
     tier = int(route["task"]["risk"]["tier"])
+    classified_tier = tier
+    if contract is not None:
+        tier = max(tier, contract["risk_tier"])
     task_scope = str(route["task"].get("scope", {}).get("level") or "unknown")
     integration_points = route["integration_points"]
 
@@ -161,7 +180,7 @@ def draft(
         for value in integration_points
     ]
 
-    return {
+    result = {
         "schema_version": 1,
         "mode": "execution-plan" if required else "light-task",
         "draft_status": "needs-refinement" if required else "light-task-ready",
@@ -231,10 +250,19 @@ def draft(
             ),
         },
     }
+    if contract is not None:
+        result["task_contract"] = contract
+        result["task_contract_sha256"] = behavior.digest(contract)
+        result["planning_basis"]["classified_risk_tier"] = classified_tier
+        result["risk_policy"] = router.load_risk_classifier().policy_for_tier(
+            tier, bool(route["task"]["risk"].get("approval_required")))
+        workstream["criterion_ids"] = [c["id"] for c in contract["acceptance_criteria"]]
+        workstream["evidence_requirement_ids"] = [e["id"] for e in contract["evidence_requirements"]]
+    return result
 
 
-def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
-    failures: list[str] = []
+def validate_plan(plan: dict[str, Any], task_contract: dict[str, Any] | None = None) -> dict[str, Any]:
+    failures: list[str] = load_behavior_contract().plan_failures(plan, task_contract)
     warnings: list[str] = []
 
     objective = str(plan.get("objective") or "").strip()
@@ -442,6 +470,8 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
         "warnings": warnings,
         "workstream_count": len(workstreams),
         "integration_point_count": len(integrations),
+        "task_contract_checked": "task_contract" in plan,
+        "acceptance_baseline_checked": task_contract is not None,
     }
 
 
@@ -504,12 +534,14 @@ def evaluate_drift(
 
 
 def main() -> int:
+    load_behavior_contract().configure_output()
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="command", required=True)
 
     draft_cmd = sub.add_parser("draft")
     draft_cmd.add_argument("--root", default=".")
-    draft_cmd.add_argument("--task", required=True)
+    draft_cmd.add_argument("--task")
+    draft_cmd.add_argument("--task-contract", help="retained task-contract JSON; optional for legacy/light tasks")
     draft_cmd.add_argument("--path", action="append", default=[])
     draft_cmd.add_argument(
         "--complexity",
@@ -530,6 +562,7 @@ def main() -> int:
     validate_cmd = sub.add_parser("validate")
     validate_cmd.add_argument("plan_json")
     validate_cmd.add_argument("--json", action="store_true")
+    validate_cmd.add_argument("--task-contract", help="independently retained contract to detect required-outcome drift")
 
     drift_cmd = sub.add_parser("drift")
     drift_cmd.add_argument("plan_json")
@@ -538,7 +571,20 @@ def main() -> int:
 
     ns = ap.parse_args()
 
+    try:
+        return run_cli(ns, ap)
+    except (ValueError, OSError) as exc:
+        print(json.dumps({"gate": "BLOCK", "error": str(exc)}))
+        return 2
+
+
+def run_cli(ns, ap) -> int:
+
     if ns.command == "draft":
+        contract = load_behavior_contract().read(ns.task_contract) if ns.task_contract else None
+        task = ns.task or (contract["objective"] if contract else None)
+        if not task:
+            ap.error("draft requires --task or --task-contract")
         context_facts = {
             field: getattr(ns, f"context_{field}")
             for field in ("runtime", "platform", "capability", "concern")
@@ -546,7 +592,7 @@ def main() -> int:
         }
         result = draft(
             Path(ns.root),
-            ns.task,
+            task,
             ns.path,
             ns.complexity,
             ns.invariant,
@@ -558,11 +604,13 @@ def main() -> int:
                 if getattr(ns, "risk_" + field) is not None
             } or None,
             stage=ns.stage,
+            task_contract=contract,
         )
         exit_code = 0
     elif ns.command == "validate":
         plan = json.loads(Path(ns.plan_json).read_text(encoding="utf-8"))
-        result = validate_plan(plan)
+        baseline = load_behavior_contract().read(ns.task_contract) if ns.task_contract else None
+        result = validate_plan(plan, baseline)
         exit_code = 2 if result["failures"] else 0
     else:
         plan = json.loads(Path(ns.plan_json).read_text(encoding="utf-8"))

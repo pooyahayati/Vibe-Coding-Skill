@@ -114,6 +114,8 @@ Within the skill hierarchy, Head controls override specialist defaults. System/d
 
 During Define, reuse existing criteria and state the actor's action and observable result, adding only material failure/protected-state expectations. A tiny task can use one short statement; read the behavior-contract section in `references/operating-model.md` for examples and conditional persistence.
 
+When using a structured task contract, preserve it with the planner/state `--task-contract` options and validate edited plans against the independently retained contract. Read `references/context-routing-and-execution.md` and `references/project-state-automation.md` for propagation, reported outcomes and useful handoffs. Keep inline/legacy routes lightweight; propagation is not execution proof.
+
 A new execution plan is REQUIRED when:
 
 - final risk is Tier 2 or Tier 3; or

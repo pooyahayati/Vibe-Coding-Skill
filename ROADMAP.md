@@ -1,16 +1,16 @@
 # Improvement Roadmap
 
-Status: P0 and B1 complete; B2 ready to start. This is the canonical improvement-progress record. B1 completion takes effect on merge of PR #63.
+Status: P0/B1/B2 complete; further implementation is on hold at the user's request. This is the canonical improvement-progress record.
 Baseline: version `1.1.0`; repository main commit `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](docs/improvement-implementation-plan.md).
 
 ## Current position
 
-- **Current phase:** Phase 1; B2 behavior/acceptance propagation is ready to start.
-- **Completed in this improvement cycle:** roadmap/planning, P0 shared contracts and B1 behavior guidance.
-- **Implementation progress:** 2 of 9 work packages complete on merge of PR #63. This counts work packages, not software quality or test coverage.
-- **Next action:** B2 - behavior/acceptance propagation into plans and handoffs. Collection and specialist acceptance remain later packages.
-- **Blockers:** none identified for B2; receipt collection and specialist validators remain unimplemented.
+- **Current phase:** Phase 1 complete; no later package has started.
+- **Completed in this improvement cycle:** roadmap/planning, P0 shared contracts, B1 behavior guidance and B2 behavior/acceptance propagation.
+- **Implementation progress:** 3 of 9 work packages complete. B2's completion update takes effect with the merge of PR #64. This counts work packages, not software quality or test coverage.
+- **Next action:** wait for the user's instruction before starting another package. E1 remains the next planned package, Not started.
+- **Blockers:** none identified; receipt collection and specialist acceptance remain unimplemented.
 - **Next release:** version/date not assigned; publication and installation remain separate delivery states.
 
 ## Completed baseline
@@ -24,8 +24,8 @@ Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](doc
 | ID | Phase | Work | Status | Implementation evidence |
 |---|---|---|---|---|
 | P0 | 0 | Shared formats, trust limits and compatibility/migration policy. | Complete | [Contract design](references/shared-improvement-contracts.md); [merged PR #62](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/62), merge `a3e58725133b282ef60cc76066493deb7d9cf0c8`. Relevant contract/package checks passed. |
-| B1 | 1 | Short observable behavior contract. | Complete | [Behavior guidance](references/operating-model.md#observable-behavior-contract), [verification mapping](references/execution-and-verification.md#from-observable-criterion-to-a-check); [PR #63](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/63). Relevant structure/link/package checks passed; completion takes effect on merge. |
-| B2 | 1 | Behavior/acceptance propagation into plans and handoffs. | Not started | None yet; depends on B1. |
+| B1 | 1 | Short observable behavior contract. | Complete | [Behavior guidance](references/operating-model.md#observable-behavior-contract); [merged PR #63](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/63), merge `ed8bb85f2b2db899ba1578d1333f6af1198b73d7`. Relevant checks passed. |
+| B2 | 1 | Behavior/acceptance propagation into plans and handoffs. | Complete | [Plan binding](references/context-routing-and-execution.md#retained-behavior-in-a-plan-b2), [handoff/state](references/project-state-automation.md#preserve-task-behavior-and-useful-delivery-details-b2), [implementation PR #64](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/64). Relevant propagation/regression/package checks passed; this completion update takes effect when merged. |
 | E1 | 2 | Bounded execution-receipt collector. | Not started | None yet; depends on P0 and B1. |
 | E2 | 2 | Completion validation against actual receipts. | Not started | None yet; depends on B2 and E1. |
 | S1 | 3 | Compatibility assessment for changed specialist instructions. | Not started | None yet; depends on P0 and E2. |
@@ -60,7 +60,7 @@ The impact ranking is not the implementation order. Define behavior first so exe
 | Phase | Status | Work | Owner | Deliverable | Exit condition | Dependency |
 |---|---|---|---|---|---|---|
 | 0 | Complete | Set shared contracts and compatibility rules. | Head / maintainer. | [P0 design](references/shared-improvement-contracts.md): small behavior, receipt and specialist-return formats; policy for legacy reports and acceptance snapshots. | Minimal formats, trust limits and migration specified; relevant checks passed in PR #62. Runtime delivery remains later work. | Existing source inspection. |
-| 1 | In progress | Carry the user scenario through Define, Plan, Build and Verify. | Head; relevant specialist contributes domain detail. | B1 guidance complete on PR #63 merge; B2 linked acceptance IDs and handoff propagation remain pending. | Scope and observable expectations survive planning and handoff; no blanket extra approval. | Phase 0. |
+| 1 | Complete | Carry the user scenario through Define, Plan, Build and Verify. | Head; relevant specialist contributes domain detail. | B1 guidance and B2 linked acceptance IDs with state/handoff/resume propagation. | Scope and observable expectations survive planning and handoff; no blanket extra approval. Completion takes effect with PR #64's merge. | Phase 0. |
 | 2 | Not started | Record real execution and validate required receipts at completion. | Head and local tooling. | Bounded evidence collector and completion integration. | Failed/missing/stale receipts and mismatched artifacts do not qualify; sufficient evidence is reused. | Phase 1. |
 | 3 | Not started | Accept specialist updates and task output against the shared contracts. | Head accepts; selected specialist supplies domain work. | Update-change assessment and stage-specific acceptance record. | Required conflicts are resolved or the affected workflow remains blocked; no standalone specialist lifecycle. | Phases 1 and 2. |
 | 4 | Not started | Integrate, document and prepare delivery. | Head / maintainer. | Focused regression evidence, synchronized portable package, installation evidence and user-facing examples. | Changed behavior passes relevant checks; documentation matches runtime and risk routes stay proportionate. | Phases 1-3. |

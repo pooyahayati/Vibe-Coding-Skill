@@ -41,6 +41,7 @@ REQUIRED_SCRIPTS = [
     "integration_guard.py",
     "context_router.py",
     "execution_plan.py",
+    "behavior_contract.py",
     "validate_evals.py",
     "run_evals.py",
     "evaluate_agent_output.py",

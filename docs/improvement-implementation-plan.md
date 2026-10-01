@@ -1,6 +1,6 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: P0 merged in PR #62; B1 complete on merge of PR #63. B2 is ready; automatic propagation and runtime receipt/specialist validators are not implemented. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
+Status: P0/B1/B2 complete with PR #64's merge; no later package has started. Receipt collection/validation and specialist acceptance remain unimplemented. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
 Baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
 
@@ -36,7 +36,7 @@ For significant/critical or scope-changing work, retain the accepted criteria be
 
 ## Phase 1: behavior before broad implementation
 
-B1's guidance is implemented in the [observable behavior contract](../references/operating-model.md#observable-behavior-contract) and [criterion-to-check mapping](../references/execution-and-verification.md#from-observable-criterion-to-a-check). It reuses current acceptance descriptions and conditional persistence; the P0 JSON formats remain design specifications. B2 will carry structured fields/IDs into plan/state/handoff tooling and is not part of B1.
+B1's guidance is implemented in the [observable behavior contract](../references/operating-model.md#observable-behavior-contract) and [criterion-to-check mapping](../references/execution-and-verification.md#from-observable-criterion-to-a-check). B2 implements optional task-contract validation, plan workstream links, local state/handoff/resume preservation and explicit reported-outcome labeling; current schema-2 completion remains unchanged. `behavior_contract.py` is shared by the actual callers; it does not collect execution receipts or accept specialist work. Legacy/inline routes remain available. Independent baselines and Head/host controls are still needed for protected outcomes and authorized reconciliation.
 
 Extend existing discovery/acceptance guidance rather than create a second lifecycle. Write the smallest scenario that lets the user and Head recognize success. Translate it into the first runnable slice and verification target. Preserve the scenario when passing work to a specialist.
 
@@ -93,4 +93,4 @@ Each review unit must include its changed behavior, acceptance results, relevant
 
 ## Readiness
 
-P0 is merged in PR #62 and B1's guidance is verified in PR #63. B2 propagation is next; receipt collection/validation and specialist acceptance remain later packages. No new release/installation follows from these instruction changes. Later packages consume the shared contract. Update the canonical roadmap at meaningful progress changes.
+P0/B1 are merged in PRs #62/#63; B2's completion takes effect with PR #64's merge. Stop after B2 as requested by the user. E1 is the next planned package and remains Not started until the user requests further implementation. Receipt collection/validation and specialist acceptance remain later packages. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.

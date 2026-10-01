@@ -67,7 +67,7 @@ The examples illustrate how to choose evidence, not mandatory feature requiremen
 
 Choose the first runnable slice and its check from the agreed action/result, then proceed once scope, observable expectations and material decisions are clear. Writing the contract is not evidence that the software satisfies it. Missing access or execution remains unverified.
 
-This section implements B1's behavior guidance. B2's automatic propagation, E1/E2's receipt collection/validation and S1/S2's specialist acceptance remain separate work. [Shared improvement contracts](shared-improvement-contracts.md) defines their future record fields; users do not need to fill those records or choose a testing framework.
+This section implements B1's behavior guidance. B2 optionally preserves structured task contracts in [plans](context-routing-and-execution.md#retained-behavior-in-a-plan-b2) and [state/handoffs](project-state-automation.md#preserve-task-behavior-and-useful-delivery-details-b2). E1/E2 receipt collection/validation and S1/S2 specialist acceptance remain separate work. [Shared improvement contracts](shared-improvement-contracts.md) defines the fields; users do not need to fill records or choose a testing framework.
 
 ## Solution and technology selection
 

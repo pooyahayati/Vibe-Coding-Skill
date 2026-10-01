@@ -27,6 +27,7 @@ RUNTIME_SCRIPTS = [
     "context_router.py",
     "specialist_manager.py",
     "execution_plan.py",
+    "behavior_contract.py",
     "completion_gate.py",
     "release_readiness.py",
     "local_workspace.py",
