@@ -42,9 +42,37 @@ class SpecialistTests(unittest.TestCase):
                 selected = manager.select_specialists(task, paths, facts)
                 self.assertEqual([row["id"] for row in selected], ["ui-ux-skill"])
                 self.assertTrue(selected[0]["required"])
-        self.assertEqual(manager.select_specialists("Fix API persistence", ["api/store.py"]), [])
+        self.assertEqual(manager.select_specialists("Fix SQL persistence", ["storage/store.py"]), [])
         with self.assertRaises(ValueError):
             manager.select_specialists("Design", explicit=["production-dashboard-ui-ux-skill"])
+
+    def test_stage_alone_selects_none_and_multiple_domains_keep_one_head(self):
+        for stage in manager.registry()["lifecycle"]:
+            self.assertEqual(manager.select_specialists("Fix spelling", ["README.md"], stage=stage), [])
+        rows = manager.select_specialists("Build checkout", facts={"concern": ["ui", "payments"]}, stage="design")
+        self.assertEqual({row["id"] for row in rows}, {"ui-ux-skill", "security-and-hardening", "api-and-interface-design"})
+        self.assertTrue(all(row["active_in_stage"] and row["stage_owner"] == "vibe-coding-skill" for row in rows))
+        self.assertTrue(all("publish-or-deploy-independently" in row["permissions"]["denied"] for row in rows))
+        explicit = manager.select_specialists("Investigate", explicit=["security-and-hardening", "debugging-and-error-recovery"], stage="review")
+        self.assertEqual(len(explicit), 2)
+        self.assertFalse(next(row for row in explicit if row["id"] == "debugging-and-error-recovery")["active_in_stage"])
+
+    def test_domain_semantics_docs_and_sensitive_risk_do_not_select_unrelated_skills(self):
+        self.assertEqual(manager.select_specialists("Describe API authentication", ["docs/API.md"]), [])
+        self.assertEqual(manager.select_specialists("Fix isolated calculation", ["lib/math.py"]), [])
+        debug = manager.select_specialists("Unknown cause", facts={"concern": "debugging"}, stage="build")
+        self.assertEqual([row["id"] for row in debug], ["debugging-and-error-recovery"])
+        sensitive = manager.select_specialists("Change retention", risk_facts={"data_sensitivity": "personal"})
+        self.assertEqual([row["id"] for row in sensitive], ["security-and-hardening"])
+
+    def test_contract_stage_and_assignment_survive_router_and_execution_plan(self):
+        spec = importlib.util.spec_from_file_location("specialist_execution_test", ROOT / "scripts/execution_plan.py")
+        planner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(planner)
+        result = planner.draft(self.root, "Change boundary", context_facts={"concern": "contracts"}, stage="design")
+        self.assertEqual(result["context_plan"]["task"]["stage"], "design")
+        self.assertEqual(result["specialist_assignments"][0]["id"], "api-and-interface-design")
+        self.assertTrue(result["specialist_assignments"][0]["active_in_stage"])
 
     def test_router_accepts_ui_semantics_and_emits_actual_requirement(self):
         router_spec = importlib.util.spec_from_file_location("router_specialist_test", ROOT / "scripts/context_router.py")
@@ -76,6 +104,37 @@ class SpecialistTests(unittest.TestCase):
         with patch.object(manager, "request_bytes", return_value=payload.getvalue()):
             self.assertRaises(ValueError, manager.source_package, self.entry, self.source)
 
+    def test_shared_references_are_relocated_transitively_without_other_skills(self):
+        entry = next(row for row in manager.registry()["specialists"] if row["id"] == "security-and-hardening")
+        payload = io.BytesIO()
+        with ZipFile(payload, "w") as archive:
+            archive.writestr("repo/skills/security-and-hardening/SKILL.md", "---\nname: security-and-hardening\n---\nRead `../../references/shared.md`.\n[Details](references/detail.md#section)\n")
+            archive.writestr("repo/skills/security-and-hardening/references/detail.md", "Read `../../../references/shared.md`.\n")
+            archive.writestr("repo/references/shared.md", "[More](next.md#example)\n")
+            archive.writestr("repo/references/next.md", "Evidence\n")
+            archive.writestr("repo/references/unrelated.md", "Unneeded\n")
+            archive.writestr("repo/skills/using-agent-skills/SKILL.md", "Do not install\n")
+            archive.writestr("repo/LICENSE", "MIT\n")
+        with patch.object(manager, "request_bytes", return_value=payload.getvalue()):
+            files = manager.source_package(entry, self.source)
+        self.assertIn(b"upstream-references/shared.md", files["SKILL.md"])
+        self.assertIn(b"../upstream-references/shared.md", files["references/detail.md"])
+        self.assertIn(b"next.md#example", files["upstream-references/shared.md"])
+        self.assertIn("upstream-references/next.md", files)
+        self.assertIn("vibe-head-contract.md", files)
+        self.assertEqual(files["LICENSE"], b"MIT\n")
+        self.assertNotIn("upstream-references/unrelated.md", files)
+        self.assertFalse(any("using-agent-skills" in path for path in files))
+
+    def test_real_relative_prefix_and_reference_escape_are_rejected(self):
+        broken = {"SKILL.md": b"---\nname: ui-ux-skill\n---\nRead `../../references/ui.md`.\n", "references/ui.md": b"Existing different resource\n"}
+        self.assertRaises(ValueError, manager.validate_package, broken, "ui-ux-skill")
+        entry = next(row for row in manager.registry()["specialists"] if row["id"] == "security-and-hardening")
+        missing = {"skills/security-and-hardening/SKILL.md": b"---\nname: security-and-hardening\n---\nRead `../../references/missing.md`.\n"}
+        self.assertRaises(ValueError, manager.adapt_resources, missing, entry)
+        sibling = {"skills/security-and-hardening/SKILL.md": b"---\nname: security-and-hardening\n---\n[Other](../other/SKILL.md)\n", "skills/other/SKILL.md": b"Other skill\n"}
+        self.assertRaises(ValueError, manager.adapt_resources, sibling, entry)
+
     def test_install_adopt_update_and_cached_current_source(self):
         self.assertEqual(self.ensure()["status"], "missing")
         self.assertTrue(self.ensure(True)["updated"])
@@ -83,6 +142,13 @@ class SpecialistTests(unittest.TestCase):
         with patch.object(manager, "resolve_latest", return_value=self.source), patch.object(manager, "source_package") as package:
             self.assertEqual(manager.ensure(self.entry, self.skills, self.state)["status"], "current")
             package.assert_not_called()
+        record_path = self.state / "ui-ux-skill.json"
+        old_policy = json.loads(record_path.read_text())
+        old_policy["source"]["package_policy"] = "older-adapter"
+        record_path.write_text(json.dumps(old_policy), encoding="utf-8")
+        with patch.object(manager, "resolve_latest", return_value=self.source), patch.object(manager, "source_package", return_value=self.files) as package:
+            self.assertEqual(manager.ensure(self.entry, self.skills, self.state)["status"], "current")
+            package.assert_called_once()
         self.source["commit"] = "b" * 40
         self.files["references/ui.md"] = b"New guidance\n"
         self.assertEqual(self.ensure()["status"], "outdated")

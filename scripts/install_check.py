@@ -46,6 +46,7 @@ RUNTIME_SCRIPTS = [
 ]
 
 REQUIRED_REFS = [
+    "specialist-authority.md",
     "operating-model.md",
     "risk-and-autonomy.md",
     "project-intelligence.md",

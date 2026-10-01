@@ -10,15 +10,26 @@ Do not run competing design Heads. The only registered UI/UX specialist is **UI-
 
 ## Selection and actual use
 
-`config/specialists.json` contains canonical sources, installable paths, triggers, requirement levels, and update policy. It contains no fixed versions, tags, or commits. `context_router.py` emits `required_specialists` without network access; legacy `optional_specialists` are advisory capability gaps, not registered installers.
+`config/specialists.json` contains the eight stage identifiers, canonical sources, installable paths, activation facts, primary/support stages, a domain-only permission profile, requirement levels, and update policy. It contains no fixed versions, tags, or commits. `context_router.py` emits `required_specialists` without network access; legacy `optional_specialists` are advisory capability gaps, not registered installers.
 
 UI/UX is required when the deliverable includes an affected user-facing interface: an app, website, dashboard, form, WordPress settings/admin surface, responsive layout, accessibility, directionality, or visual review. Task/path signals help route existing work; for new products or ambiguous wording, infer the UI requirement from the outcome and pass `--concern ui`. Do not infer UI solely from repository size or activate it for backend-only work. Recheck selection when the actual affected surface changes.
+
+The canonical stage/exit table is in `references/operating-model.md`. The shared authority contract is `references/specialist-authority.md`. Vibe owns every stage; a specialist supplements it within the assigned domain. The permission profile describes permitted instructions, not an OS sandbox or a grant to read secrets/change host configuration.
+
+| Registered specialist | Use when | Main contribution |
+|---|---|---|
+| UI-UX-Skill | A supported affected interface needs design, implementation or review. | UI decisions and rendered/accessibility/localization evidence, primarily Design/Build/Verify/Review. |
+| security-and-hardening | A material trust/access/sensitive-data/upload/payment boundary changes. | Threat scenarios, platform-appropriate controls and denial/abuse evidence, primarily Design/Build/Verify/Review. |
+| api-and-interface-design | A meaningful producer/consumer contract, endpoint, webhook or compatibility obligation changes. | Concrete contracts/errors/compatibility/retry/idempotency decisions and evidence, primarily Design/Build/Verify/Review. |
+| debugging-and-error-recovery | Cause is unclear, failures are intermittent, fixes repeat unsuccessfully or delivery fails. | Reproduction/root cause/bounded fix/regression evidence in Discover/Build/Verify and Ship on failure. |
+
+Task/path terms are supplemental routing signals: confirm the affected boundary and pass semantic concerns for uncertain language. Ordinary contained fixes do not require every specialist. Selected entries with `active_in_stage: false` are preparation-only; do not invoke them just because they are installed. Multiple explicit `--specialist` selections are permitted only for registered identities.
 
 For each required specialist:
 
 1. Obtain a current installation and read its `SKILL.md`; do not describe merely selecting/installing it as using it.
-2. Pass objective, affected surfaces, settled stack/product constraints, risk floor, autonomy, approvals, and acceptance conditions.
-3. Enter its Head-delegated mode. Let it classify the product and load its own required Product Packs and task-relevant references. Do not replicate product-specific design rules or reopen settled discovery.
+2. Read the installed `vibe-head-contract.md`; pass current stage, objective, affected surfaces/files, settled stack/product constraints, protected invariants, risk floor, authorized actions, acceptance criteria and evidence expectations.
+3. Assign only the current domain work under the Head-delegation contract. The UI specialist uses its native delegated mode and required Product Packs; the other specialists use their domain guidance under the injected contract rather than their entire standalone lifecycle. Do not duplicate their methods or reopen settled discovery.
 4. Request decisions, changed surfaces/files, preserved constraints, actual rendered/functional/accessibility/localization evidence, unperformed checks, risks, and remaining approvals.
 5. Vibe checks integration and acceptance, then owns the final software result. Specialist completion does not establish whole-project completion.
 
@@ -34,7 +45,7 @@ From the installed Head, before beginning a new task:
 python scripts/specialist_manager.py prepare --task "<task>" --path <affected-path> --concern ui --project-root <project> --apply --json
 ```
 
-Omit UI facts for backend-only work. `--apply` is used within existing authorization to install/update approved registered packages; do not treat a command-line option as permission to exceed host permissions. Without it, missing/outdated installations block rather than being silently used.
+Use `--stage <stage>` and matching `--concern` facts; repeat `--specialist <registered-id>` for explicit approved selections. Omit UI facts for backend-only work. Selection prepares relevant skills for the workflow; current-stage assignments decide actual use. `--apply` is used within existing authorization to install/update approved registered packages; do not treat a command-line option as permission to exceed host permissions. Without it, missing/outdated installations block rather than being silently used.
 
 The manager always checks the Head and each selected specialist upstream. At most once per successful daily interval, it also reconciles all registered specialists already installed on the host. Unselected missing skills are reported but not downloaded. A daily audit can also be invoked explicitly:
 
@@ -48,7 +59,7 @@ The normal source is the latest published stable release. Only a `404` for no st
 
 The resolver observes a commit for the current operation, verifies the package identity/resources, and compares normalized installed hashes. Observed commits in local provenance are evidence, not dependency pins. Unchanged verified source avoids a repeated archive download. Updates affect the next operation; never replace the instructions of a running delegated operation.
 
-Install only the registered package and its resources, plus source version/license metadata. Do not execute upstream installers/scripts, copy repository-level policies into a product, or alter host hooks/configuration. Validate archives before extraction; stage outside the discovery directory, protect updates with a host lock, retain a previous-install backup, and roll back a failed replacement. A changed managed installation is `local-modifications`, not an overwrite candidate. An unmanaged installation can be adopted if it matches current source or replaced with a retained backup within existing authorization.
+Install only the registered package and its resources, plus source version/license metadata. For the selected `addyosmani/agent-skills` packages, copy only transitively referenced files from the approved repository `references/` root into `upstream-references/`, rewrite exact relative paths and validate resolved links. Do not import other skill directories or the collection router. Preserve upstream domain text apart from resource relocation; inject the small local `vibe-head-contract.md` and its entrypoint link. Record the adapter/contract fingerprint so a source-current package built under an older composition policy is revalidated. Do not execute upstream installers/scripts, copy repository-level policies into a product, or alter host hooks/configuration. Validate archives before extraction; stage outside the discovery directory, protect updates with a host lock, retain a previous-install backup, and roll back a failed replacement. A changed managed installation is `local-modifications`, not an overwrite candidate. An unmanaged installation can be adopted if it matches current source or replaced with a retained backup within existing authorization.
 
 Default provenance lives under `~/.vibe-coding/specialists`; skills live in the host's skills directory. Both must stay outside product repositories and separate from each other. Never commit machine-local installation state into product source control. A lock left after a crashed process requires checking that no update is active before removing it.
 
