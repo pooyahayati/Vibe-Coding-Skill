@@ -38,7 +38,7 @@ For each required outcome, identify the observable assertion and choose the chea
 
 Use the exact reported state/action for defects and the applicable boundary for material failures. Keep intended behavior separate from the actual result; a criterion stays unmet or unverified when its check fails or cannot run. Do not add new cases solely to populate an example, stage or risk-tier quota.
 
-In current schema-2 completion reports, keep observable required outcomes in the existing criterion `description`, with stable `id`, `required`, actual `met` and linked `evidence_ids`. Use separate criteria only for distinct required outcomes. The current gate does not validate P0's proposed `behavior` fields or propagate them into plans; extra fields cannot substitute for a clear description, retained baseline or meaningful evidence. B2/E2 will add those capabilities separately.
+In current schema-2 completion reports, keep observable required outcomes in the existing criterion `description`, with stable `id`, `required`, actual `met` and linked `evidence_ids`. Use separate criteria only for distinct required outcomes. The gate itself does not validate `behavior` fields or resolve receipts; extra fields cannot substitute for a clear description, retained baseline or meaningful evidence. B2 preserves validated task behavior in plans/state/handoffs and labels imported schema-2 outcomes as reported, never receipt-verified. E1/E2 add execution collection/validation separately.
 
 ## Verification by change type
 

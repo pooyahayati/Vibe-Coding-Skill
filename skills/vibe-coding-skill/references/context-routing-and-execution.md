@@ -139,6 +139,19 @@ python scripts/execution_plan.py drift plan.json change.json --json
 
 Material changes to scope, architecture, data semantics, public API, security posture, or significant recurring cost require re-planning/approval.
 
+### Retained behavior in a plan (B2)
+
+When a structured task contract is useful, reuse the accepted `vibe-task-contract` version-1 record described in [shared contracts](shared-improvement-contracts.md). Keep its snapshot outside product source control. No extra JSON document is required for a tiny task that already has a clear inline criterion.
+
+```bash
+python scripts/execution_plan.py draft --root <project> --task-contract <accepted-contract.json> --json
+python scripts/execution_plan.py validate <plan.json> --task-contract <accepted-contract.json> --json
+```
+
+The draft derives the objective/scope from the contract, preserves its full criteria/behavior and fingerprint, and links workstreams to criterion/evidence-requirement IDs. Refine those links when splitting work: every required outcome and its obligation must remain owned. Out-of-scope draft paths and missing/unknown required links are errors. The effective `planning_basis.risk_tier` and `risk_policy` retain the higher of the accepted risk floor and router classification; the context plan remains the classification snapshot. A retained Tier 2/3 floor requires planning even when task wording sounds tiny.
+
+Validate reused/edited plans against the independently retained contract to detect removed/rewritten required outcomes, protected behavior, evidence obligations or binding. `task_contract_checked` and `acceptance_baseline_checked` distinguish binding validation from legacy unbound reading. A hash alone does not protect an agent-editable baseline or authenticate approval; caller/host writer controls remain necessary. Legacy plan version 1 remains supported without a contract; that route does not establish retained-behavior validation. Receipt verification remains E1/E2 work.
+
 ## Context metrics
 
 The router reports candidate/loaded pack count, selected persistent/reference sources, integration points, project scanning cost, and preservation of project invariants/risk/project intelligence. It keeps the legacy selected Skill-context byte estimate and also reports separate core/reference/pack byte counts, a persistent-project-context upper bound, a combined context upper bound, and whether scanning used `path-scoped` or `fallback-project-scan` mode.

@@ -14,6 +14,7 @@ from typing import Any
 import graph_provider
 import github_traceability
 import local_workspace
+import behavior_contract
 
 DOC_ORDER = [
     "STATUS.md",
@@ -113,6 +114,19 @@ def build_context(root: Path, max_bytes_per_doc: int = 16000) -> dict[str, Any]:
             warnings.append(error)
 
     graph = graph_provider.status(root)
+    if project_state and project_state.get("task_contract"):
+        try:
+            contract = behavior_contract.validate(project_state["task_contract"])
+            fingerprint = behavior_contract.digest(contract)
+            if fingerprint != project_state.get("task_contract_sha256"):
+                raise ValueError("retained task fingerprint mismatch")
+            current_context = {"head": head, "working_tree_fingerprint": graph_provider.working_tree_fingerprint(root),
+                               "contract_sha256": fingerprint}
+            project_state["acceptance"] = behavior_contract.completion(
+                contract, project_state.get("completion_report"),
+                project_state.get("completion_report") is not None and current_context != project_state.get("completion_context"))
+        except ValueError as exc:
+            raise RuntimeError("retained task contract needs repair: " + str(exc)) from exc
     if graph.get("stale"):
         warnings.append("local project graph is stale; refresh it before relying on graph evidence")
 
@@ -174,6 +188,9 @@ def render_markdown(context: dict[str, Any]) -> str:
         lines += [f"- {item}" for item in context["warnings"]]
         lines.append("")
 
+    saved_state = context.get("local_state", {}).get("project_state") or {}
+    lines += behavior_contract.handoff_lines(saved_state)
+
     lines += ["## Recent commits", ""]
     lines += [f"- {item}" for item in git_state.get("recent_commits", [])] or ["- None"]
     lines.append("")
@@ -202,6 +219,7 @@ def write_local(root: Path, context: dict[str, Any]) -> dict[str, str]:
 
 
 def main() -> int:
+    behavior_contract.configure_output()
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=".")
     ap.add_argument("--max-bytes-per-doc", type=int, default=16000)

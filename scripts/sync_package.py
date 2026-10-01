@@ -29,6 +29,7 @@ RUNTIME_FILES = [
     Path("scripts/context_router.py"),
     Path("scripts/specialist_manager.py"),
     Path("scripts/execution_plan.py"),
+    Path("scripts/behavior_contract.py"),
     Path("scripts/completion_gate.py"),
     Path("scripts/local_workspace.py"),
     Path("scripts/repository_purity.py"),
