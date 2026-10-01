@@ -98,6 +98,7 @@ Approved registered packages can be installed/updated within existing authorizat
 
 - [Improvement roadmap: completed, remaining and next work](ROADMAP.md)
 - [Detailed improvement implementation plan](docs/improvement-implementation-plan.md)
+- [P0 shared formats, trust limits and migration design](references/shared-improvement-contracts.md)
 - [Installation, invocation and verification](HOW_TO_INSTALL.md)
 - [Version updates](UPDATES.md)
 - [Technical changelog](CHANGELOG.md)

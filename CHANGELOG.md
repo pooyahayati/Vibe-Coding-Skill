@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Specify P0's shared behavior, receipt, specialist assignment/return and Head-acceptance contracts, trust limits and explicit completion-schema migration. Runtime collection/validation remains future work; schema 2 and release version 1.1.0 are unchanged.
+- Link the design from relevant operating references and maintain the roadmap's implementation/merge status separately from release and installation.
+
 ## 1.1.0 — Lifecycle and scoped specialists
 
 - Consolidate the Head workflow into Discover, Define, Plan, Design, Build, Verify, Review and Ship with explicit stage outputs and conditional specialist ownership.

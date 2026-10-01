@@ -1,6 +1,6 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: planning complete; implementation not started. Current package/phase status is maintained in [ROADMAP.md](../ROADMAP.md).
+Status: P0 contract design complete on merge of PR #62; B1 ready. Runtime packages not started. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
 Baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
 
@@ -22,13 +22,15 @@ The filenames above are proposed change surfaces, not created runtime files. Add
 
 ## P0: contracts and compatibility
 
-Define three small formats before implementation:
+The design decisions below are settled in [Shared improvement contracts](../references/shared-improvement-contracts.md). That reference is canonical for field names, identity/binding, origin classification, storage/trust limits and migration. Its version-1 record formats and proposed completion version 3 are specifications for later packages, not current runtime capabilities. Keep schema-2 behavior unchanged in P0.
+
+The shared design covers three areas before runtime implementation:
 
 - **Behavior:** stable criterion/scenario ID, user goal/action, relevant starting state, observable expected outcome, material failure expectation, protected invariant, required/optional status and evidence links. Allow one concise criterion for a tiny task; do not require a happy/failure pair where no meaningful failure exists.
 - **Receipt:** format version, evidence/scenario IDs, origin (`collected`, `reported` or `manual`), authorized command context, exit/result, timestamps, relevant source/input fingerprint and artifact SHA-256 when applicable. Record an unavailable check explicitly rather than manufacture success.
 - **Specialist return:** assignment/stage ID, observed upstream revision, assigned and changed surfaces, contract decisions, protected invariants, evidence references, required/optional findings and unresolved conflicts. Head acceptance is a separate decision.
 
-The current completion report is schema version 2. Decide an explicit migration: retain supported legacy input as legacy, with no new receipt-verification claim; require the new evidence contract where the new workflow applies. Do not silently downgrade a required receipt or baseline to bypass failure. Review whether the final compatibility change needs a new report schema and which release version is appropriate before shipping.
+The current completion report is schema version 2. E2 will introduce completion version 3 for new structured-completion tasks, with retained task contracts and receipt resolution; tiny tasks can use an accepted manual obligation. In-flight version-2 tasks retain their supported legacy route and make no receipt-verification claim. Migration requires reconciliation and cannot manufacture collected evidence. The expected workflow comes from retained task context, preventing report-controlled downgrade. Review the release version after actual compatibility implementation; P0 does not bump it.
 
 For significant/critical or scope-changing work, retain the accepted criteria before implementation using the existing acceptance-baseline mechanism. Detect meaningful criterion changes against that baseline. A checksum detects differences; it is not proof of user approval or a tamper-resistant boundary. Use host/writer controls when independent protection is required. Reopen only a material user-owned decision, once, with a concrete option.
 
@@ -89,4 +91,4 @@ Each review unit must include its changed behavior, acceptance results, relevant
 
 ## Readiness
 
-Planning artifacts are complete and linked. Runtime implementation has not started. Publishing these documents does not implement the planned capabilities or create a new release/installation. Begin implementation with P0, then B1/B2; the later work consumes their contracts. Update the canonical roadmap at meaningful progress changes.
+Planning artifacts and the P0 contract design are linked and verified in PR #62. Runtime implementation has not started. Publishing the design does not implement the planned collector/validators or create a new release/installation. Next is B1 observable behavior guidance, then B2 propagation; later packages consume the shared contract. Update the canonical roadmap at meaningful progress changes.
