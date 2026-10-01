@@ -23,7 +23,7 @@ Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](doc
 
 | ID | Phase | Work | Status | Implementation evidence |
 |---|---|---|---|---|
-| P0 | 0 | Shared formats, trust limits and compatibility/migration policy. | In progress | [Contract design](references/shared-improvement-contracts.md); [review branch](https://github.com/pooyahayati/Vibe-Coding-Skill/compare/main...codex/p0-shared-contracts). Focused validation recorded in the PR; merge pending. |
+| P0 | 0 | Shared formats, trust limits and compatibility/migration policy. | In progress | [Contract design](references/shared-improvement-contracts.md); [implementation PR #62](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/62). Focused validation recorded in the PR; merge pending. |
 | B1 | 1 | Short observable behavior contract. | Not started | None yet; depends on P0. |
 | B2 | 1 | Behavior/acceptance propagation into plans and handoffs. | Not started | None yet; depends on B1. |
 | E1 | 2 | Bounded execution-receipt collector. | Not started | None yet; depends on P0 and B1. |
