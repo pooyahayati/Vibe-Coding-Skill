@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased — Specialist composition
+## Unreleased — Lifecycle and scoped specialists
+
+- Consolidate the Head workflow into Discover, Define, Plan, Design, Build, Verify, Review and Ship with explicit stage outputs and conditional specialist ownership.
+- Register application security, interface-contract and systematic-debugging specialists alongside the sole UI/UX specialist; add multi-domain, stage-aware routing and domain-only authority contracts.
+- Package only selected upstream skills and referenced approved shared resources, rewrite/validate resolved relative links, and inject a small Head-delegation contract without copying specialist methods.
+- Expand the README with workflow ownership/activation, specialist responsibilities/permissions, and separate Graphify/Trivy purpose and use tables.
+
+### Earlier specialist composition
 
 - Keep Vibe as the engineering Head and require the sole UI/UX specialist, `pooyahayati/UI-UX-Skill`, for affected product interfaces across app, website, dashboard, and WordPress settings work.
 - Add offline specialist selection to context plans and a scoped, latest-source resolver/installer with daily inventory, provenance, protected local edits, atomic replacement/rollback, and Head reload handling.

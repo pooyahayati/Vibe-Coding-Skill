@@ -142,7 +142,7 @@ def validate_context_facts(
     supported: dict[str, set[str]] = {
         field: set() for field in CONTEXT_FACT_FIELDS
     }
-    supported["concern"].update(load_specialist_manager().registry()["ui_concerns"])
+    supported["concern"].update(load_specialist_manager().supported_concerns())
     for pack in config.get("packs", {}).values():
         for field, values in pack.get("context_facts", {}).items():
             if field not in supported:
@@ -885,6 +885,7 @@ def plan(
     include_packs: list[str] | None = None,
     risk_facts: dict[str, Any] | None = None,
     context_facts: dict[str, Any] | None = None,
+    stage: str = "discover",
 ) -> dict[str, Any]:
     root = root.resolve()
     paths = paths or []
@@ -1043,6 +1044,7 @@ def plan(
             "explicit_invariants": invariants,
         },
         "task": {
+            "stage": stage,
             "text": task,
             "paths": paths,
             "explicit_pack_includes": sorted(set(include_packs)),
@@ -1065,7 +1067,10 @@ def plan(
         "interactions": interactions,
         "integration_points": sorted(set(integrations)),
         "optional_specialists": sorted(set(specialists)),
-        "required_specialists": load_specialist_manager().select_specialists(task, paths, normalized_context_facts),
+        "required_specialists": load_specialist_manager().select_specialists(
+            task, paths, normalized_context_facts, stage=stage, risk_facts=risk_facts),
+        "lifecycle": {"stage_owner": "vibe-coding-skill", "stages": load_specialist_manager().registry()["lifecycle"],
+                      "rule": "Stage selects the assignment boundary, not all specialists. Reuse settled work; apply only relevant stage controls."},
         "context_plan": {
             "load": load_paths,
             "skip_packs": skipped,
@@ -1146,6 +1151,7 @@ def main() -> int:
     ap.add_argument("--context-platform", action="append", default=[])
     ap.add_argument("--context-capability", action="append", default=[])
     ap.add_argument("--context-concern", action="append", default=[])
+    ap.add_argument("--stage", choices=load_specialist_manager().registry()["lifecycle"], default="discover")
     ap.add_argument("--json", action="store_true")
     ns = ap.parse_args()
 
@@ -1174,6 +1180,7 @@ def main() -> int:
         ns.include_pack,
         risk_facts or None,
         context_facts or None,
+        ns.stage,
     )
     if ns.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))

@@ -152,25 +152,32 @@ A task is Ready when objective, scope, dependencies, acceptance criteria, blocke
 
 Otherwise clarify, split, spike, or mark Blocked.
 
-## Stage interaction contract
+## Canonical lifecycle and ownership
 
-Each stage has an inspectable output and an exit condition. Do not replace these with a long command log.
+`Discover → Define → Plan → Design → Build → Verify → Review → Ship`
 
-| Stage | Minimum input | Output | Exit criterion |
+Vibe owns every stage and its exit decision. Specialists own assigned domain methodology; tools provide evidence. These stages are responsibilities, not eight mandatory documents, meetings, approval questions, or commands. Enter at the appropriate point, reuse settled work, combine lightweight stages, and mark genuinely inapplicable work N/A with a reason. Do not skip required risk controls. Iterate small vertical slices rather than finish every design before proving a runnable result.
+
+| Stage | Head-owned work | Conditional specialist contribution | Output / exit condition |
 |---|---|---|---|
-| Frame | user outcome + known constraints | Current Objective + acceptance direction | objective and MVP/change boundary are clear enough to decide |
-| Decide | objective + material constraints | approach/technology decision only when needed | chosen path is defensible; user-owned material decision approved |
-| Implement | ready task + relevant context | runnable/inspectable vertical result | requested behavior exists without known blocking defect |
-| Verify | acceptance criteria + changed behavior/boundaries | relevant evidence linked to criteria | required scenarios pass or status is explicitly Unverified/Blocked |
-| Integrate/Handoff | verified result + repository state | integrated state, limitation, readiness, next step | another competent agent/user can continue without hidden context |
+| Discover | Inspect objective, applicable rules, repository, affected boundaries, risk, and current capabilities; route selected specialists. | Debugging localizes unclear failure; UI inspects an affected interface; Graphify supports consequential impact questions. | Justified entry point, affected scope and selected capabilities; re-route if evidence changes them. |
+| Define | Establish one objective, scope, protected behavior, acceptance criteria, and material user-owned decisions. | UI clarifies relevant user flows; security identifies assets/trust boundaries; API clarifies consumer obligations. | Enough clarity to choose a path without hiding a material unresolved decision. |
+| Plan | Choose the simplest adequate stack/architecture, ownership, sequence, dependencies, required evidence and recovery. | Domain estimates and prerequisites supplement one Head plan. | Ready task/vertical slice; a new written plan only when existing risk/scope rules require it. |
+| Design | Reconcile cross-domain decisions and preserve platform/business invariants. | UI owns presentation decisions; API owns contract detail; security owns threat scenarios and appropriate controls. | Implementable decisions for the changed boundaries; reuse adequate existing design. |
+| Build | Implement and integrate the smallest maintainable slice within scope and writer boundaries. | Specialists guide or edit assigned domain surfaces; debugging handles unclear failures. | Runnable/inspectable requested behavior with relevant failure handling. |
+| Verify | Choose the cheapest sufficient checks against acceptance and changed failure modes; record provenance and unavailable checks. | UI rendered/accessibility evidence; API contract/failure evidence; security denial/abuse evidence; debugging reproduction/regression; Trivy relevant scans. | Required criteria/boundaries have evidence or are explicitly failed/unverified/blocked. |
+| Review | Assess objective fit, actual diff, scope, maintainability, integration and evidence sufficiency; own merge readiness. | Relevant domain review supplements the Head; do not restart standalone workflows or duplicate test runs. | Required findings resolved; optional findings do not expand scope automatically. |
+| Ship | Perform authorized integration/package/release/deploy/handoff actions; verify delivered revision/artifact/environment and recovery where required. | Reuse relevant specialist findings; debug actual delivery failure; scan the delivered artifact when relevant. | Accurate delivery state, health/core-flow evidence where required, limitations and next operating action. |
 
-At every stage report:
+Verify proves behavior; Review assesses the change and its evidence; Ship proves the actual authorized delivery. Merge, release, deployment and local skill installation are distinct outcomes. A local task can ship as a validated artifact/handoff without production deployment.
 
-- actual result;
-- relevant evidence;
-- remaining limitation;
-- readiness status;
-- next useful step.
+Specialist identities, machine-readable triggers, stages and permission profile live in `config/specialists.json`. See `references/specialist-composition.md` for activation/handoff and `references/specialist-authority.md` for the shared authority contract. Stage alone never selects all specialists.
+
+Small/local low-risk work can cover the route in one concise pass. Medium work uses bounded slices. Large/cross-boundary work needs confirmed ownership/contracts and integration evidence; repository size alone does not make each local task heavy. WordPress/WooCommerce uses this same lifecycle plus its local public-API, authorization, lifecycle/data-preservation, compatibility and actual installable-artifact constraints.
+
+A failed check returns to the affected Design/Build decision, with debugging only when useful. Review findings return to the responsible domain. After delivery, incidents, compatibility changes or user feedback become a new bounded objective and re-enter at the appropriate stage. No idle monitoring or scheduled automation is implied.
+
+At each meaningful transition, communicate the actual output, relevant evidence, unresolved limitation/readiness, and next useful action. Reuse this information instead of creating a separate report per stage.
 
 ## Change impact
 

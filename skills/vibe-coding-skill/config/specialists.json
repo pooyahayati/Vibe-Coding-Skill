@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "policy": {
     "version_strategy": "latest-stable-release-or-default-branch",
     "allow_version_pins": false,
@@ -13,9 +13,14 @@
     "skill_path": "skills/vibe-coding-skill"
   },
   "primary_ui_specialist": "ui-ux-skill",
-  "ui_concerns": ["ui", "ux", "accessibility", "responsive", "rtl", "design"],
-  "ui_extensions": [".css", ".scss", ".html", ".jsx", ".tsx", ".vue", ".svelte", ".dart", ".xaml"],
-  "ui_terms": ["ui", "ux", "ui/ux", "frontend", "dashboard", "responsive", "accessibility", "rtl", "interface design", "website design", "app design", "طراحی سایت", "طراحی اپلیکیشن", "داشبورد", "رابط کاربری", "تجربه کاربری", "طراحی رابط", "پنل مدیریت", "راست‌چین", "راست چین"],
+  "lifecycle": ["discover", "define", "plan", "design", "build", "verify", "review", "ship"],
+  "permissions": {
+    "profile": "head-delegated-domain-only",
+    "allowed": ["inspect-assigned-context", "recommend-domain-decisions", "edit-assigned-surfaces-within-authorization", "run-risk-relevant-checks", "return-evidence-and-findings"],
+    "head_owned": ["objective", "scope", "stack", "architecture", "risk-floor", "approvals", "dependencies", "test-selection", "integration", "merge", "release", "deployment", "final-acceptance"],
+    "denied": ["reopen-settled-decisions-without-new-evidence", "expand-scope", "install-unregistered-dependencies", "start-other-agents-without-authorization", "require-model-evaluation", "publish-or-deploy-independently"],
+    "enforcement": "instruction-contract-and-host-permissions; not an OS sandbox"
+  },
   "specialists": [
     {
       "id": "ui-ux-skill",
@@ -24,7 +29,73 @@
       "skill_path": "skills/ui-ux-skill",
       "capability": "product-ui-ux",
       "mode": "head-delegated",
-      "requirement": "required-on-match"
+      "requirement": "required-on-match",
+      "stages": ["discover", "define", "plan", "design", "build", "verify", "review"],
+      "primary_stages": ["design", "build", "verify", "review"],
+      "activation": {
+        "concerns": ["ui", "ux", "accessibility", "responsive", "rtl", "design"],
+        "extensions": [".css", ".scss", ".html", ".jsx", ".tsx", ".vue", ".svelte", ".dart", ".xaml"],
+        "terms": ["ui", "ux", "ui/ux", "frontend", "dashboard", "responsive", "accessibility", "rtl", "interface design", "website design", "app design", "طراحی سایت", "طراحی اپلیکیشن", "داشبورد", "رابط کاربری", "تجربه کاربری", "طراحی رابط", "پنل مدیریت", "راست‌چین", "راست چین"],
+        "path_patterns": []
+      },
+      "assignment": "Supported product UI/UX decisions, scoped implementation guidance, and rendered/accessibility/localization evidence. Preserve backend and business contracts."
+    },
+    {
+      "id": "security-and-hardening",
+      "skill_name": "security-and-hardening",
+      "repository": "addyosmani/agent-skills",
+      "skill_path": "skills/security-and-hardening",
+      "capability": "application-security",
+      "mode": "head-delegated",
+      "requirement": "required-on-match",
+      "stages": ["discover", "define", "plan", "design", "build", "verify", "review", "ship"],
+      "primary_stages": ["design", "build", "verify", "review"],
+      "activation": {
+        "concerns": ["security", "auth", "authorization", "privacy", "sensitive-data", "uploads", "payments", "web-security", "external-http", "webhooks", "tenant-isolation"],
+        "extensions": [],
+        "terms": ["auth", "authentication", "authorization", "permissions", "access control", "login", "payment", "payments", "webhook", "webhooks", "sensitive data", "file upload", "uploads", "csrf", "ssrf", "xss", "secret rotation", "tenant isolation", "احراز هویت", "مجوز دسترسی", "کنترل دسترسی", "پرداخت", "اطلاعات حساس", "آپلود"],
+        "path_patterns": ["(?:^|/)(?:auth|authorization|permissions|payments|uploads)(?:/|[._-])"]
+      },
+      "shared_resources": ["references"],
+      "assignment": "Threat scenarios, platform-appropriate controls and security evidence. Supplement scanners; preserve Head authorization and platform invariants."
+    },
+    {
+      "id": "api-and-interface-design",
+      "skill_name": "api-and-interface-design",
+      "repository": "addyosmani/agent-skills",
+      "skill_path": "skills/api-and-interface-design",
+      "capability": "interface-contracts",
+      "mode": "head-delegated",
+      "requirement": "required-on-match",
+      "stages": ["define", "plan", "design", "build", "verify", "review"],
+      "primary_stages": ["design", "build", "verify", "review"],
+      "activation": {
+        "concerns": ["api", "contracts", "external-http", "webhooks", "idempotency", "payments"],
+        "extensions": [],
+        "terms": ["api", "endpoint", "webhook", "webhooks", "public contract", "interface contract", "idempotency", "pagination", "رابط برنامه‌نویسی", "قرارداد ارتباطی", "وب‌هوک", "وب هوک"],
+        "path_patterns": []
+      },
+      "shared_resources": ["references"],
+      "assignment": "Changed producer/consumer contracts, schemas, errors, compatibility, retries and idempotency evidence. Keep the settled stack and platform conventions."
+    },
+    {
+      "id": "debugging-and-error-recovery",
+      "skill_name": "debugging-and-error-recovery",
+      "repository": "addyosmani/agent-skills",
+      "skill_path": "skills/debugging-and-error-recovery",
+      "capability": "systematic-debugging",
+      "mode": "head-delegated",
+      "requirement": "required-on-match",
+      "stages": ["discover", "build", "verify", "ship"],
+      "primary_stages": ["discover", "build", "verify", "ship"],
+      "activation": {
+        "concerns": ["debugging", "intermittent-failure", "failed-fixes", "deployment-failure"],
+        "extensions": [],
+        "terms": ["root cause", "intermittent", "race condition", "repeated failed fixes", "deployment failure", "unknown failure", "خطای متناوب", "علت نامشخص", "اصلاح ناموفق", "علت ریشه‌ای", "شکست انتشار"],
+        "path_patterns": []
+      },
+      "shared_resources": ["references"],
+      "assignment": "Reproduce and localize unclear failures, establish root cause, make a bounded fix and return regression evidence. Do not repair unrelated failures."
     }
   ]
 }

@@ -103,6 +103,7 @@ def draft(
     include_packs: list[str] | None = None,
     context_facts: dict[str, Any] | None = None,
     risk_facts: dict[str, Any] | None = None,
+    stage: str = "plan",
 ) -> dict[str, Any]:
     router = load_context_router()
     route = router.plan(
@@ -114,6 +115,7 @@ def draft(
         include_packs or [],
         context_facts=context_facts,
         risk_facts=risk_facts,
+        stage=stage,
     )
     complexity = route["project"]["complexity"]["level"]
     tier = int(route["task"]["risk"]["tier"])
@@ -185,6 +187,7 @@ def draft(
         },
         "objective": task,
         "context_plan": route,
+        "specialist_assignments": route["required_specialists"],
         "coordination": {
             "recommended_parallelism": 1,
             "default_owner": "lead-agent",
@@ -519,6 +522,7 @@ def main() -> int:
     draft_cmd.add_argument("--context-platform", action="append", default=[])
     draft_cmd.add_argument("--context-capability", action="append", default=[])
     draft_cmd.add_argument("--context-concern", action="append", default=[])
+    draft_cmd.add_argument("--stage", choices=load_context_router().load_specialist_manager().registry()["lifecycle"], default="plan")
     for field in ("operation", "environment", "data-sensitivity", "change-boundary"):
         draft_cmd.add_argument("--risk-" + field)
     draft_cmd.add_argument("--json", action="store_true")
@@ -553,6 +557,7 @@ def main() -> int:
                 for field in ("operation", "environment", "data_sensitivity", "change_boundary")
                 if getattr(ns, "risk_" + field) is not None
             } or None,
+            stage=ns.stage,
         )
         exit_code = 0
     elif ns.command == "validate":

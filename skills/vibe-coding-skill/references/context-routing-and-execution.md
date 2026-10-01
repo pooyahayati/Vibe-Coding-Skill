@@ -2,7 +2,11 @@
 
 ## Required specialists
 
-The router's `required_specialists` field is an offline selection, not installation or execution evidence. UI/UX concerns (`ui`, `ux`, `design`, `responsive`, `accessibility`, `rtl`) select the sole registered `ui-ux-skill` without activating unrelated platform packs. The execution plan retains these requirements in its context plan. Before implementation, resolve/install/read the selected specialist and enter Head-delegated mode according to `references/specialist-composition.md`. Infer and pass `--context-concern ui` when the user-facing deliverable is clear but task wording or known paths are not. Backend-only changes do not require a design specialist.
+The router's `required_specialists` field is offline selection, not installation or execution evidence. The four registered domains are UI/UX, application security, interface contracts, and systematic debugging. Explicit semantic concerns, relevant task signals and affected surfaces select only matching specialists; documentation-only paths suppress runtime text signals unless an explicit concern/selection establishes real domain work. A stage alone never selects specialists.
+
+Use `--stage discover|define|plan|design|build|verify|review|ship` (router defaults to Discover; execution-plan drafts default to Plan). Assignments carry stage, `active_in_stage`, protected authority and domain outcome; inactive assignments are preparation-only. The execution plan retains them as `specialist_assignments`. Re-route after impact analysis and stage changes. Structured concerns such as `ui`, `security`, `contracts`, `debugging` and `payments` avoid language-dependent guesses. Sensitive-data risk facts also select security without selecting UI. Platform packs remain independently evidence-gated.
+
+Before actual use, resolve/install/read the selected current specialist and its `vibe-head-contract.md`; assign only the current boundary under `references/specialist-composition.md`. Backend-only changes do not require design, and an obvious contained bug does not automatically require debugging.
 
 The router reduces irrelevant context without weakening project intelligence or risk controls.
 

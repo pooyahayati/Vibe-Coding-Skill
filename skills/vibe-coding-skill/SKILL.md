@@ -20,13 +20,9 @@ Optimize for working software, minimum total complexity, maintainability, diagno
 
 ## Decision order
 
-1. Identify the user outcome and one Current Objective.
-2. Inspect the existing system before changing it.
-3. Determine task risk, actual change scope, and relevant platform/runtime.
-4. Load only the context needed for those facts.
-5. Plan only when risk or real boundaries justify it.
-6. Implement the smallest maintainable vertical slice.
-7. Verify the required behavior and report evidence.
+`Discover → Define → Plan → Design → Build → Verify → Review → Ship`
+
+Vibe owns each stage and its exit decision. Enter where current evidence permits; reuse settled work and combine lightweight stages. This is not eight mandatory documents or approvals. Identify one Current Objective, inspect before changing, route by actual risk/scope/platform, implement small slices and require evidence. Read the canonical stage/exit table in `references/operating-model.md`.
 
 ## Mandatory rules
 
@@ -102,15 +98,17 @@ Read `references/context-routing-and-execution.md` for routing precedence, conte
 
 Vibe is the engineering Head: it owns scope, architecture, risk, integration, acceptance, and final delivery. Specialist methodology belongs to the specialist, not to duplicated rules in Vibe.
 
-Before each new task, run `scripts/specialist_manager.py prepare --task "<task>" --project-root <project> --json --apply` from the installed Head. Include known `--path` values or `--concern ui` when the deliverable contains UI; this applies to new projects too. Install/update only within the user's existing authorization and environment permissions.
+Before each new task, run `scripts/specialist_manager.py prepare --task "<task>" --stage <stage> --project-root <project> --json --apply` from the installed Head. Include known `--path` values and applicable `--concern` facts (for example `ui`, `contracts`, `security`, `debugging`); new projects also require semantic routing. Install/update only within existing authorization and host permissions. Specialists outside the current stage are preparation-only, not instructions to invoke a standalone lifecycle.
 
-The sole UI/UX specialist is `pooyahayati/UI-UX-Skill`, installed from `skills/ui-ux-skill`. For affected UI, MUST read its current `SKILL.md`, enter Head-delegated mode, and follow its product routing for websites, apps, dashboards, WordPress settings, and other supported interfaces. A routing result or successful installation alone is not specialist use.
+Registered specialists: sole design specialist `pooyahayati/UI-UX-Skill`; application security `security-and-hardening`; contracts `api-and-interface-design`; unclear failures `debugging-and-error-recovery` from `addyosmani/agent-skills`. Use only matching affected domains; never load the entire collection. Pass structured concerns when semantics are known and task wording is ambiguous.
+
+Read each selected current `SKILL.md` and `vibe-head-contract.md`, then assign the current stage and bounded domain outcome. UI follows its supported product routes; security supplements scanners; contracts preserve the settled stack; debugging returns root-cause/regression evidence. Selection or installation alone is not specialist use. `config/specialists.json` records stages and domain-only permissions; these do not grant host access.
 
 Resolve the latest stable release, or the latest default-branch commit when no release exists; never put specialist version pins in Head policy. Check the Head at task start and selected specialists before use; reconcile registered installed skills when the daily inventory is due. Record observed revisions outside the product repository and keep them stable during the operation.
 
 `RELOAD` requires reading the updated Head and rerunning its preflight before delegation. `BLOCK` stops the affected required workflow; an unrelated inventory `WARN` does not block unaffected work. Never call unavailable, incompatible, or unverified installations current.
 
-Within the skill hierarchy, Head controls override specialist defaults. System/developer/user instructions and applicable project rules remain authoritative. Pass settled constraints to the specialist; assess its scoped handoff before final completion. Read `references/specialist-composition.md` for installation, precedence, nested requests, and handoffs.
+Within the skill hierarchy, Head controls override specialist defaults. System/developer/user instructions and applicable project rules remain authoritative. Pass settled constraints and assess scoped evidence before completion. Read `references/specialist-composition.md` for installation/handoffs and `references/specialist-authority.md` for allowed actions, Head-owned decisions, and conflicts.
 
 ## Planning and coordination
 
@@ -139,7 +137,7 @@ Read `references/project-intelligence.md` and `references/graph-provider-contrac
 
 Execution loop:
 
-`Objective → Ready Check → Context/Impact → Plan if required → Implement → Focused Tests → Review → Integrate → Update State → Done`
+Follow the canonical lifecycle above; use Ready/impact checks, a plan when required, focused verification and current state/handoff within the relevant stages.
 
 Keep code structure requirement-driven: clear responsibilities and ownership, explicit meaningful boundary contracts, entry validation, diagnosable failures, and abstractions only after a real shared need. Do not manufacture interfaces, repositories, services, message buses, or architectural layers by default.
 
