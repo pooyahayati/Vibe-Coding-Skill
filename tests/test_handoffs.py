@@ -232,6 +232,54 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual(inspected["review"]["actual_changes"], {"src/new.txt": "add"})
         self.assertTrue(self.inspect(returned, self.decision(returned, inspected))["accepted"])
 
+    def test_literal_routes_outside_assignment_do_not_block_git_observation(self):
+        names = ["apps/web/[id]/page.tsx", "apps/web/[...slug]/page.tsx", "apps/web/[[...slug]]/page.tsx"]
+        for name in names:
+            path = self.root / name
+            path.parent.mkdir(parents=True)
+            path.write_text("original", encoding="utf-8")
+        for args in (["add", "."], ["commit", "-qm", "literal web baseline"]):
+            subprocess.run(["git", *args], cwd=self.root, check=True, capture_output=True)
+        self.start()  # The assigned src scope does not contain the web routes.
+        _, operation = handoff.load_operation(self.root, self.contract, "ui-build")
+        self.assertTrue(set(names) <= set(operation["baseline_tracked"]))
+        (self.root / names[0]).unlink()
+        (self.root / names[1]).write_text("changed", encoding="utf-8")
+        added = "apps/web/[token]/page.tsx"
+        (self.root / added).parent.mkdir()
+        (self.root / added).write_text("untracked", encoding="utf-8")
+        observed = handoff.observation(self.root, operation["assignment"], operation["baseline_commit"])
+        self.assertTrue(observed[names[0]]["missing"])
+        self.assertIn("sha256", observed[names[1]])
+        self.assertIn("sha256", observed[added])
+
+    def test_literal_route_handoff_executes_and_keeps_current_acceptance_fresh(self):
+        route = "src/[id]/value.txt"
+        (self.root / route).parent.mkdir()
+        (self.root / "src/value.txt").rename(self.root / route)
+        (self.root / "check.py").write_text("from pathlib import Path\nassert Path(" + repr(route) + ").read_text() == 'changed'\n", encoding="utf-8")
+        for args in (["add", "."], ["commit", "-qm", "literal route baseline"]):
+            subprocess.run(["git", *args], cwd=self.root, check=True, capture_output=True)
+        self.spec["scope"] = ["src/[id]"]
+        start = self.start()
+        (self.root / route).write_text("changed", encoding="utf-8")
+        result = capture.capture(self.root, self.contract, "check", [sys.executable, "check.py"])
+        r = result["receipt"]
+        self.assertEqual(r["result"], "pass")
+        self.evidence = [{"id": r["id"], "kind": r["kind"], "origin": r["origin"], "result": "pass", "required": True,
+                          "requirement_id": "check", "receipt_ref": result["receipt_ref"], "receipt_sha256": result["receipt_sha256"]}]
+        returned = {"format": "vibe-specialist-return", "schema_version": 1,
+                    **{k: start["assignment"][k] for k in ("task_id", "assignment_id", "specialist_id", "stage", "contract_sha256")},
+                    "upstream_revision": start["upstream_revision"], "head_contract_sha256": start["head_contract_sha256"],
+                    "changed_surfaces": [{"path": route, "action": "modify"}], "decisions": [], "invariants": [],
+                    "evidence_ids": [r["id"]], "findings": [], "unperformed_checks": [], "conflicts": [], "next_action": "Head verifies the route"}
+        inspected = self.inspect(returned)
+        self.assertEqual(inspected["review"]["actual_changes"], {route: "modify"})
+        self.assertTrue(self.inspect(returned, self.decision(returned, inspected))["accepted"])
+        self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "PASS")
+        (self.root / route).write_text("stale", encoding="utf-8")
+        self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "BLOCK")
+
 
 if __name__ == "__main__":
     unittest.main()

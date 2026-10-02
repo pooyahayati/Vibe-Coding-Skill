@@ -354,7 +354,7 @@ class EvidenceCaptureTests(unittest.TestCase):
         self.assertFalse(marker.exists())
 
     def test_unsafe_paths_scope_erasure_limits_and_origins_fail_before_execution(self):
-        for value in ("../outside", "/outside", "C:/outside", "src/*"):
+        for value in ("../outside", "/outside", "C:/outside", "src/*", "src/?", "src/\x00value", "src\\value"):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 capture.snapshot(self.root, [value], [])
         for paths, excluded in ((["src"], ["src"]), (["src"], ["."])):
@@ -375,6 +375,27 @@ class EvidenceCaptureTests(unittest.TestCase):
         with patch.dict(os.environ, {"VIBE_CODING_HOME": str(self.root / "state")}):
             with self.assertRaises(ValueError):
                 self.run_check()
+
+    def test_route_names_are_literal_in_inputs_exclusions_and_artifacts(self):
+        names = ["src/[id]/page.tsx", "src/[...slug]/page.tsx", "src/[[...slug]]/page.tsx",
+                 "src/(group)/[name]/page.tsx", "src/صفحه [id]/page.tsx"]
+        for name in [*names, "src/i/page.tsx", "src/[generated]/output.txt"]:
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(name, encoding="utf-8")
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual(capture.relative(name), name)
+                rows = capture.snapshot(self.root, [name], [])
+                self.assertEqual([row["path"] for row in rows], [name])
+                self.assertEqual(rows[0]["sha256"], capture.hashlib.sha256(name.encode()).hexdigest())
+                artifact = capture.artifact_snapshot(self.root, [name])[0]
+                self.assertEqual(artifact["sha256"], rows[0]["sha256"])
+        rows = capture.snapshot(self.root, ["src"], ["src/[generated]"])
+        self.assertTrue(set(names) <= {row["path"] for row in rows})
+        self.assertFalse(any(row["path"].startswith("src/[generated]") for row in rows))
+        self.assertEqual(capture.snapshot(self.root, ["src/[missing]/page.tsx"], [], require_file=False),
+                         [{"path": "src/[missing]/page.tsx", "missing": True}])
 
     def test_link_escape_is_rejected_including_missing_child(self):
         link = self.root / "src/link"
