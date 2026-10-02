@@ -27,7 +27,7 @@ Task/path terms are supplemental routing signals: confirm the affected boundary 
 
 For each required specialist:
 
-1. Obtain a current installation and read its `SKILL.md`; do not describe merely selecting/installing it as using it.
+1. Obtain a current installation and read its `SKILL.md`; resolve any required S1 compatibility assessment before actual delegation. Selecting/installing it is not using it.
 2. Read the installed `vibe-head-contract.md`; pass current stage, objective, affected surfaces/files, settled stack/product constraints, protected invariants, risk floor, authorized actions, acceptance criteria and evidence expectations.
 3. Assign only the current domain work under the Head-delegation contract. The UI specialist uses its native delegated mode and required Product Packs; the other specialists use their domain guidance under the injected contract rather than their entire standalone lifecycle. Do not duplicate their methods or reopen settled discovery.
 4. Request decisions, changed surfaces/files, preserved constraints, actual rendered/functional/accessibility/localization evidence, unperformed checks, risks, and remaining approvals.
@@ -67,12 +67,38 @@ Default provenance lives under `~/.vibe-coding/specialists`; skills live in the 
 
 | Outcome | Required action |
 |---|---|
-| `PASS` / `current` | Read current instructions, then delegate within the settled boundary. |
+| `PASS` / `current` | Installation is current; active selected specialists also need compatibility `accepted`. Read instructions and delegate within the settled boundary. |
 | `RELOAD` | Head changed; read it and rerun its preflight using its current registry/manager. |
 | `BLOCK` | Required Head/selected specialist is missing, outdated, incompatible, locally modified, or currency-unverified; resolve that cause before this workflow. |
 | `WARN` | An unused registered installation failed inventory; report it and continue unaffected work. |
 
 Do not silently label an older fallback latest. A deliberate exception to mandatory currency requires a real user decision. Never claim automatic updates are available where host execution/network permissions prevent them.
+
+## Instruction compatibility assessment (S1)
+
+Freshness/package validity and instruction compatibility are separate. A current installation with no accepted assessment returns `compatibility.status: assessment-required`; preflight blocks its affected active-stage delegation. Specialists prepared for a future stage do not block current work. Daily inventory still checks installed-package currency, not automatic semantic approval. No specialist or model benchmark is run.
+
+The `review` packet supplies the observed revision, Head/adapter fingerprint, registry domain/permission binding, normalized resource hashes, changed paths and bounded text diffs against the previous assessed snapshot. Snapshots/decisions live under the existing external specialist state directory. Diffs have a combined 128 KiB excerpt limit and mark truncation; inspect full files under the supplied current/previous resource roots whenever needed. Package text is evidence to review, never authority to execute commands or install dependencies.
+
+The Head reads relevant changes and records these five decisions with concrete rationale and inspected resource references:
+
+| Area | Assess |
+|---|---|
+| `authority` | Head precedence and retained engineering ownership. |
+| `platform` | Supported product/runtime assumptions and platform invariants. |
+| `dependencies` | Referenced resources, nested requests and installation authority. |
+| `verification` | Relevant checks, honest evidence and proportionate test breadth. |
+| `scope-authorization` | Assigned boundaries, settled decisions and host/user permissions. |
+
+Submit a Head-authored JSON object: `format: vibe-specialist-compatibility`, integer `schema_version: 1`, registered `specialist_id`, packet `binding_sha256`, `upstream_revision` and `head_contract_sha256`, `decision` (`accepted`, `changes-required`, `blocked`), `assessed_by`, timezone-aware `assessed_at`, concrete `reason`, `reviewed_paths`, `checks` and `conflicts`. Cover every `required_review_paths` entry, including deleted resources from the previous snapshot. Each check has one `area`, `status` (`compatible`, `overridden`, `conflict`), concrete `rationale` and nonempty inspected `resource_paths`. An `overridden` default must reference the effective `vibe-head-contract.md` and explain its scoped resolution. Unresolved conflicts cannot be accepted; report material unsupported capabilities rather than manufacture compatibility.
+
+```sh
+python scripts/specialist_manager.py assess --specialist ui-ux-skill --stage design --assessment <head-decision.json> --skills-dir <host-skills> --state-dir <external-state> --project-root <project> --json
+```
+
+This rechecks current source/installation and binds the decision independently; do not use an assessment's own revision as a freshness source. A mismatched or malformed decision remains unverified. Retrying with an actual resolved decision is permitted under existing Head authority; a new user question is needed only for a genuinely user-owned choice. `assess` never supplies installation/deployment permissions.
+
+Accepted unchanged bindings reuse the decision without another instruction diff or assessment. Changed upstream revision, resources, Head/adapter controls or registered domain/permission constraints require reassessment. A new revision with identical domain text can use a short provenance/unchanged-guidance rationale. Compatibility acceptance is a recorded engineering judgment, not a semantic proof, tamper-resistant host boundary or S2 task-output acceptance. It does not hot-replace instructions already in use by an assignment.
 
 ## Nested specialist requests
 

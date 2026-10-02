@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Implement S1 instruction-compatibility assessments separately from specialist currency/package checks. Provide bounded resource diffs and an explicit Head decision for authority, platform, dependencies, verification and scope/authorization. Bind cached acceptance to observed source, installed resources and Head/domain controls; reject mismatches and unresolved conflicts. Only affected active delegation blocks; unchanged acceptance is reused without another assessment or model evaluation. Task-return acceptance remains S2.
+
 - Implement E2 schema-3 completion against independently retained task contracts and local receipts. Resolve bounded task-local references/digests, validate identity/origin/obligations, recompute scoped input/artifact/context bindings and retain risk/evidence-family rules. Keep schema-2 reports explicitly declared evidence; retain receipt workflow activation through state/handoff/resume and reject downgrade. Support actual manual observations without invented execution; imported remote claims require a separate authorized resolver and remain unverified here.
 
 - Implement E1 local execution receipts with explicit argument-list commands, bounded timeouts, before/after scoped input and exact-artifact hashes, honest non-pass/unavailable results, external local storage and optional WordPress ZIP version binding. Do not retain process output or environment dumps; reject escaping/link paths and incomplete collection. Package the collector and exercise its actual behavior across supported operating systems. Schema-2 completion remains unchanged; receipt resolution is E2.

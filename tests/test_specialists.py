@@ -2,14 +2,17 @@
 from __future__ import annotations
 
 import importlib.util
+import copy
 import io
 import json
 import tempfile
+import sys
 import unittest
 import urllib.error
 from pathlib import Path
 from unittest.mock import patch
 from zipfile import ZipFile
+from contextlib import redirect_stdout
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("specialist_manager_test", ROOT / "scripts/specialist_manager.py")
@@ -204,6 +207,146 @@ class SpecialistTests(unittest.TestCase):
         with patch.object(manager, "ensure", return_value={"id": "vibe-coding-skill", "status": "current"}) as ensure:
             manager.run("prepare", self.skills, self.state, [], False)
             self.assertEqual(ensure.call_count, 1)
+
+
+class CompatibilityTests(unittest.TestCase):
+    def setUp(self):
+        SpecialistTests.setUp(self)
+        self.files["vibe-head-contract.md"] = (ROOT / "references/specialist-authority.md").read_bytes()
+        self.ensure(True)
+
+    def ensure(self, apply=False):
+        return SpecialistTests.ensure(self, apply)
+
+    def packet(self):
+        return manager.compatibility_packet(self.entry, self.skills, self.state, self.ensure())
+
+    def assessment(self, packet=None):
+        packet = packet or self.packet()
+        rationale = {
+            "authority": "Domain guidance remains subordinate to the injected Head contract.",
+            "platform": "UI guidance uses the assigned product runtime; no replacement stack is mandated.",
+            "dependencies": "Referenced UI guidance is contained in the package; no additional installation is requested.",
+            "verification": "UI checks follow changed behavior and Head risk controls; no unrelated suite is mandated.",
+            "scope-authorization": "The Head contract retains assigned surfaces and publication permissions."}
+        return {"format": "vibe-specialist-compatibility", "schema_version": 1, "specialist_id": self.entry["id"],
+                **{k: packet[k] for k in ("binding_sha256", "upstream_revision", "head_contract_sha256")},
+                "decision": "accepted", "assessed_by": "Engineering Head", "assessed_at": "2026-10-02T00:00:00Z",
+                "reason": "Read the fixture domain guidance and effective Head controls.",
+                "reviewed_paths": packet["required_review_paths"], "conflicts": [],
+                "checks": [{"area": area, "status": "compatible", "rationale": rationale[area],
+                            "resource_paths": ["SKILL.md", "vibe-head-contract.md"]} for area in sorted(rationale)]}
+
+    def run_manager(self, selected=None, assessment=None, mode="prepare"):
+        original = manager.ensure
+        def ensure(entry, *args):
+            return {"id": entry["id"], "status": "current", "updated": False} if entry["id"] == "vibe-coding-skill" else original(entry, *args)
+        with patch.object(manager, "ensure", side_effect=ensure), patch.object(manager, "resolve_latest", return_value=self.source), patch.object(manager, "source_package", return_value=self.files):
+            return manager.run(mode, self.skills, self.state, [self.entry] if selected is None else selected, False, assessment)
+
+    def test_valid_installation_is_not_semantic_acceptance_and_reuse_skips_diff(self):
+        pending = self.run_manager()
+        self.assertEqual(pending["gate"], "BLOCK")
+        self.assertEqual(pending["skills"][1]["status"], "current")
+        self.assertEqual(pending["skills"][1]["compatibility"]["status"], "assessment-required")
+        packet = pending["skills"][1]["compatibility"]["review"]
+        self.assertIn("UI guidance", next(d["diff"] for d in packet["diffs"] if d["path"] == "references/ui.md"))
+        self.assertEqual(self.run_manager(assessment=self.assessment(packet), mode="assess")["gate"], "PASS")
+        self.source["ref"] = "v2.0.1"  # A new release label on unchanged instructions does not need reassessment.
+        with patch.object(manager.difflib, "unified_diff", side_effect=AssertionError("cached assessment should not generate another diff")):
+            result = self.run_manager()
+        self.assertEqual(result["gate"], "PASS")
+        self.assertTrue(result["skills"][1]["compatibility"]["reused"])
+        # Exercise the public CLI parser and persistence path without live upstream traffic.
+        decision = self.root / "head-decision.json"
+        decision.write_text(json.dumps(self.assessment()), encoding="utf-8")
+        original = manager.ensure
+        def ensure(entry, *args):
+            return {"id": entry["id"], "status": "current", "updated": False} if entry["id"] == "vibe-coding-skill" else original(entry, *args)
+        output = io.StringIO()
+        argv = ["specialist_manager.py", "assess", "--specialist", self.entry["id"], "--stage", "design",
+                "--skills-dir", str(self.skills), "--state-dir", str(self.state), "--assessment", str(decision), "--json"]
+        with patch.object(sys, "argv", argv), patch.object(manager, "ensure", side_effect=ensure), patch.object(manager, "resolve_latest", return_value=self.source), redirect_stdout(output):
+            self.assertEqual(manager.main(), 0)
+        self.assertEqual(json.loads(output.getvalue())["gate"], "PASS")
+
+    def test_changed_revision_and_deleted_resource_need_review_then_cache(self):
+        self.run_manager(assessment=self.assessment(), mode="assess")
+        self.source["commit"] = "b" * 40
+        self.files.pop("references/ui.md")
+        self.files["SKILL.md"] = b"---\nname: ui-ux-skill\n---\nUse assigned UI runtime.\n"
+        self.ensure(True)
+        packet = self.packet()
+        self.assertEqual(packet["previous_revision"], "a" * 40)
+        self.assertIn({"path": "references/ui.md", "action": "delete", "before_sha256": manager.digest("references/ui.md", b"UI guidance\n"), "after_sha256": None}, packet["changed_resources"])
+        self.assertEqual(self.run_manager()["gate"], "BLOCK")
+        self.assertEqual(self.run_manager(assessment=self.assessment(packet), mode="assess")["gate"], "PASS")
+        self.assertEqual(self.run_manager()["gate"], "PASS")
+
+    def test_head_policy_and_domain_changes_invalidate_accepted_assessment(self):
+        self.run_manager(assessment=self.assessment(), mode="assess")
+        old = self.packet()["binding_sha256"]
+        self.entry = dict(self.entry, assignment="UI only; preserve a newly required tenant boundary")
+        self.assertNotEqual(self.packet()["binding_sha256"], old)
+        self.assertEqual(self.run_manager()["gate"], "BLOCK")
+        self.run_manager(assessment=self.assessment(), mode="assess")
+        previous = self.packet()["binding_sha256"]
+        record = json.loads((self.state / "ui-ux-skill.json").read_text())
+        record["source"]["package_policy"] = "older-adapter"
+        (self.state / "ui-ux-skill.json").write_text(json.dumps(record), encoding="utf-8")
+        # The real installer reconciles the old policy before compatibility can be assessed.
+        current = self.ensure()
+        self.assertNotEqual(current["source"]["package_policy"], "older-adapter")
+        self.assertEqual(self.packet()["binding_sha256"], previous)
+        with patch.object(manager, "PACKAGE_ADAPTER", manager.PACKAGE_ADAPTER + 1):
+            self.ensure()
+            self.assertNotEqual(self.packet()["binding_sha256"], previous)
+            self.assertEqual(self.run_manager()["gate"], "BLOCK")
+
+    def test_conflicts_cannot_be_accepted_and_head_override_must_be_explicit(self):
+        value = self.assessment()
+        value["checks"][0]["status"] = "conflict"
+        value["conflicts"] = ["Upstream requests an unregistered installer."]
+        self.assertEqual(self.run_manager(assessment=value, mode="assess")["gate"], "BLOCK")
+        value["decision"] = "blocked"
+        blocked = self.run_manager(assessment=value, mode="assess")
+        self.assertEqual(blocked["skills"][1]["compatibility"]["status"], "compatibility-blocked")
+        value.update(decision="accepted", conflicts=[])
+        value["checks"][0].update(status="overridden", rationale="The injected Head contract reserves installation authority and prevents following this request.")
+        self.assertEqual(self.run_manager(assessment=value, mode="assess")["gate"], "PASS")
+        value["checks"][0]["resource_paths"] = ["SKILL.md"]
+        self.assertEqual(self.run_manager(assessment=value, mode="assess")["gate"], "BLOCK")
+
+    def test_changed_binding_missing_review_and_wrong_origin_fail_closed(self):
+        valid = self.assessment()
+        for fields in ({"upstream_revision": "c" * 40}, {"binding_sha256": "0" * 64}, {"specialist_id": "other"},
+                       {"reviewed_paths": ["SKILL.md"]}, {"assessed_at": "2026-10-02"}, {"auto_approved": True}):
+            with self.subTest(fields=fields):
+                value = copy.deepcopy(valid)
+                value.update(fields)
+                self.assertEqual(self.run_manager(assessment=value, mode="assess")["gate"], "BLOCK")
+        self.assertEqual(self.run_manager(assessment=valid, mode="assess")["gate"], "PASS")
+        path = Path(self.packet()["assessment_path"])
+        path.write_text('{"decision":"accepted"}', encoding="utf-8")
+        self.assertEqual(self.run_manager()["gate"], "BLOCK")
+
+    def test_inventory_and_preparation_only_do_not_block_unaffected_work(self):
+        self.assertEqual(self.run_manager(selected=[])["gate"], "PASS")
+        inactive = dict(self.entry, active_in_stage=False)
+        result = self.run_manager(selected=[inactive])
+        self.assertEqual(result["gate"], "PASS")
+        self.assertEqual(result["skills"][1]["compatibility"]["status"], "assessment-required")
+        (self.skills / "ui-ux-skill/references/ui.md").write_bytes(b"Local edits\n")
+        self.assertEqual(self.run_manager()["gate"], "BLOCK")
+
+    def test_review_excerpt_is_bounded_and_full_resource_remains_available(self):
+        self.source["commit"] = "b" * 40
+        self.files["references/ui.md"] = b"Long changed instructions\n" * 10000
+        self.ensure(True)
+        packet = self.packet()
+        self.assertLessEqual(sum(len(d["diff"].encode("utf-8")) for d in packet["diffs"]), manager.MAX_REVIEW_BYTES)
+        self.assertTrue(any(d["truncated"] for d in packet["diffs"]))
+        self.assertTrue((Path(packet["resource_root"]) / "references/ui.md").is_file())
 
 
 if __name__ == "__main__":
