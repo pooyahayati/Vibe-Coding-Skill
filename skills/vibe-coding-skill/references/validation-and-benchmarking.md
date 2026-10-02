@@ -44,70 +44,33 @@ A new safety mechanism should normally receive at least one failure-injection ca
 
 ## Completion evidence gate
 
-A meaningful task reported as Done uses completion-report schema version 2. The report must explicitly connect acceptance criteria to the evidence that supports them.
+Choose the supported route from retained task context, not a report's success flags:
+
+| Route | What the gate establishes | Limits |
+|---|---|---|
+| New structured task: schema 3 | Retained criteria/obligations, qualifying local command/manual receipts, scoped input/artifact freshness and required specialist acceptance. | Head review still determines whether the checks prove the behavior. |
+| In-flight legacy task: schema 2 | Declared criterion/evidence linkage, required failures and risk-appropriate provenance. | A PASS is declared evidence, never receipt-verified execution. |
+| Tiny/manual work | A concrete relevant observation can satisfy an accepted manual obligation; no forced command or automated test. | An observation must actually have occurred; it cannot replace a required collected check. |
+
+For a new structured task:
 
 ```bash
-python scripts/completion_gate.py report.json --json
+python scripts/completion_gate.py report.json --task-contract task.json --root /path/to/project --json
 ```
 
-Each acceptance criterion must include:
+For an existing schema-2 task, the supported command remains `python scripts/completion_gate.py report.json --json`. Migration first reconciles retained criteria and obligations; it cannot turn old claims into receipts or downgrade an activated receipt workflow.
 
-- a stable `id`;
-- a human-readable `description`;
-- boolean `required`;
-- boolean `met`;
-- one or more `evidence_ids`.
+Failed, missing, stale or unavailable required evidence blocks Done; unrelated passing checks cannot cancel it. Local receipt checks do not resolve arbitrary remote CI claims or protect against an actor able to edit both source and records. Use the canonical [collection, manual observation and migration guidance](execution-and-verification.md#receipt-backed-completion-e2) and [format/trust contract](shared-improvement-contracts.md) rather than copying schemas here.
 
-Each evidence item must include:
+## Portable workflow integration (I1)
 
-- a stable `id`;
-- `kind`;
-- `result`;
-- boolean `required`;
-- risk-appropriate provenance when it is counted toward completion.
-
-A failed or not-run required evidence item blocks Done even when other checks pass. A failed optional item requires an explicit justification. Unrelated passing evidence does not satisfy a criterion unless that criterion links to it.
-
-Example Tier 1 report:
-
-```json
-{
-  "schema_version": 2,
-  "status": "Done",
-  "risk_tier": 1,
-  "acceptance_criteria": [
-    {
-      "id": "AC-1",
-      "description": "The requested behavior works for the supported path.",
-      "required": true,
-      "met": true,
-      "evidence_ids": ["E-1"]
-    }
-  ],
-  "evidence": [
-    {
-      "id": "E-1",
-      "kind": "test",
-      "result": "pass",
-      "required": true,
-      "provenance": {
-        "source": "local",
-        "reference": "python -m unittest"
-      }
-    }
-  ],
-  "blockers": []
-}
+```bash
+python -m unittest discover -s tests -p test_portable_integration.py
 ```
 
-Provenance requirements scale with risk:
+These three maintainer routes build/extract the current-source ZIP and use its installed entrypoints outside the source checkout: light legacy handoff/resume, actual failed/passing local receipts with scoped freshness, and a cross-boundary specialist return requiring separate Head acceptance. The existing Linux/macOS/Windows matrix runs them; offline specialist fixtures do not establish live upstream currency.
 
-- Tier 0: provenance metadata is optional.
-- Tier 1: counted evidence needs `source` and `reference`.
-- Tier 2: the report declares the target `commit`; at least two distinct passing semantic evidence families carry `source`, `reference`, and that exact `commit`.
-- Tier 3: Tier 2 revision binding plus timezone-aware ISO-8601 `captured_at` on every counted item.
-
-The gate validates structure, required failures, linkage, and provenance. It does not infer whether a test semantically proves a product requirement; evidence selection still requires engineering judgment.
+This is extracted-package/tooling evidence, not a public release, model evaluation or proof of every application's behavior. Run it for affected integration/packaging changes or existing required CI, not for every product task. [Route details and limits](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/main/docs/i1-integration-verification.md).
 
 ## Release readiness
 

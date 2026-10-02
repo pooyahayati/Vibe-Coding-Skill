@@ -209,6 +209,8 @@ Material drift in scope, architecture, data semantics, public API, security post
 
 ## Result format
 
+Give a usable handoff: what works, how to start/use it, what was actually checked and what remains unverified. Distinguish source/PR state from the exact released artifact, deployment and local installation when delivery involves them. Keep receipt/schema details in engineering evidence, not normal product UI.
+
 ### Done
 What changed or was delivered.
 

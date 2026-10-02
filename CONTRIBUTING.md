@@ -9,14 +9,18 @@ Contributions should preserve:
 5. no mandatory dependency unless rebuilding the capability would be materially worse;
 6. no new workflow ceremony without demonstrated risk or outcome benefit.
 
-For meaningful changes, explain the problem, show why the current skill does not handle it, keep the change modular, update validation/tests, and update the technical changelog.\n\nFor every version bump, also add a short human-readable entry to `UPDATES.md`. Keep `README.md` as a concise project overview and keep installation steps in `HOW_TO_INSTALL.md`.
+For meaningful changes, explain the problem, show why the current skill does not handle it, keep the change modular and update the technical changelog. Add tests only for meaningful uncovered behavior or failure modes; reuse existing coverage. For every version bump, also add a short human-readable entry to `UPDATES.md`. Keep `README.md` as a concise project overview and installation steps in `HOW_TO_INSTALL.md`.
 
-Run:
+Edit canonical root files; `skills/vibe-coding-skill/` is the portable mirror, not a second source of truth. Synchronize affected runtime resources, then check:
 
 ```bash
 python scripts/validate_skill.py
-python -m py_compile scripts/*.py
+python scripts/sync_package.py --check
 ```
+
+During Build, use the smallest relevant reproduction/check. Before integration, run affected regressions and existing required CI; do not repeat unrelated suites after wording-only edits. Documentation changes need accuracy, relevant link/resource checks and mirror consistency, not new tests that merely check wording.
+
+For runtime/packaging changes, use the offline install check and affected [portable integration routes](docs/i1-integration-verification.md). Before publication, the [release gate](references/validation-and-benchmarking.md#release-readiness) still requires its existing same-commit baseline. Maintainer fixtures prove tested tooling behavior, not model quality or every application's correctness. No model evaluation or provider API key is required.
 
 ## Roadmap progress
 

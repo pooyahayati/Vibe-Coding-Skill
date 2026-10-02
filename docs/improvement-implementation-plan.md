@@ -1,6 +1,6 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: P0/B1/B2/E1/E2/S1/S2 merged. I1 portable-package integration is implemented and verified, with completion taking effect at its implementation PR's merge; D1 final documentation remains planned. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
+Status: P0/B1/B2/E1/E2/S1/S2/I1 merged. D1 documentation is implemented and locally verified; its completion takes effect with its implementation PR's merge. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
 Baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
 
@@ -14,17 +14,17 @@ Direction and scope: [Roadmap](../ROADMAP.md).
 | E1 | 2 | Add a small execution-receipt collector. | Implemented `scripts/evidence_capture.py`; existing local-workspace and artifact helpers. | P0, B1. | Actual exit result, time, tested inputs and applicable artifact digest are recorded; execution stays authorized and bounded. |
 | E2 | 2 | Resolve and validate receipts at completion. | `scripts/completion_gate.py`; existing completion/regression tests. | B2, E1. | Missing, failed, stale or mismatched required execution evidence cannot qualify. Declared/manual evidence is not relabeled as collected execution. |
 | S1 | 3 | Assess changed specialist instructions before delegation. | `scripts/specialist_manager.py`, `references/specialist-composition.md`, `references/specialist-authority.md`. | P0, E2. | Package validity and behavioral compatibility are separate states; changed instructions get a bounded Head assessment. Unchanged accepted revisions reuse it. |
-| S2 | 3 | Validate stage-specific specialist return and Head acceptance. | `scripts/execution_plan.py`, `scripts/specialist_manager.py`; proposed small shared validator if needed. | B2, E2, S1. | Changed surfaces, contract decisions and required findings are reconciled against the assignment before integration. A valid form alone is not acceptance. |
+| S2 | 3 | Validate stage-specific specialist return and Head acceptance. | `scripts/specialist_handoff.py`, planner links, specialist manager and completion checks. | B2, E2, S1. | Changed surfaces, contract decisions and required findings are reconciled against the assignment before integration. A valid form alone is not acceptance. |
 | I1 | 4 | Run affected-route regressions and package checks. | Existing tests/validation fixtures, `sync_package.py`, `validate_skill.py`, `install_check.py`. | B2, E2, S2. | Relevant behavior passes; required runtime resources are included in the mirrored package and offline install check. |
 | D1 | 4 | Update concise user and maintainer guidance. | `SKILL.md`, README, relevant references; changelog/update notes at delivery preparation. | I1. | Documentation describes actual behavior and limits; author/footer, project-size tables and existing important links remain intact. |
 
-The filenames above are proposed change surfaces, not created runtime files. Add a shared module/schema only where multiple callers need it; do not create parallel validators or an unnecessary framework.
+The table identifies the implementation surfaces and acceptance boundaries. The shared behavior, receipt and specialist-handoff modules serve actual callers; documentation adds no parallel validator or new runtime framework.
 
 ## P0: contracts and compatibility
 
 The design decisions below are settled in [Shared improvement contracts](../references/shared-improvement-contracts.md). That reference is canonical for field names, identity/binding, origin classification, storage/trust limits and migration. P0 defined the version-1 record formats and completion version 3 without changing schema-2 behavior. E1/E2 now implement local receipt collection and schema-3 completion; S1 instruction compatibility and S2 scoped task-output acceptance are implemented.
 
-The shared design covers three areas before runtime implementation:
+The shared design and implemented callers cover three areas:
 
 - **Behavior:** stable criterion/scenario ID, user goal/action, relevant starting state, observable expected outcome, material failure expectation, protected invariant, required/optional status and evidence links. Allow one concise criterion for a tiny task; do not require a happy/failure pair where no meaningful failure exists.
 - **Receipt:** format version, evidence/scenario IDs, origin (`collected`, `reported` or `manual`), authorized command context, exit/result, timestamps, relevant source/input fingerprint and artifact SHA-256 when applicable. Record an unavailable check explicitly rather than manufacture success.
@@ -36,7 +36,7 @@ For significant/critical or scope-changing work, retain the accepted criteria be
 
 ## Phase 1: behavior before broad implementation
 
-B1's guidance is implemented in the [observable behavior contract](../references/operating-model.md#observable-behavior-contract) and [criterion-to-check mapping](../references/execution-and-verification.md#from-observable-criterion-to-a-check). B2 implements optional task-contract validation, plan workstream links, local state/handoff/resume preservation and explicit reported-outcome labeling; current schema-2 completion remains unchanged. `behavior_contract.py` is shared by the actual callers; it does not collect execution receipts or accept specialist work. Legacy/inline routes remain available. Independent baselines and Head/host controls are still needed for protected outcomes and authorized reconciliation.
+B1's guidance is implemented in the [observable behavior contract](../references/operating-model.md#observable-behavior-contract) and [criterion-to-check mapping](../references/execution-and-verification.md#from-observable-criterion-to-a-check). B2 implements optional task-contract validation, plan workstream links, local state/handoff/resume preservation and explicit reported-outcome labeling; legacy schema-2 completion remains declared evidence while E2 supplies the stricter schema-3 route. `behavior_contract.py` is shared by the actual callers; it does not collect execution receipts or accept specialist work. Legacy/inline routes remain available. Independent baselines and Head/host controls are still needed for protected outcomes and authorized reconciliation.
 
 Extend existing discovery/acceptance guidance rather than create a second lifecycle. Write the smallest scenario that lets the user and Head recognize success. Translate it into the first runnable slice and verification target. Preserve the scenario when passing work to a specialist.
 
@@ -95,4 +95,4 @@ Each review unit must include its changed behavior, acceptance results, relevant
 
 ## Readiness
 
-P0/B1/B2/E1/E2/S1/S2 are merged in PRs #62 through #68. [I1 integration](i1-integration-verification.md) exercises the extracted portable runtime across representative light, receipt-backed and cross-boundary routes; local verification passed and completion takes effect with I1's merge. D1 remains planned. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.
+P0/B1/B2/E1/E2/S1/S2 are merged in PRs #62 through #68. [I1 integration](i1-integration-verification.md) is merged in PR #72 and exercises the extracted portable runtime across light, receipt-backed and cross-boundary routes; local checks and the existing OS matrix passed. D1 aligns user/maintainer documentation with these mechanisms and preserves the light route, ownership, important links and full author attribution. Relevant link/structure, skill validation, mirror and offline-install checks passed (optional Trivy warning only); completion takes effect with D1's merge. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.
