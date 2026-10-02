@@ -28,6 +28,7 @@ RUNTIME_FILES = [
     Path("scripts/integration_guard.py"),
     Path("scripts/context_router.py"),
     Path("scripts/specialist_manager.py"),
+    Path("scripts/specialist_handoff.py"),
     Path("scripts/execution_plan.py"),
     Path("scripts/behavior_contract.py"),
     Path("scripts/evidence_capture.py"),

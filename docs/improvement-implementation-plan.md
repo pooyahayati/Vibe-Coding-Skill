@@ -1,6 +1,6 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: P0/B1/B2/E1/E2 merged; S1 instruction compatibility is implemented and verified, with completion taking effect at its implementation PR's merge. S2 task-output acceptance remains later work. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
+Status: P0/B1/B2/E1/E2/S1 merged; S2 stage-specific task acceptance is implemented and verified, with completion taking effect at its implementation PR's merge. I1 integration and D1 final documentation remain planned. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
 Baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
 
@@ -22,7 +22,7 @@ The filenames above are proposed change surfaces, not created runtime files. Add
 
 ## P0: contracts and compatibility
 
-The design decisions below are settled in [Shared improvement contracts](../references/shared-improvement-contracts.md). That reference is canonical for field names, identity/binding, origin classification, storage/trust limits and migration. P0 defined the version-1 record formats and completion version 3 without changing schema-2 behavior. E1/E2 now implement local receipt collection and schema-3 completion; S1 instruction compatibility is implemented; S2 task-output acceptance remains a specification.
+The design decisions below are settled in [Shared improvement contracts](../references/shared-improvement-contracts.md). That reference is canonical for field names, identity/binding, origin classification, storage/trust limits and migration. P0 defined the version-1 record formats and completion version 3 without changing schema-2 behavior. E1/E2 now implement local receipt collection and schema-3 completion; S1 instruction compatibility and S2 scoped task-output acceptance are implemented.
 
 The shared design covers three areas before runtime implementation:
 
@@ -68,7 +68,7 @@ S1 implements a separate bound Head decision and bounded resource-diff packet in
 
 Cache the assessment by observed upstream revision and Head contract/adapter fingerprint; refresh it when those inputs change. Do not rerun a specialist-wide evaluation for unchanged accepted instructions. Normal task reasoning and scoped deterministic checks are sufficient where they establish the required property; no model benchmark or provider API key is introduced.
 
-For task output, compare the actual changed surfaces with the assignment and relevant shared producer/consumer contracts. Handle renamed paths and justified cross-boundary effects. A path comparison can detect unexpected edits; it cannot prove their semantic safety. Resolve needed scope changes through the Head's existing authority instead of treating all unexpected paths as inherently invalid.
+S2 implements `specialist_handoff.py`, planner links, E2 completion checks and active-instruction update deferral. [Runtime usage/limits](../references/specialist-composition.md#stage-return-and-head-acceptance-s2). For task output, compare the actual changed surfaces with the assignment and relevant shared producer/consumer contracts. Handle renamed paths and justified cross-boundary effects. A path comparison can detect unexpected edits; it cannot prove their semantic safety. Resolve needed scope changes through the Head's existing authority instead of treating all unexpected paths as inherently invalid.
 
 Keep genuine security findings visible even when they conflict with the assignment. Required conflicts must be resolved or reported as blocking the affected outcome; optional findings do not automatically expand work. Acceptance belongs to the Head, not the specialist's own `Done` statement.
 
@@ -95,4 +95,4 @@ Each review unit must include its changed behavior, acceptance results, relevant
 
 ## Readiness
 
-P0/B1/B2/E1/E2 are merged in PRs #62/#63/#64/#65/#66. S1 instruction compatibility, changed-binding rejection, explicit conflict handling and unchanged acceptance reuse have passed relevant checks; its completion update takes effect when its implementation PR is merged. S2 task-output acceptance remains later work. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.
+P0/B1/B2/E1/E2/S1 are merged in PRs #62 through #67. S2 retained assignments, actual project/receipt reconciliation, required-finding history, explicit Head acceptance and completion integration have passed relevant checks; its completion update takes effect when its implementation PR is merged. I1 integration and D1 final documentation remain planned. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.

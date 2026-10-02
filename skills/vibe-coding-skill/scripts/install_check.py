@@ -26,6 +26,7 @@ RUNTIME_SCRIPTS = [
     "integration_guard.py",
     "context_router.py",
     "specialist_manager.py",
+    "specialist_handoff.py",
     "execution_plan.py",
     "behavior_contract.py",
     "evidence_capture.py",

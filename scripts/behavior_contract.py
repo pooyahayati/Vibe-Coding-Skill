@@ -45,6 +45,8 @@ def validate(value: Any) -> dict[str, Any]:
         raise ValueError("task contract requires task_id, objective and scope")
     if not _gate.valid_risk_tier(value.get("risk_tier")):
         raise ValueError("task contract requires risk_tier 0-3")
+    if "specialist_assignment_ids" in value and (not strings(value["specialist_assignment_ids"]) or len(set(value["specialist_assignment_ids"])) != len(value["specialist_assignment_ids"])):
+        raise ValueError("invalid retained specialist assignment IDs")
     criteria = value.get("acceptance_criteria")
     obligations = value.get("evidence_requirements")
     if not isinstance(criteria, list) or not criteria or not isinstance(obligations, list) or not obligations:

@@ -7,6 +7,7 @@ import argparse
 import importlib.util
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +38,14 @@ def load_behavior_contract():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def load_specialist_handoff():
+    directory = str(ROOT / "scripts")
+    if directory not in sys.path:
+        sys.path.insert(0, directory)
+    import specialist_handoff
+    return specialist_handoff
 
 
 def slug(value: str) -> str:
@@ -112,6 +121,7 @@ def draft(
     risk_facts: dict[str, Any] | None = None,
     stage: str = "plan",
     task_contract: dict[str, Any] | None = None,
+    specialist_handoffs: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     behavior = load_behavior_contract()
     contract = behavior.validate(task_contract) if task_contract is not None else None
@@ -258,11 +268,34 @@ def draft(
             tier, bool(route["task"]["risk"].get("approval_required")))
         workstream["criterion_ids"] = [c["id"] for c in contract["acceptance_criteria"]]
         workstream["evidence_requirement_ids"] = [e["id"] for e in contract["evidence_requirements"]]
+    if specialist_handoffs is not None:
+        if contract is None:
+            raise ValueError("bound specialist assignments require a retained task contract")
+        for assignment in specialist_handoffs:
+            load_specialist_handoff().validate_assignment(assignment, contract)
+        result["bound_specialist_assignments"] = specialist_handoffs
     return result
 
 
 def validate_plan(plan: dict[str, Any], task_contract: dict[str, Any] | None = None) -> dict[str, Any]:
     failures: list[str] = load_behavior_contract().plan_failures(plan, task_contract)
+    handoffs = plan.get("bound_specialist_assignments", [])
+    try:
+        if not isinstance(handoffs, list):
+            raise ValueError("bound specialist assignments must be an array")
+        contract = task_contract or plan.get("task_contract")
+        ids = set()
+        for assignment in handoffs:
+            if contract is None:
+                raise ValueError("specialist assignment lost retained task contract")
+            load_specialist_handoff().validate_assignment(assignment, contract)
+            if assignment["assignment_id"] in ids:
+                raise ValueError("duplicate specialist assignment in plan")
+            ids.add(assignment["assignment_id"])
+        if contract and set(contract.get("specialist_assignment_ids", [])) - ids:
+            raise ValueError("plan lost required specialist assignments")
+    except (ValueError, TypeError, KeyError) as exc:
+        failures.append(str(exc))
     warnings: list[str] = []
 
     objective = str(plan.get("objective") or "").strip()
@@ -555,6 +588,7 @@ def main() -> int:
     draft_cmd.add_argument("--context-capability", action="append", default=[])
     draft_cmd.add_argument("--context-concern", action="append", default=[])
     draft_cmd.add_argument("--stage", choices=load_context_router().load_specialist_manager().registry()["lifecycle"], default="plan")
+    draft_cmd.add_argument("--specialist-assignment", action="append", default=[], help="Head-owned stage assignment JSON; no delegation or permissions granted")
     for field in ("operation", "environment", "data-sensitivity", "change-boundary"):
         draft_cmd.add_argument("--risk-" + field)
     draft_cmd.add_argument("--json", action="store_true")
@@ -605,6 +639,7 @@ def run_cli(ns, ap) -> int:
             } or None,
             stage=ns.stage,
             task_contract=contract,
+            specialist_handoffs=[json.loads(Path(p).read_text(encoding="utf-8")) for p in ns.specialist_assignment] if ns.specialist_assignment else None,
         )
         exit_code = 0
     elif ns.command == "validate":

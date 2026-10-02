@@ -67,7 +67,7 @@ The examples illustrate how to choose evidence, not mandatory feature requiremen
 
 Choose the first runnable slice and its check from the agreed action/result, then proceed once scope, observable expectations and material decisions are clear. Writing the contract is not evidence that the software satisfies it. Missing access or execution remains unverified.
 
-B1 guides behavior and B2 preserves structured contracts in [plans](context-routing-and-execution.md#retained-behavior-in-a-plan-b2) and [state/handoffs](project-state-automation.md#preserve-task-behavior-and-useful-delivery-details-b2). E1/E2 supply [receipt-backed completion](execution-and-verification.md#receipt-backed-completion-e2); S1 supplies [instruction compatibility](specialist-composition.md#instruction-compatibility-assessment-s1), while S2 task-output acceptance remains planned. [Shared improvement contracts](shared-improvement-contracts.md) defines the fields; users do not fill records or choose a testing framework.
+B1 guides behavior and B2 preserves structured contracts in [plans](context-routing-and-execution.md#retained-behavior-in-a-plan-b2) and [state/handoffs](project-state-automation.md#preserve-task-behavior-and-useful-delivery-details-b2). E1/E2 supply [receipt-backed completion](execution-and-verification.md#receipt-backed-completion-e2); S1 supplies [instruction compatibility](specialist-composition.md#instruction-compatibility-assessment-s1), and S2 supplies [scoped return/Head acceptance](specialist-composition.md#stage-return-and-head-acceptance-s2). [Shared improvement contracts](shared-improvement-contracts.md) defines the fields; users do not fill records or choose a testing framework.
 
 ## Solution and technology selection
 
