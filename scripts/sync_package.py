@@ -31,6 +31,7 @@ RUNTIME_FILES = [
     Path("scripts/execution_plan.py"),
     Path("scripts/behavior_contract.py"),
     Path("scripts/evidence_capture.py"),
+    Path("scripts/receipt_validation.py"),
     Path("scripts/completion_gate.py"),
     Path("scripts/local_workspace.py"),
     Path("scripts/repository_purity.py"),

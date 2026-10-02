@@ -122,9 +122,13 @@ def build_context(root: Path, max_bytes_per_doc: int = 16000) -> dict[str, Any]:
                 raise ValueError("retained task fingerprint mismatch")
             current_context = {"head": head, "working_tree_fingerprint": graph_provider.working_tree_fingerprint(root),
                                "contract_sha256": fingerprint}
+            expected_schema = project_state.get("completion_schema", 2)
+            if type(expected_schema) is not int or expected_schema not in (2, 3):
+                raise ValueError("unsupported retained completion workflow")
             project_state["acceptance"] = behavior_contract.completion(
                 contract, project_state.get("completion_report"),
-                project_state.get("completion_report") is not None and current_context != project_state.get("completion_context"))
+                project_state.get("completion_report") is not None and current_context != project_state.get("completion_context"),
+                root=root, expected_schema=expected_schema, context=project_state.get("delivery_context", {}))
         except ValueError as exc:
             raise RuntimeError("retained task contract needs repair: " + str(exc)) from exc
     if graph.get("stale"):

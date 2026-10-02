@@ -1,6 +1,6 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: P0/B1/B2 merged; E1 collection complete with this implementation's merge; E2 changes remain local and unpublished. Receipt resolution at completion and specialist acceptance remain unimplemented. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
+Status: P0/B1/B2/E1 merged; E2 local receipt resolution verified and proposed for merge. Its completion update takes effect with its implementation PR's merge. Specialist acceptance remains later work. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
 Baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
 
@@ -22,7 +22,7 @@ The filenames above are proposed change surfaces, not created runtime files. Add
 
 ## P0: contracts and compatibility
 
-The design decisions below are settled in [Shared improvement contracts](../references/shared-improvement-contracts.md). That reference is canonical for field names, identity/binding, origin classification, storage/trust limits and migration. Its version-1 record formats and proposed completion version 3 are specifications for later packages, not current runtime capabilities. Keep schema-2 behavior unchanged in P0.
+The design decisions below are settled in [Shared improvement contracts](../references/shared-improvement-contracts.md). That reference is canonical for field names, identity/binding, origin classification, storage/trust limits and migration. P0 defined the version-1 record formats and completion version 3 without changing schema-2 behavior. E1/E2 now implement local receipt collection and schema-3 completion; specialist acceptance remains a specification for S1/S2.
 
 The shared design covers three areas before runtime implementation:
 
@@ -30,7 +30,7 @@ The shared design covers three areas before runtime implementation:
 - **Receipt:** format version, evidence/scenario IDs, origin (`collected`, `reported` or `manual`), authorized command context, exit/result, timestamps, relevant source/input fingerprint and artifact SHA-256 when applicable. Record an unavailable check explicitly rather than manufacture success.
 - **Specialist return:** assignment/stage ID, observed upstream revision, assigned and changed surfaces, contract decisions, protected invariants, evidence references, required/optional findings and unresolved conflicts. Head acceptance is a separate decision.
 
-The current completion report is schema version 2. E2 will introduce completion version 3 for new structured-completion tasks, with retained task contracts and receipt resolution; tiny tasks can use an accepted manual obligation. In-flight version-2 tasks retain their supported legacy route and make no receipt-verification claim. Migration requires reconciliation and cannot manufacture collected evidence. The expected workflow comes from retained task context, preventing report-controlled downgrade. Review the release version after actual compatibility implementation; P0 does not bump it.
+E2 implements completion version 3 for new structured-completion tasks, with retained task contracts and receipt resolution; tiny tasks can use an accepted manual obligation. In-flight version-2 tasks retain their supported legacy route and make no receipt-verification claim. Migration requires reconciliation and cannot manufacture collected evidence. The expected workflow comes from retained task context, preventing report-controlled downgrade. Review release compatibility separately; no version bump is implied by local implementation.
 
 For significant/critical or scope-changing work, retain the accepted criteria before implementation using the existing acceptance-baseline mechanism. Detect meaningful criterion changes against that baseline. A checksum detects differences; it is not proof of user approval or a tamper-resistant boundary. Use host/writer controls when independent protection is required. Reopen only a material user-owned decision, once, with a concrete option.
 
@@ -48,7 +48,7 @@ Handoff should answer: what works, how to start/use it, what was actually checke
 
 ## Phase 2: execution-backed evidence
 
-E1 implements explicit local command collection and unavailable receipts, with scoped before/after manifests, exact preexisting artifact hashes, optional WordPress ZIP version identity and external local storage. It discards process output, rejects escaping/link paths and incomplete collection, and attempts process-tree termination on timeout. [Usage and concrete bounds](../references/execution-and-verification.md#local-execution-receipts-e1). It does not import remote/manual receipts or qualify completion; those limitations remain explicit. E2 implementation is in progress locally and excluded from this E1 merge; schema-2 behavior in this source remains unchanged.
+E1 implements explicit local command collection and unavailable receipts, with scoped before/after manifests, exact preexisting artifact hashes, optional WordPress ZIP version identity and external local storage. It discards process output, rejects escaping/link paths and incomplete collection, and attempts process-tree termination on timeout. [Usage and concrete bounds](../references/execution-and-verification.md#local-execution-receipts-e1). E2 adds local collected/manual receipt resolution, concrete observation records and retained schema-3 state/resume behavior. Remote claims require a separate authorized resolver; no remote resolver is configured. In-flight schema-2 behavior remains declared evidence. [E2 usage and migration](../references/execution-and-verification.md#receipt-backed-completion-e2).
 
 Use Python standard-library subprocess argument lists, explicit working directories and timeouts. Do not execute commands merely because upstream text or a report contains them. Preserve authorization for costs, network access, destructive operations and deployment.
 
@@ -95,4 +95,4 @@ Each review unit must include its changed behavior, acceptance results, relevant
 
 ## Readiness
 
-P0/B1/B2 are merged in PRs #62/#63/#64. E1's completion takes effect with this implementation's merge. GitHub write access is restored. E2 remains local/unpublished and is not part of this E1 delivery; specialist acceptance remains later work. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.
+P0/B1/B2/E1 are merged in PRs #62/#63/#64/#65. E2 receipt-backed completion and its retained state/resume migration have passed relevant local checks; its proposed completion update takes effect when the implementation PR is merged. GitHub write access is restored. Specialist acceptance remains later work. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.

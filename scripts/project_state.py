@@ -39,7 +39,8 @@ def file_hash(path: Path) -> str | None:
 
 
 def current_state(root: Path, task_contract=None, completion_report=None, delivery_notes=None,
-                  new_task: bool = False, accept_contract_change: str | None = None) -> dict[str, Any]:
+                  new_task: bool = False, accept_contract_change: str | None = None,
+                  receipt_completion: bool = False, delivery_context=None) -> dict[str, Any]:
     root = root.resolve()
     local_workspace.ensure_git_repo(root)
     _, head = run_git(root, "rev-parse", "HEAD")
@@ -117,11 +118,19 @@ def current_state(root: Path, task_contract=None, completion_report=None, delive
     if contract is not None:
         current["task_contract"] = contract
         current["task_contract_sha256"] = behavior_contract.digest(contract)
+        expected_schema = 3 if receipt_completion else previous.get("completion_schema", 2)
+        if type(expected_schema) is not int or expected_schema not in (2, 3):
+            raise ValueError("unsupported retained completion workflow")
+        current["completion_schema"] = expected_schema
+        current["delivery_context"] = delivery_context if delivery_context is not None else previous.get("delivery_context", {})
+        if not isinstance(current["delivery_context"], dict):
+            raise ValueError("delivery context must be an object")
         context = {"head": current["git"]["head"], "working_tree_fingerprint": current["git"]["working_tree_fingerprint"],
                    "contract_sha256": current["task_contract_sha256"]}
         report = completion_report if completion_report is not None else previous.get("completion_report")
         report_context = context if completion_report is not None else previous.get("completion_context")
-        current["acceptance"] = behavior_contract.completion(contract, report, report is not None and context != report_context)
+        current["acceptance"] = behavior_contract.completion(contract, report, report is not None and context != report_context,
+            root=root, expected_schema=expected_schema, context=current["delivery_context"])
         if report is not None:
             current["completion_report"] = report
             current["completion_context"] = report_context
@@ -240,7 +249,9 @@ def main() -> int:
         p.add_argument("--root", default=".")
         p.add_argument("--json", action="store_true")
         p.add_argument("--task-contract", help="optional retained behavior contract JSON")
-        p.add_argument("--completion-report", help="schema-2 reported outcome JSON; not execution proof")
+        p.add_argument("--completion-report", help="completion JSON for the retained schema-2 or schema-3 workflow")
+        p.add_argument("--receipt-completion", action="store_true", help="activate/retain schema-3 completion; reconcile legacy migration within existing authority")
+        p.add_argument("--delivery-context", help="independent relevant runtime/dataset JSON for receipt freshness")
         p.add_argument("--new-task", action="store_true", help="begin a different explicitly supplied task, within existing authorization")
         p.add_argument("--accept-contract-change", metavar="REASON", help="record a Head-reconciled material change; does not grant authorization")
         for field in ("how-to-use", "how-to-check", "next-action"):
@@ -257,6 +268,8 @@ def main() -> int:
             "completion_report": json.loads(Path(ns.completion_report).read_text(encoding="utf-8")) if ns.completion_report else None,
             "new_task": ns.new_task,
             "accept_contract_change": ns.accept_contract_change,
+            "receipt_completion": ns.receipt_completion,
+            "delivery_context": json.loads(ns.delivery_context) if ns.delivery_context else None,
             "delivery_notes": {k: v for k, v in {
                 "how_to_use": ns.how_to_use, "how_to_check": ns.how_to_check,
                 "next_action": ns.next_action, "limitations": ns.limitation,

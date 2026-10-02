@@ -253,7 +253,7 @@ def acceptance_criteria_failures(
     return failures
 
 
-def evaluate(
+def evaluate_declared(
     report: dict[str, Any],
     acceptance_baseline: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
@@ -430,16 +430,41 @@ def evaluate(
     }
 
 
+def evaluate(report, acceptance_baseline=None, *, task_contract=None, root=None, receipt_root=None, context=None):
+    if not isinstance(report, dict):
+        return {"gate": "BLOCK", "failures": ["report must be an object"], "warnings": []}
+    if task_contract is not None:
+        import receipt_validation
+        return receipt_validation.evaluate_completion(report, task_contract, root, receipt_root, context, evaluate_declared)
+    if report.get("schema_version") == 3:
+        return {"gate": "BLOCK", "failures": ["schema 3 requires an independently retained task contract and project root"], "warnings": [], "receipt_verified": False}
+    result = evaluate_declared(report, acceptance_baseline)
+    result["receipt_verified"] = False
+    return result
+
+
 def main() -> int:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import behavior_contract
+    behavior_contract.configure_output()
     ap = argparse.ArgumentParser()
     ap.add_argument("report_json")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--acceptance-baseline", help="independently retained approved criteria JSON array")
+    ap.add_argument("--task-contract", help="retained version-1 contract; requires schema-3 receipts")
+    ap.add_argument("--root", help="actual intended delivery project root")
+    ap.add_argument("--context", help="independently supplied relevant delivery runtime/dataset JSON")
     ns = ap.parse_args()
 
-    report = json.loads(Path(ns.report_json).read_text(encoding="utf-8"))
-    baseline = json.loads(Path(ns.acceptance_baseline).read_text(encoding="utf-8")) if ns.acceptance_baseline else None
-    result = evaluate(report, baseline)
+    try:
+        report = json.loads(Path(ns.report_json).read_text(encoding="utf-8"))
+        baseline = json.loads(Path(ns.acceptance_baseline).read_text(encoding="utf-8")) if ns.acceptance_baseline else None
+        contract = behavior_contract.read(ns.task_contract) if ns.task_contract else None
+        result = evaluate(report, baseline, task_contract=contract, root=ns.root,
+                          context=json.loads(ns.context) if ns.context else None)
+    except (ValueError, OSError, TypeError, RuntimeError):
+        result = {"gate": "BLOCK", "failures": ["invalid or inaccessible completion context"], "warnings": [], "receipt_verified": False}
     if ns.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
