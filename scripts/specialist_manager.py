@@ -26,11 +26,13 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "config/specialists.json"
 MAX_BYTES = 64 * 1024 * 1024
 TEXT_SUFFIXES = {".md", ".py", ".json", ".yaml", ".yml", ".txt", ".svg", ".toml"}
-PACKAGE_ADAPTER = 2
+PACKAGE_ADAPTER = 3
 COMPATIBILITY_AREAS = {"authority", "platform", "dependencies", "verification", "scope-authorization"}
 MAX_REVIEW_BYTES = 128 * 1024
-RESOURCE_RE = re.compile(r"(?<![\w:/])(?:\.{1,2}/)*(?:references|upstream-references|packs|scripts|config|assets)/[A-Za-z0-9_./-]+\.(?:md|py|json|ya?ml|svg)(?![\w.-])")
-LINK_RE = re.compile(r"\]\((?P<path>[A-Za-z0-9_./-]+\.(?:md|py|json|ya?ml|svg))(?:#[^\s)]*)?\)")
+RESOURCE_RE = re.compile(r"(?<![\w:/])(?:\.{1,2}/)*(?:references|upstream-references|packs|scripts|config|assets)/[A-Za-z0-9_./-]+\.(?:md|py|json|ya?ml|svg)(?![\w-]|\.[\w.-])")
+LINK_RE = re.compile(r'''\[[^\[\]\r\n]*\]\([ \t]*(?:<(?P<angle>[^<>\r\n]*)>|(?P<bare>[^\s()<>]+))(?:[ \t]+(?:"[^"\r\n]*"|'[^'\r\n]*'|\([^()\r\n]*\)))?[ \t]*\)''')
+RESOURCE_SUFFIXES = {".md", ".py", ".json", ".yaml", ".yml", ".svg"}
+COMMAND_FENCES = {"sh", "shell", "bash", "zsh", "powershell", "pwsh", "bat", "cmd", "python", "py"}
 
 
 def registry() -> dict:
@@ -112,19 +114,65 @@ def supported_concerns() -> set[str]:
     return {concern for item in registry()["specialists"] for concern in item["activation"]["concerns"]}
 
 
-def resource_references(text: str) -> list[tuple[int, int, str]]:
-    # Keep exact relative prefixes; stripping ../../ would validate a different file.
-    matches = [(match.start(), match.end(), match.group()) for match in RESOURCE_RE.finditer(text)]
-    for match in LINK_RE.finditer(text):
-        start, end = match.span("path")
-        if not any(a <= start and end <= b for a, b, _ in matches):
-            matches.append((start, end, match.group("path")))
+def resource_references(text: str, *, explicit_only: bool = False) -> list[tuple[int, int, str]]:
+    """Extract supported local dependencies with spans in the original Markdown.
+
+    Non-command fences are illustrative. Command fences still declare runnable
+    resources, but Markdown-looking strings in any code block are not links.
+    Nested guides must use links or ./../ paths to disambiguate package resources
+    from repository-root examples. This is not a complete Markdown renderer.
+    """
+    resources, links = list(text), list(text)
+
+    def mask(target, start, end):
+        target[start:end] = ["\n" if c == "\n" else " " for c in text[start:end]]
+
+    fence, offset = None, 0
+    for line in text.splitlines(keepends=True):
+        end = offset + len(line)
+        marker = re.match(r"^ {0,3}(`{3,}|~{3,})([^\r\n]*)", line)
+        if fence:
+            mask(links, offset, end)
+            if marker and marker[1][0] == fence[0] and len(marker[1]) >= fence[1] and not marker[2].strip():
+                mask(resources, offset, end)
+                fence = None
+            elif not fence[2]:
+                mask(resources, offset, end)
+        elif marker:
+            info = marker[2].strip().split()
+            fence = (marker[1][0], len(marker[1]), bool(info and info[0].casefold() in COMMAND_FENCES))
+            mask(resources, offset, end)
+            mask(links, offset, end)
+        offset = end
+    for code in re.finditer(r"(`+)(.*?)\1", "".join(links), re.S):
+        mask(links, code.start(), code.end())
+        if LINK_RE.search(code.group(2)):
+            mask(resources, code.start(), code.end())
+
+    matches = []
+    for link in LINK_RE.finditer("".join(links)):
+        # Link destinations are interpreted once; remote URLs must not leak
+        # path-shaped substrings into the bare-resource scan.
+        mask(resources, link.start(), link.end())
+        group = "angle" if link.group("angle") is not None else "bare"
+        raw = link.group(group)
+        target = urllib.parse.urlsplit(raw)
+        if target.scheme or target.netloc or not target.path:
+            continue
+        reference = urllib.parse.unquote(target.path)
+        if PurePosixPath(reference).suffix.casefold() in RESOURCE_SUFFIXES:
+            start = link.start(group)
+            matches.append((start, start + len(target.path), reference))
+    for match in RESOURCE_RE.finditer("".join(resources)):
+        reference = match.group()
+        if not explicit_only or reference.startswith(("./", "../")):
+            matches.append((match.start(), match.end(), reference))
     return sorted(matches)
 
 
 def resolve_resource(owner: str, reference: str) -> str:
     resolved = posixpath.normpath(posixpath.join(posixpath.dirname(owner), reference))
-    if resolved == ".." or resolved.startswith("../") or resolved.startswith("/") or ":" in resolved:
+    if resolved == ".." or resolved.startswith("../") or resolved.startswith("/") or ":" in resolved or "\\" in resolved:
         raise ValueError("external required resource: " + reference)
     return resolved
 
@@ -165,7 +213,7 @@ def resolve_latest(entry: dict) -> dict:
             "commit": commit, "channel": channel, "ref": ref}
 
 
-def validate_package(files: dict[str, bytes], name: str) -> None:
+def validate_package(files: dict[str, bytes], name: str, *, mode: str | None = None) -> None:
     text = files.get("SKILL.md", b"").decode("utf-8")
     if not text.startswith("---\n") and not text.startswith("---\r\n"):
         raise ValueError("missing Skill frontmatter")
@@ -175,20 +223,17 @@ def validate_package(files: dict[str, bytes], name: str) -> None:
     frontmatter = sections[1]
     if not re.search(r"(?m)^name:\s*[\"']?" + re.escape(name) + r"[\"']?\s*$", frontmatter):
         raise ValueError("installed Skill identity differs from registry")
-    for _, _, reference in resource_references(text):
-        if resolve_resource("SKILL.md", reference) not in files:
-            raise ValueError("missing or external required resource: " + reference)
-    for reference in ("product-types.json", "specialists.json", "vibe-head-contract.md"):
-        if "`" + reference + "`" in text and reference not in files:
-            raise ValueError("missing specialist routing resource: " + reference)
+    # Bare filenames in prose describe other packages too; only explicit paths
+    # and links establish local resources. Delegation adds its own requirement.
+    if mode == "head-delegated" and "vibe-head-contract.md" not in files:
+        raise ValueError("missing delegated Head contract: vibe-head-contract.md")
     for path, content in files.items():
         if path.endswith(".json"):
             json.loads(content)
         if path.endswith(".md"):
-            for match in LINK_RE.finditer(content.decode("utf-8")):
-                reference = match.group("path")
+            for _, _, reference in resource_references(content.decode("utf-8"), explicit_only=path != "SKILL.md"):
                 if resolve_resource(path, reference) not in files:
-                    raise ValueError("broken relative link in " + path + ": " + reference)
+                    raise ValueError("broken relative link or required resource in " + path + ": " + reference)
 
 
 def adapt_resources(files: dict[str, bytes], entry: dict) -> dict[str, bytes]:
@@ -221,7 +266,7 @@ def adapt_resources(files: dict[str, bytes], entry: dict) -> dict[str, bytes]:
             text = content.decode("utf-8")
             for start, end, resolved in sorted(replacements[owner], reverse=True):
                 relative = posixpath.relpath(destinations[resolved], posixpath.dirname(destination) or ".")
-                text = text[:start] + relative + text[end:]
+                text = text[:start] + urllib.parse.quote(relative, safe="/._-") + text[end:]
             content = text.encode("utf-8")
         if destination.casefold() in {path.casefold() for path in result}:
             raise ValueError("adapted resource name collision")
@@ -275,7 +320,7 @@ def source_package(entry: dict, source: dict) -> dict[str, bytes]:
                     "Follow the assigned stage and domain boundary; Vibe controls override standalone workflow defaults. "
                     "The upstream domain guidance follows unchanged apart from resource relocation.\n" + parts[2])
         files["SKILL.md"] = "---".join(parts).encode("utf-8")
-    validate_package(files, entry["skill_name"])
+    validate_package(files, entry["skill_name"], mode=entry.get("mode"))
     return files
 
 
