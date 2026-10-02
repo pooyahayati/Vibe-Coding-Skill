@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import difflib
 import hashlib
 import io
 import json
@@ -26,6 +27,8 @@ REGISTRY = ROOT / "config/specialists.json"
 MAX_BYTES = 64 * 1024 * 1024
 TEXT_SUFFIXES = {".md", ".py", ".json", ".yaml", ".yml", ".txt", ".svg", ".toml"}
 PACKAGE_ADAPTER = 2
+COMPATIBILITY_AREAS = {"authority", "platform", "dependencies", "verification", "scope-authorization"}
+MAX_REVIEW_BYTES = 128 * 1024
 RESOURCE_RE = re.compile(r"(?<![\w:/])(?:\.{1,2}/)*(?:references|upstream-references|packs|scripts|config|assets)/[A-Za-z0-9_./-]+\.(?:md|py|json|ya?ml|svg)(?![\w.-])")
 LINK_RE = re.compile(r"\]\((?P<path>[A-Za-z0-9_./-]+\.(?:md|py|json|ya?ml|svg))(?:#[^\s)]*)?\)")
 
@@ -389,7 +392,182 @@ def ensure(entry: dict, skills_dir: Path, state: Path, apply: bool = False) -> d
     return result
 
 
-def run(mode: str, skills_dir: Path, state: Path, selected: list[dict], apply: bool) -> dict:
+def canonical_digest(value) -> str:
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+
+
+def read_local_json(path: Path) -> dict:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 8 * 1024 * 1024:
+        raise ValueError("missing/oversized compatibility record")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("compatibility record must be an object")
+    return value
+
+
+def compatibility_packet(entry: dict, skills_dir: Path, state: Path, installation: dict) -> dict:
+    """Describe actual changes for a Head assessment; never infer semantic approval."""
+    target = skills_dir / entry["skill_name"]
+    record = read_local_json(state / (entry["id"] + ".json"))
+    files = installed_hashes(target)
+    if (installation.get("status") != "current" or not files or record.get("files") != files
+            or record.get("source") != installation.get("source") or record.get("installation") != str(target)):
+        raise ValueError("compatibility needs a verified current managed installation")
+    source = installation["source"]
+    binding = {"specialist_id": entry["id"],
+               "source": {k: source[k] for k in ("repository", "skill_path", "commit", "package_policy")}, "files": files,
+               "head_controls": registry()["permissions"],
+               "domain": {k: entry.get(k) for k in ("mode", "capability", "assignment", "stages", "primary_stages")}}
+    key = canonical_digest(binding)
+    home = state / "compatibility" / entry["id"]
+    cached = home / key
+    if (cached / "assessment.json").exists():
+        if read_local_json(cached / "binding.json") != binding:
+            raise ValueError("compatibility cache binding altered")
+        review = read_local_json(cached / "review.json")
+        if (set(review) != {"changed_resources", "required_review_paths", "previous_revision", "previous_resource_root"}
+                or not isinstance(review["changed_resources"], list) or not isinstance(review["required_review_paths"], list)
+                or any(not isinstance(p, str) for p in review["required_review_paths"])
+                or any(not isinstance(r, dict) or not isinstance(r.get("path"), str) for r in review["changed_resources"])):
+            raise ValueError("invalid retained compatibility review context")
+        return {"binding_sha256": key, "upstream_revision": source["commit"],
+                "head_contract_sha256": source["package_policy"], "binding": binding,
+                **review, "resource_root": str(target), "assessment_path": str(cached / "assessment.json"), "reused": True}
+    baseline = read_local_json(home / "latest.json") if (home / "latest.json").exists() else {}
+    old_key = baseline.get("binding_sha256")
+    if old_key is not None and not re.fullmatch(r"[0-9a-f]{64}", str(old_key)):
+        raise ValueError("invalid compatibility baseline identity")
+    previous = read_local_json(home / old_key / "binding.json") if old_key else {}
+    old_files = previous.get("files", {})
+    if not isinstance(old_files, dict):
+        raise ValueError("invalid compatibility baseline manifest")
+    changed = sorted(p for p in files.keys() | old_files.keys() if files.get(p) != old_files.get(p))
+    # License/version-only changes need provenance review, not a domain-methodology reread.
+    review_paths = sorted((set(changed) - {"LICENSE", "VERSION"}) | {"SKILL.md"}
+                          | ({"vibe-head-contract.md"} if "vibe-head-contract.md" in files else set()))
+    changes = [{"path": p, "action": "add" if p not in old_files else "delete" if p not in files else "modify",
+                "before_sha256": old_files.get(p), "after_sha256": files.get(p)} for p in changed]
+    diffs, remaining, total = [], MAX_REVIEW_BYTES, 0
+    for p in review_paths:
+        path = PurePosixPath(p)
+        if path.is_absolute() or ".." in path.parts or "\\" in p or ":" in p:
+            raise ValueError("unsafe compatibility resource")
+        before = home / old_key / "resources" / p if old_key else None
+        after = target / p
+        for resource in (before, after if p in files else None):
+            if resource and resource.is_file():
+                total += resource.stat().st_size
+                if resource.is_symlink() or total > 2 * MAX_BYTES:
+                    raise ValueError("unsafe/oversized compatibility resources")
+        old = before.read_bytes() if before and before.is_file() else b""
+        new = after.read_bytes() if p in files else b""
+        if before and p in old_files and (not before.is_file() or digest(p, old) != old_files[p]):
+            raise ValueError("compatibility baseline resource changed or missing")
+        if p in files and digest(p, new) != files[p]:
+            raise ValueError("specialist resource changed during review preparation")
+        diff = "".join(difflib.unified_diff(old.decode("utf-8", errors="replace").splitlines(True),
+                                        new.decode("utf-8", errors="replace").splitlines(True),
+                                        fromfile="previous/" + p, tofile="current/" + p))
+        raw = diff.encode("utf-8")
+        excerpt = raw[:remaining].decode("utf-8", errors="ignore")
+        diffs.append({"path": p, "diff": excerpt, "truncated": len(raw) > remaining})
+        remaining = max(0, remaining - len(excerpt.encode("utf-8")))
+    return {"binding_sha256": key, "upstream_revision": source["commit"],
+            "head_contract_sha256": source["package_policy"], "binding": binding,
+            "previous_revision": previous.get("source", {}).get("commit"),
+            "changed_resources": changes, "required_review_paths": review_paths, "diffs": diffs,
+            "resource_root": str(target), "previous_resource_root": str(home / old_key / "resources") if old_key else None,
+            "assessment_path": str(home / key / "assessment.json")}
+
+
+def validate_assessment(value: dict, entry: dict, packet: dict) -> None:
+    allowed = {"format", "schema_version", "specialist_id", "binding_sha256", "upstream_revision", "head_contract_sha256",
+               "decision", "assessed_by", "assessed_at", "reason", "reviewed_paths", "checks", "conflicts"}
+    if set(value) - allowed or value.get("format") != "vibe-specialist-compatibility" or type(value.get("schema_version")) is not int or value["schema_version"] != 1:
+        raise ValueError("unsupported compatibility assessment format")
+    for k, expected in (("specialist_id", entry["id"]), *((k, packet[k]) for k in ("binding_sha256", "upstream_revision", "head_contract_sha256"))):
+        if value.get(k) != expected:
+            raise ValueError("compatibility assessment binding mismatch: " + k)
+    if value.get("decision") not in ("accepted", "changes-required", "blocked"):
+        raise ValueError("invalid Head compatibility decision")
+    for k in ("assessed_by", "reason", "assessed_at"):
+        if not isinstance(value.get(k), str) or not value[k].strip():
+            raise ValueError("concrete Head assessment metadata required")
+    if datetime.fromisoformat(value["assessed_at"].replace("Z", "+00:00")).tzinfo is None:
+        raise ValueError("assessment needs a timezone-aware timestamp")
+    reviewed = value.get("reviewed_paths")
+    if not isinstance(reviewed, list) or any(not isinstance(p, str) for p in reviewed) or len(set(reviewed)) != len(reviewed):
+        raise ValueError("invalid reviewed resources")
+    if not set(packet["required_review_paths"]) <= set(reviewed) or not set(reviewed) <= set(packet["binding"]["files"]) | {r["path"] for r in packet["changed_resources"]}:
+        raise ValueError("assessment did not inspect required changed resources")
+    checks, conflicts = value.get("checks"), value.get("conflicts")
+    if not isinstance(conflicts, list) or any(not isinstance(c, str) or not c.strip() for c in conflicts):
+        raise ValueError("invalid compatibility conflicts")
+    if not isinstance(checks, list) or len(checks) != len(COMPATIBILITY_AREAS):
+        raise ValueError("assessment must cover the five relevant compatibility areas")
+    areas = set()
+    for check in checks:
+        if not isinstance(check, dict) or set(check) != {"area", "status", "rationale", "resource_paths"}:
+            raise ValueError("invalid compatibility area assessment")
+        if check["area"] not in COMPATIBILITY_AREAS or check["area"] in areas or check["status"] not in ("compatible", "overridden", "conflict"):
+            raise ValueError("invalid or duplicate compatibility area")
+        areas.add(check["area"])
+        if not isinstance(check["rationale"], str) or not check["rationale"].strip():
+            raise ValueError("each compatibility area needs a concrete rationale")
+        refs = check["resource_paths"]
+        if not isinstance(refs, list) or not refs or any(not isinstance(p, str) or p not in reviewed for p in refs):
+            raise ValueError("compatibility rationale needs inspected resource references")
+        if check["status"] == "overridden" and "vibe-head-contract.md" not in refs:
+            raise ValueError("overridden defaults need the effective Head contract reference")
+    if value["decision"] == "accepted" and (conflicts or any(c["status"] == "conflict" for c in checks)):
+        raise ValueError("unresolved compatibility conflicts cannot be accepted")
+
+
+def compatibility(entry: dict, skills_dir: Path, state: Path, installation: dict, assessment=None) -> dict:
+    try:
+        packet = compatibility_packet(entry, skills_dir, state, installation)
+        path = Path(packet["assessment_path"])
+        if assessment is not None:
+            validate_assessment(assessment, entry, packet)
+            home = path.parent
+            # Capture a bounded review baseline outside discovery; never execute its resources.
+            if not (home / "binding.json").exists():
+                home.parent.mkdir(parents=True, exist_ok=True)
+                with tempfile.TemporaryDirectory(prefix=".review-", dir=home.parent) as temporary:
+                    staging, total = Path(temporary) / "candidate", 0
+                    staging.mkdir()
+                    for rel, expected in packet["binding"]["files"].items():
+                        source_path = skills_dir / entry["skill_name"] / rel
+                        if source_path.stat().st_size > MAX_BYTES - total:
+                            raise ValueError("compatibility snapshot oversized")
+                        raw = source_path.read_bytes()
+                        total += len(raw)
+                        if total > MAX_BYTES or digest(rel, raw) != expected:
+                            raise ValueError("compatibility snapshot changed/oversized")
+                        target = staging / "resources" / rel
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        target.write_bytes(raw)
+                    write_record(staging / "binding.json", packet["binding"])
+                    write_record(staging / "review.json", {k: packet[k] for k in ("changed_resources", "required_review_paths", "previous_revision", "previous_resource_root")})
+                    os.replace(staging, home)
+            write_record(path, assessment)
+            write_record(home.parent / "latest.json", {"binding_sha256": packet["binding_sha256"]})
+        if not path.exists():
+            return {"status": "assessment-required", "review": packet}
+        value = read_local_json(path)
+        stored_binding = read_local_json(path.parent / "binding.json")
+        if stored_binding != packet["binding"]:
+            raise ValueError("compatibility cache binding altered")
+        validate_assessment(value, entry, packet)
+        return {"status": "accepted" if value["decision"] == "accepted" else "compatibility-blocked",
+                "binding_sha256": packet["binding_sha256"], "assessment_path": str(path), "decision": value["decision"],
+                "reason": value["reason"], "conflicts": value["conflicts"], "reused": packet.get("reused", False),
+                **({"review": packet} if value["decision"] != "accepted" else {})}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        return {"status": "compatibility-unverified", "error": str(exc)}
+
+
+def run(mode: str, skills_dir: Path, state: Path, selected: list[dict], apply: bool, assessment=None) -> dict:
     data = registry()
     inventory = state / "inventory.json"
     last = json.loads(inventory.read_text(encoding="utf-8")) if inventory.exists() else {}
@@ -406,8 +584,17 @@ def run(mode: str, skills_dir: Path, state: Path, selected: list[dict], apply: b
             return {"gate": "RELOAD", "skills": [head], "reload_head_required": True,
                     "selected_specialists": [], "action": "reload the installed Head and rerun its preflight"}
         results = [head, *(ensure(entry, skills_dir, state, apply) for name, entry in entries.items() if name != data["head"]["id"])]
+        if assessment is not None and (mode != "assess" or len(selected) != 1):
+            raise ValueError("assess exactly one registered specialist")
+        selected_by_id = {entry["id"]: entry for entry in selected}
+        for item in results:
+            if item["id"] in selected_by_id and item["status"] == "current":
+                item["compatibility"] = compatibility(selected_by_id[item["id"]], skills_dir, state, item, assessment)
     required = {data["head"]["id"], *(entry["id"] for entry in selected)}
     blocked = [item["id"] for item in results if item["id"] in required and item["status"] != "current"]
+    blocked.extend(item["id"] for item in results if item["id"] in selected_by_id
+                   and (mode == "assess" or selected_by_id[item["id"]].get("active_in_stage", True))
+                   and item.get("status") == "current" and item.get("compatibility", {}).get("status") != "accepted")
     if (mode == "inventory" or due) and all(item["status"] == "current" for item in results):
         write_record(inventory, {"checked_at": datetime.now(timezone.utc).isoformat()})
     return {"gate": "BLOCK" if blocked else ("WARN" if any(item["status"] != "current" for item in results) else "PASS"), "skills": results, "blocked": blocked,
@@ -418,7 +605,7 @@ def run(mode: str, skills_dir: Path, state: Path, selected: list[dict], apply: b
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("prepare", "inventory"))
+    parser.add_argument("mode", choices=("prepare", "inventory", "assess"))
     parser.add_argument("--task", default="")
     parser.add_argument("--path", action="append", default=[])
     parser.add_argument("--concern", action="append", default=[])
@@ -428,6 +615,7 @@ def main() -> int:
     parser.add_argument("--state-dir", type=Path, default=Path(os.environ.get("VIBE_CODING_HOME", str(Path.home() / ".vibe-coding"))) / "specialists")
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--apply", action="store_true", help="install/update registered sources within existing authorization")
+    parser.add_argument("--assessment", type=Path, help="Head-authored compatibility decision JSON; assess mode only")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     try:
@@ -440,7 +628,10 @@ def main() -> int:
         if unknown_concerns:
             raise ValueError("unknown specialist concerns: " + ", ".join(sorted(unknown_concerns)))
         selected = select_specialists(args.task, args.path, {"concern": args.concern}, args.specialist, args.stage)
-        result = run(args.mode, skills, state, selected, args.apply)
+        if (args.mode == "assess") != bool(args.assessment) or (args.mode == "assess" and len(selected) != 1):
+            raise ValueError("assess requires one selected registered specialist and --assessment")
+        result = run(args.mode, skills, state, selected, args.apply,
+                     read_local_json(args.assessment) if args.assessment else None)
     except (OSError, ValueError, KeyError) as exc:
         result = {"gate": "BLOCK", "error": str(exc)}
     print(json.dumps(result, indent=2, ensure_ascii=False) if args.json else f"Specialist preflight: {result['gate']}")

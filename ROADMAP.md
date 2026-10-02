@@ -1,16 +1,16 @@
 # Improvement Roadmap
 
-Status: P0/B1/B2/E1 merged; E2 receipt-backed completion implemented and verified, with its completion update taking effect when the implementation PR is merged. This is the canonical improvement-progress record.
+Status: P0/B1/B2/E1/E2 merged; S1 compatibility assessment implemented and verified, with its completion update taking effect when its implementation PR is merged. This is the canonical improvement-progress record.
 Baseline: version `1.1.0`; repository main commit `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](docs/improvement-implementation-plan.md).
 
 ## Current position
 
-- **Current phase:** Phase 2 completed with E2's merge; Phase 3 is next and has not started.
-- **Completed in this improvement cycle:** roadmap/planning, P0 shared contracts, B1 behavior guidance, B2 behavior/acceptance propagation and E1/E2 local execution evidence and receipt-backed completion.
-- **Implementation progress:** 5 of 9 work packages complete when this E2 completion update is merged. This counts work packages, not software quality or test coverage.
-- **Next action:** S1, assess changed specialist instructions against the Head contract before delegation. S1 has not started.
-- **Blockers:** none currently identified; GitHub write access is restored. Specialist compatibility/return acceptance remains planned work.
+- **Current phase:** Phase 3; S1 instruction compatibility is delivered with its merge, while S2 task-return acceptance has not started.
+- **Completed in this improvement cycle:** roadmap/planning, P0 shared contracts, B1 behavior guidance, B2 behavior/acceptance propagation and E1/E2 local execution evidence and receipt-backed completion. S1 separates package currency from Head instruction-compatibility acceptance.
+- **Implementation progress:** 6 of 9 work packages complete when this S1 completion update is merged. This counts work packages, not software quality or test coverage.
+- **Next action:** S2, reconcile stage-specific specialist returns and Head acceptance against retained assignments. S2 has not started.
+- **Blockers:** none currently identified. Specialist task-return acceptance remains planned work.
 - **Next release:** version/date not assigned; publication and installation remain separate delivery states.
 
 ## Completed baseline
@@ -27,8 +27,8 @@ Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](doc
 | B1 | 1 | Short observable behavior contract. | Complete | [Behavior guidance](references/operating-model.md#observable-behavior-contract); [merged PR #63](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/63), merge `ed8bb85f2b2db899ba1578d1333f6af1198b73d7`. Relevant checks passed. |
 | B2 | 1 | Behavior/acceptance propagation into plans and handoffs. | Complete | [Plan binding](references/context-routing-and-execution.md#retained-behavior-in-a-plan-b2), [handoff/state](references/project-state-automation.md#preserve-task-behavior-and-useful-delivery-details-b2), [implementation PR #64](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/64). Relevant propagation/regression/package checks passed; this completion update takes effect when merged. |
 | E1 | 2 | Bounded execution-receipt collector. | Complete | [Local collector](references/execution-and-verification.md#local-execution-receipts-e1); [merged PR #65](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/65), merge `8b849f22f68163821f94a5f9fc3fc6e69dc97446`. Actual success/failure/timeout, scoped-input/artifact binding, unavailable and external-storage checks passed. |
-| E2 | 2 | Completion validation against actual receipts. | Complete | [Receipt-backed completion](references/execution-and-verification.md#receipt-backed-completion-e2); [implementation PR #66](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/66). Relevant receipt/migration/legacy regressions and package checks passed. This proposed completion update takes effect with PR #66's merge. |
-| S1 | 3 | Compatibility assessment for changed specialist instructions. | Not started | None yet; depends on P0 and E2. |
+| E2 | 2 | Completion validation against actual receipts. | Complete | [Receipt-backed completion](references/execution-and-verification.md#receipt-backed-completion-e2); [merged PR #66](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/66), merge `4f227116a5ba21f8b413c0532c71667f3c64e453`. Relevant receipt/migration/legacy regressions and package checks passed. |
+| S1 | 3 | Compatibility assessment for changed specialist instructions. | Complete | [Instruction compatibility](references/specialist-composition.md#instruction-compatibility-assessment-s1). Relevant specialist/compatibility regressions passed; source/package/Head binding, explicit conflict decisions and accepted reuse are implemented. This completion update takes effect when the S1 implementation PR is merged. |
 | S2 | 3 | Stage-specific specialist return and Head acceptance. | Not started | None yet; depends on B2, E2 and S1. |
 | I1 | 4 | Affected-route regressions and portable-package integration. | Not started | None yet; depends on B2, E2 and S2. |
 | D1 | 4 | Concise user/maintainer documentation reflecting implementation. | Not started | None yet; depends on I1. |
@@ -50,7 +50,7 @@ Improve the delivered software, not the volume of code, instructions or tests. A
 | Impact priority | Improvement | Current gap | Observable success |
 |---|---|---|---|
 | 1 | Execution-backed completion | E1/E2 now validate local command/manual receipts and scoped inputs/artifacts; remote evidence still requires a separately authorized resolver, and the Head must choose meaningful checks. | An unsuccessful, missing or stale required execution receipt cannot justify completion. An authorized real workflow supplies evidence for the intended behavior. |
-| 2 | Specialist compatibility and acceptance | Package identity/resources and written authority rules exist; update behavior and actual task returns still need a bounded acceptance decision. | Changed instructions and task output are reconciled with the Head contract, platform invariants and affected shared contracts before use/integration. |
+| 2 | Specialist compatibility and acceptance | S1 now binds explicit Head instruction assessments to current resources/controls; actual specialist task returns still need S2 acceptance. | Changed instructions and task output are reconciled with the Head contract, platform invariants and affected shared contracts before use/integration. |
 | 3 | Observable user behavior | B1/B2 now preserve observable criteria through planning and handoff; the Head must still choose sufficient scenarios and checks. | One short scenario connects user intent, observable result, applicable failure behavior and acceptance evidence without making the user design the implementation. |
 
 The impact ranking is not the implementation order. Define behavior first so execution receipts and specialist acceptance use the same target.
@@ -62,7 +62,7 @@ The impact ranking is not the implementation order. Define behavior first so exe
 | 0 | Complete | Set shared contracts and compatibility rules. | Head / maintainer. | [P0 design](references/shared-improvement-contracts.md): small behavior, receipt and specialist-return formats; policy for legacy reports and acceptance snapshots. | Minimal formats, trust limits and migration specified; relevant checks passed in PR #62. Runtime delivery remains later work. | Existing source inspection. |
 | 1 | Complete | Carry the user scenario through Define, Plan, Build and Verify. | Head; relevant specialist contributes domain detail. | B1 guidance and B2 linked acceptance IDs with state/handoff/resume propagation. | Scope and observable expectations survive planning and handoff; no blanket extra approval. Completion takes effect with PR #64's merge. | Phase 0. |
 | 2 | Complete | Record real execution and validate required receipts at completion. | Head and local tooling. | E1 local collection and E2 schema-3 local receipt resolution/manual observation records. | Failed/missing/stale receipts and mismatched artifacts do not qualify; sufficient evidence is reused. Completion takes effect with E2's merge. | Phase 1. |
-| 3 | Not started | Accept specialist updates and task output against the shared contracts. | Head accepts; selected specialist supplies domain work. | Update-change assessment and stage-specific acceptance record. | Required conflicts are resolved or the affected workflow remains blocked; no standalone specialist lifecycle. | Phases 1 and 2. |
+| 3 | In progress | Accept specialist updates and task output against the shared contracts. | Head accepts; selected specialist supplies domain work. | S1 update-change assessment is implemented; S2 stage-specific task acceptance remains planned. | Required conflicts are resolved or the affected workflow remains blocked; no standalone specialist lifecycle. | Phases 1 and 2. |
 | 4 | Not started | Integrate, document and prepare delivery. | Head / maintainer. | Focused regression evidence, synchronized portable package, installation evidence and user-facing examples. | Changed behavior passes relevant checks; documentation matches runtime and risk routes stay proportionate. | Phases 1-3. |
 
 Release, merge and local installation are separate delivery actions. A version number is chosen after compatibility review; no release date or publication is implied by this plan.

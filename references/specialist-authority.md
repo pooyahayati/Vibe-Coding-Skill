@@ -19,6 +19,8 @@ Preserve settled decisions. Do not independently expand scope, install arbitrary
 
 ## Verification and conflicts
 
+Before delegation, the Head assesses changed specialist instructions/resources against this contract. Package identity/freshness alone is not compatibility acceptance. Record the bounded reasoning using the Head's [S1 compatibility assessment](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/main/references/specialist-composition.md#instruction-compatibility-assessment-s1); reuse unchanged accepted bindings. This is a Head engineering decision within existing authority, not a new user approval or proof from keyword matching.
+
 Reuse sufficient existing evidence and choose the cheapest useful checks. Specialist defaults must not mandate unrelated full suites, coverage quotas, duplicate checks, or repeated approval questions. Required relevant checks and explicit project policies still apply. Missing evidence stays unverified; scope reduction must not hide a real failure or vulnerability.
 
 When evidence contradicts the assignment, return the conflict to the Head. Head precedence does not permit dismissing valid security findings or weakening the known risk floor.
