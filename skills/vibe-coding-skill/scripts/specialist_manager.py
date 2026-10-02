@@ -165,7 +165,7 @@ def resolve_latest(entry: dict) -> dict:
             "commit": commit, "channel": channel, "ref": ref}
 
 
-def validate_package(files: dict[str, bytes], name: str) -> None:
+def validate_package(files: dict[str, bytes], name: str, *, mode: str | None = None) -> None:
     text = files.get("SKILL.md", b"").decode("utf-8")
     if not text.startswith("---\n") and not text.startswith("---\r\n"):
         raise ValueError("missing Skill frontmatter")
@@ -178,9 +178,10 @@ def validate_package(files: dict[str, bytes], name: str) -> None:
     for _, _, reference in resource_references(text):
         if resolve_resource("SKILL.md", reference) not in files:
             raise ValueError("missing or external required resource: " + reference)
-    for reference in ("product-types.json", "specialists.json", "vibe-head-contract.md"):
-        if "`" + reference + "`" in text and reference not in files:
-            raise ValueError("missing specialist routing resource: " + reference)
+    # Bare filenames in prose describe other packages too; only explicit paths
+    # and links establish local resources. Delegation adds its own requirement.
+    if mode == "head-delegated" and "vibe-head-contract.md" not in files:
+        raise ValueError("missing delegated Head contract: vibe-head-contract.md")
     for path, content in files.items():
         if path.endswith(".json"):
             json.loads(content)
@@ -275,7 +276,7 @@ def source_package(entry: dict, source: dict) -> dict[str, bytes]:
                     "Follow the assigned stage and domain boundary; Vibe controls override standalone workflow defaults. "
                     "The upstream domain guidance follows unchanged apart from resource relocation.\n" + parts[2])
         files["SKILL.md"] = "---".join(parts).encode("utf-8")
-    validate_package(files, entry["skill_name"])
+    validate_package(files, entry["skill_name"], mode=entry.get("mode"))
     return files
 
 

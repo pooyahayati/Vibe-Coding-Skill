@@ -107,6 +107,67 @@ class SpecialistTests(unittest.TestCase):
         with patch.object(manager, "request_bytes", return_value=payload.getvalue()):
             self.assertRaises(ValueError, manager.source_package, self.entry, self.source)
 
+    def test_head_package_prose_does_not_require_specialist_resources(self):
+        package = ROOT / "skills/vibe-coding-skill"
+        files = {p.relative_to(package).as_posix(): p.read_bytes()
+                 for p in package.rglob("*") if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc"}
+        self.assertNotIn("vibe-head-contract.md", files)
+        manager.validate_package(files, "vibe-coding-skill")
+        files["SKILL.md"] += b"\nSpecialists may discuss `product-types.json` and `specialists.json`.\n"
+        manager.validate_package(files, "vibe-coding-skill")
+
+    def test_delegated_contract_is_required_even_without_a_prose_mention(self):
+        with self.assertRaisesRegex(ValueError, "missing delegated Head contract"):
+            manager.validate_package(self.files, "ui-ux-skill", mode="head-delegated")
+        files = {**self.files, "vibe-head-contract.md": b"Head controls\n"}
+        manager.validate_package(files, "ui-ux-skill", mode="head-delegated")
+
+    def test_explicit_resources_and_nested_links_still_require_real_files(self):
+        files = {"SKILL.md": b"---\nname: ui-ux-skill\n---\nRead `config/product-types.json` and [Registry](config/specialists.json).\n",
+                 "config/product-types.json": b"{}", "config/specialists.json": b"{}"}
+        manager.validate_package(files, "ui-ux-skill")
+        for missing in ("config/product-types.json", "config/specialists.json"):
+            with self.subTest(missing=missing), self.assertRaises(ValueError):
+                manager.validate_package({p: content for p, content in files.items() if p != missing}, "ui-ux-skill")
+        files["references/detail.md"] = b"[Contract](../vibe-head-contract.md)\n"
+        with self.assertRaisesRegex(ValueError, "broken relative link"):
+            manager.validate_package(files, "ui-ux-skill")
+        files["vibe-head-contract.md"] = b"Head controls\n"
+        manager.validate_package(files, "ui-ux-skill")
+
+    def test_real_head_cold_adoption_and_cached_preflight_agree(self):
+        head = manager.registry()["head"]
+        package = ROOT / "skills/vibe-coding-skill"
+        payload = io.BytesIO()
+        target = self.skills / head["skill_name"]
+        for p in package.rglob("*"):
+            if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc":
+                rel = p.relative_to(package)
+                destination = target / rel
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(p.read_bytes())
+        with ZipFile(payload, "w") as archive:
+            for p in target.rglob("*"):
+                if p.is_file():
+                    archive.writestr("repo/" + head["skill_path"] + "/" + p.relative_to(target).as_posix(), p.read_bytes())
+        source = {"repository": head["repository"], "skill_path": head["skill_path"],
+                  "commit": "c" * 40, "channel": "stable-release", "ref": "v1.1.0"}
+        before = manager.installed_hashes(target)
+        with patch.object(manager, "resolve_latest", return_value=source), patch.object(manager, "request_bytes", return_value=payload.getvalue()) as request:
+            cold = manager.run("prepare", self.skills, self.state, [], True)
+            self.assertEqual(cold["gate"], "PASS")
+            self.assertEqual(cold["skills"][0]["status"], "current")
+            request.assert_called_once()
+            warm = manager.run("prepare", self.skills, self.state, [], True)
+            self.assertEqual(warm["gate"], cold["gate"])
+            self.assertEqual(warm["skills"][0]["status"], cold["skills"][0]["status"])
+            request.assert_called_once()
+            fresh_state = self.root / "fresh-state"
+            fresh = manager.run("prepare", self.skills, fresh_state, [], True)
+            self.assertEqual(fresh["gate"], cold["gate"])
+            self.assertEqual(request.call_count, 2)
+        self.assertEqual(manager.installed_hashes(target), before)
+
     def test_shared_references_are_relocated_transitively_without_other_skills(self):
         entry = next(row for row in manager.registry()["specialists"] if row["id"] == "security-and-hardening")
         payload = io.BytesIO()

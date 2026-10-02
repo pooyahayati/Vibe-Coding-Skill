@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix fresh Head preflight rejecting the valid 1.1.0 package because prose mentions the specialist-owned `vibe-head-contract.md`. Validate explicit resource paths and relative links rather than bare filename mentions; require the injected contract only for `head-delegated` packages. Regressions cover the real portable Head package, missing delegated resources and matching cold/cached adoption without modifying the product or global installation.
+
 - Implement S2 scoped assignments and separate Head acceptance against actual project changes, local receipts, required-finding history and producer/consumer contract decisions. Bind stage/source/task identities and delivery inputs, defer instruction replacement during active assignments, and prevent schema-3 Done from bypassing retained specialist acceptance. Analysis-stage acceptance stays historical; current-delivery stage checks remain fresh. Preserve tiny/legacy routes and existing authorization; no new model evaluation or blanket test gate.
 
 - Implement S1 instruction-compatibility assessments separately from specialist currency/package checks. Provide bounded resource diffs and an explicit Head decision for authority, platform, dependencies, verification and scope/authorization. Bind cached acceptance to observed source, installed resources and Head/domain controls; reject mismatches and unresolved conflicts. Only affected active delegation blocks; unchanged acceptance is reused without another assessment or model evaluation. Task-return acceptance remains S2.
