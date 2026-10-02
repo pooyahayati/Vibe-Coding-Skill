@@ -239,6 +239,33 @@ class SpecialistTests(unittest.TestCase):
             self.assertEqual(manager.ensure(self.entry, self.skills, self.state)["status"], "current")
             package.assert_called_once()
 
+    def test_bracket_named_dependencies_are_checked_and_relocated_literally(self):
+        header = b"---\nname: ui-ux-skill\n---\n"
+        for name in ("[id]", "[...slug]", "[[...slug]]"):
+            with self.subTest(name=name):
+                path = "references/" + name + ".md"
+                files = {"SKILL.md": header + ("Read `" + path + "`.\n").encode()}
+                with self.assertRaisesRegex(ValueError, "broken relative link or required resource"):
+                    manager.validate_package(files, "ui-ux-skill")
+                files[path] = b"Read `../config/[id].json`.\n"
+                with self.assertRaisesRegex(ValueError, "broken relative link or required resource"):
+                    manager.validate_package(files, "ui-ux-skill")
+                files["config/[id].json"] = b"{}"
+                manager.validate_package(files, "ui-ux-skill")
+        entry = next(row for row in manager.registry()["specialists"] if row["id"] == "security-and-hardening")
+        source = {"skills/security-and-hardening/SKILL.md": b"---\nname: security-and-hardening\n---\nRead `../../references/[id].md`.\n```sh\npython '../../references/[id].py'\n```\n",
+                  "references/[id].md": b"[More](<[...slug].md#topic>)\n", "references/[...slug].md": b"Details\n",
+                  "references/[id].py": b"print('check')\n"}
+        adapted = manager.adapt_resources(source, entry)
+        self.assertIn(b"upstream-references/[id].md", adapted["SKILL.md"])
+        self.assertIn(b"python 'upstream-references/[id].py'", adapted["SKILL.md"])
+        self.assertIn(b"<%5B...slug%5D.md#topic>", adapted["upstream-references/[id].md"])
+        self.assertIn("upstream-references/[...slug].md", adapted)
+        manager.validate_package(adapted, entry["skill_name"])
+        del adapted["upstream-references/[id].md"]
+        with self.assertRaisesRegex(ValueError, "broken relative link or required resource"):
+            manager.validate_package(adapted, entry["skill_name"])
+
     def test_shared_references_are_relocated_transitively_without_other_skills(self):
         entry = next(row for row in manager.registry()["specialists"] if row["id"] == "security-and-hardening")
         payload = io.BytesIO()

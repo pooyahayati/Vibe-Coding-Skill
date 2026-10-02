@@ -55,6 +55,26 @@ class ReceiptCompletionTests(unittest.TestCase):
         (self.root / "src/new.txt").write_text("new source", encoding="utf-8")
         self.assertEqual(self.evaluate()["gate"], "BLOCK")
 
+    def test_literal_route_execution_receipt_and_bracket_reference_remain_bound(self):
+        name = "src/[id]/page.tsx"
+        path = self.root / name
+        path.parent.mkdir()
+        path.write_text("accepted", encoding="utf-8")
+        self.c["evidence_requirements"][0].update(input_paths=[name], input_excludes=[], artifact_paths=[name])
+        self.r = capture.capture(self.root, self.c, "check", [sys.executable, "-c",
+            "from pathlib import Path; assert Path('page.tsx').read_text() == 'accepted'"], cwd=path.parent)
+        self.assertEqual(self.r["receipt"]["result"], "pass")
+        self.assertTrue(self.r["receipt"]["process_started"])
+        receipt_path = Path(self.r["receipt_path"])
+        reference = "execution[id].json"
+        receipt_path.rename(receipt_path.with_name(reference))
+        self.report["contract_sha256"] = behavior.digest(self.c)
+        self.report["evidence"][0].update(id=self.r["receipt"]["id"], receipt_ref=reference, receipt_sha256=self.r["receipt_sha256"])
+        self.report["acceptance_criteria"][0]["evidence_ids"] = [self.r["receipt"]["id"]]
+        self.assertEqual(self.evaluate()["gate"], "PASS")
+        path.write_text("stale", encoding="utf-8")
+        self.assertEqual(self.evaluate()["gate"], "BLOCK")
+
     def test_failed_missing_altered_escaping_and_cross_task_receipts_block(self):
         for change in ({"receipt_ref": "../outside.json"}, {"receipt_ref": "missing.json"},
                        {"receipt_sha256": "0" * 64}, {"origin": "manual"}, {"requirement_id": "other"}):

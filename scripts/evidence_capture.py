@@ -28,7 +28,8 @@ def now() -> str:
 
 
 def relative(value: str) -> str:
-    if not behavior.text(value) or "\\" in value or ":" in value or any(c in value for c in "*?[]\x00"):
+    """Normalize a concrete path; brackets are literal, never glob syntax."""
+    if not behavior.text(value) or "\\" in value or ":" in value or any(c in value for c in "*?\x00"):
         raise ValueError("use concrete project-relative forward-slash paths")
     path = PurePosixPath(value)
     if path.is_absolute() or ".." in path.parts:

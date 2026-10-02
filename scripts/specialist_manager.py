@@ -26,10 +26,10 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "config/specialists.json"
 MAX_BYTES = 64 * 1024 * 1024
 TEXT_SUFFIXES = {".md", ".py", ".json", ".yaml", ".yml", ".txt", ".svg", ".toml"}
-PACKAGE_ADAPTER = 3
+PACKAGE_ADAPTER = 4
 COMPATIBILITY_AREAS = {"authority", "platform", "dependencies", "verification", "scope-authorization"}
 MAX_REVIEW_BYTES = 128 * 1024
-RESOURCE_RE = re.compile(r"(?<![\w:/])(?:\.{1,2}/)*(?:references|upstream-references|packs|scripts|config|assets)/[A-Za-z0-9_./-]+\.(?:md|py|json|ya?ml|svg)(?![\w-]|\.[\w.-])")
+RESOURCE_RE = re.compile(r"(?<![\w:/])(?:\.{1,2}/)*(?:references|upstream-references|packs|scripts|config|assets)/[A-Za-z0-9_./\[\]-]+\.(?:md|py|json|ya?ml|svg)(?![\w-]|\.[\w.-])")
 LINK_RE = re.compile(r'''\[[^\[\]\r\n]*\]\([ \t]*(?:<(?P<angle>[^<>\r\n]*)>|(?P<bare>[^\s()<>]+))(?:[ \t]+(?:"[^"\r\n]*"|'[^'\r\n]*'|\([^()\r\n]*\)))?[ \t]*\)''')
 RESOURCE_SUFFIXES = {".md", ".py", ".json", ".yaml", ".yml", ".svg"}
 COMMAND_FENCES = {"sh", "shell", "bash", "zsh", "powershell", "pwsh", "bat", "cmd", "python", "py"}
@@ -114,13 +114,15 @@ def supported_concerns() -> set[str]:
     return {concern for item in registry()["specialists"] for concern in item["activation"]["concerns"]}
 
 
-def resource_references(text: str, *, explicit_only: bool = False) -> list[tuple[int, int, str]]:
+def resource_references(text: str, *, explicit_only: bool = False) -> list[tuple[int, int, str, bool]]:
     """Extract supported local dependencies with spans in the original Markdown.
 
     Non-command fences are illustrative. Command fences still declare runnable
     resources, but Markdown-looking strings in any code block are not links.
     Nested guides must use links or ./../ paths to disambiguate package resources
-    from repository-root examples. This is not a complete Markdown renderer.
+    from repository-root examples. The final tuple field identifies URL syntax;
+    literal prose/command paths must not be URL-encoded during relocation.
+    This is not a complete Markdown renderer.
     """
     resources, links = list(text), list(text)
 
@@ -162,11 +164,11 @@ def resource_references(text: str, *, explicit_only: bool = False) -> list[tuple
         reference = urllib.parse.unquote(target.path)
         if PurePosixPath(reference).suffix.casefold() in RESOURCE_SUFFIXES:
             start = link.start(group)
-            matches.append((start, start + len(target.path), reference))
+            matches.append((start, start + len(target.path), reference, True))
     for match in RESOURCE_RE.finditer("".join(resources)):
         reference = match.group()
         if not explicit_only or reference.startswith(("./", "../")):
-            matches.append((match.start(), match.end(), reference))
+            matches.append((match.start(), match.end(), reference, False))
     return sorted(matches)
 
 
@@ -231,7 +233,7 @@ def validate_package(files: dict[str, bytes], name: str, *, mode: str | None = N
         if path.endswith(".json"):
             json.loads(content)
         if path.endswith(".md"):
-            for _, _, reference in resource_references(content.decode("utf-8"), explicit_only=path != "SKILL.md"):
+            for _, _, reference, _ in resource_references(content.decode("utf-8"), explicit_only=path != "SKILL.md"):
                 if resolve_resource(path, reference) not in files:
                     raise ValueError("broken relative link or required resource in " + path + ": " + reference)
 
@@ -249,7 +251,7 @@ def adapt_resources(files: dict[str, bytes], entry: dict) -> dict[str, bytes]:
         if not owner.endswith(".md"):
             continue
         refs = resource_references(files[owner].decode("utf-8"))
-        for start, end, reference in refs:
+        for start, end, reference, url_syntax in refs:
             resolved = resolve_resource(owner, reference)
             if resolved not in files:
                 raise ValueError("missing upstream resource: " + resolved)
@@ -258,15 +260,16 @@ def adapt_resources(files: dict[str, bytes], entry: dict) -> dict[str, bytes]:
                     raise ValueError("resource outside approved package roots: " + resolved)
                 destinations[resolved] = "upstream-references/" + resolved.split("/", 1)[1]
                 pending.append(resolved)
-            replacements.setdefault(owner, []).append((start, end, resolved))
+            replacements.setdefault(owner, []).append((start, end, resolved, url_syntax))
     result = {}
     for owner, destination in destinations.items():
         content = files[owner]
         if owner in replacements:
             text = content.decode("utf-8")
-            for start, end, resolved in sorted(replacements[owner], reverse=True):
+            for start, end, resolved, url_syntax in sorted(replacements[owner], reverse=True):
                 relative = posixpath.relpath(destinations[resolved], posixpath.dirname(destination) or ".")
-                text = text[:start] + urllib.parse.quote(relative, safe="/._-") + text[end:]
+                replacement = urllib.parse.quote(relative, safe="/._-") if url_syntax else relative
+                text = text[:start] + replacement + text[end:]
             content = text.encode("utf-8")
         if destination.casefold() in {path.casefold() for path in result}:
             raise ValueError("adapted resource name collision")
