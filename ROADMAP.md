@@ -1,17 +1,28 @@
 # Improvement Roadmap
 
-Status: All nine original improvement packages and follow-up F1 are merged. PR #71 delivered literal-path corrections, PR #72 portable integration, and [PR #73](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/73) D1 guidance/F1 feedback (merge `3c886874e00e331f2d17ec461d10eda0953a423f`). Version 1.3.0 release preparation includes these changes; publication and local installation are tracked separately. This is the canonical improvement-progress record.
+Status: All nine original improvement packages and follow-up F1 are merged and shipped in version `1.3.0`. PR #71 delivered literal-path corrections, PR #72 portable integration, and [PR #73](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/73) D1 guidance/F1 feedback (merge `3c886874e00e331f2d17ec461d10eda0953a423f`). Release publication and the maintainer's authorized local replacement are verified separately below. This is the canonical improvement-progress record.
 Baseline: version `1.1.0`; repository main commit `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Last reviewed: 2026-10-03, Asia/Tehran. Detailed work: [Implementation plan](docs/improvement-implementation-plan.md).
 
 ## Current position
 
-- **Current phase:** Phase 4 complete; release 1.3.0 and authorized local replacement are in preparation.
+- **Current phase:** Phase 4 complete; version `1.3.0` published and authorized local replacement complete.
 - **Completed in this improvement cycle:** P0 shared contracts, B1/B2 observable behavior propagation, E1/E2 execution receipts/completion, S1 instruction compatibility, S2 scoped specialist-return/Head acceptance and I1 portable workflow integration; D1 documentation completes the cycle; F1 feedback is an additional merged follow-up.
 - **Implementation progress:** 9 of 9 original packages merged; F1 is tracked separately. This counts work packages, not software quality or test coverage.
-- **Next action:** Publish the authorized 1.3.0 release after its exact-commit baseline passes, verify the published package, then replace the local installation and remove the old version.
-- **Blockers:** none identified by local checks. D1/F1 checks passed and PR #73 is merged; release checks still require the target commit's own successful baseline.
-- **Release delivery:** version `1.2.0` is the previous published release. Version `1.3.0` is prepared by this source change; the release URL and actual installation evidence must be verified before delivery is reported. [Published release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.2.0).
+- **Next action:** No work remains in this approved improvement cycle. Retain relevant feedback encountered during ordinary authorized project work; select a concrete improvement before starting another package.
+- **Blockers:** none remain for this cycle or its release/local delivery. The engineering evidence limits below still apply.
+- **Release delivery:** stable version `1.3.0` published; version `1.2.0` is superseded. [Published release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.3.0).
+
+## Delivery evidence
+
+| Delivery action | Verified result |
+|---|---|
+| Release source | [Merged PR #74](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/74); release tag `v1.3.0` points to commit `83fd4f47e60930718a2c9fb5e27fdedb74de2e81`. Published on 2026-10-02 UTC (2026-10-03, Asia/Tehran). |
+| Release checks | All six required workflows passed on that release commit: Validate Skill, Cross Platform Smoke, Real World Repository Validation, Agent Skills Spec Compatibility, Tool Contract Tests and WordPress Artifact Contract. [Release-commit checks](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/83fd4f47e60930718a2c9fb5e27fdedb74de2e81/checks). |
+| Published package | `Vibe-Coding-Skill-1.3.0.zip`, 78 files. Published archive SHA-256: `7cdd0b522619b78332d8fe66f11b0e0e4268be7d4e8e5b7a8e0acb555ad7fc67`; its digest matched the locally built package. Archive and checksum are attached to the release. |
+| Local installation snapshot | Verified on 2026-10-03: the maintainer's user-level Codex installation is `1.3.0`; all 78 files matched the published archive. Required package/resource checks passed, with no offline-check failures; optional Trivy was unavailable. The previous `1.2.0` installation was replaced and its temporary backup removed after verification. |
+
+The installation row records one verified host snapshot, not automatic updates for every user or already-loaded agent instructions. Later roadmap-only changes do not change the immutable release artifact or require reinstalling unchanged runtime files.
 
 ## Completed baseline
 
@@ -35,7 +46,7 @@ Last reviewed: 2026-10-03, Asia/Tehran. Detailed work: [Implementation plan](doc
 
 ## Follow-up F1: skill feedback
 
-This user-requested addition is outside the original nine-package cycle and is included in [PR #73](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/73) alongside D1. **Status: Complete; merged in PR #73.** The conditional Head-owned route covers confirmed/suspected Vibe defects, minimal English local reports, deduplication and optional user-reviewed email. Skill validation, mirror consistency, two existing install-manifest checks and the extracted 78-file package check passed (optional Trivy warning only). Instruction review covered confirmed/suspected attribution, environment-only failures, duplicates, sharing, blocked work and unavailable storage; this is policy review, not real-agent conformance. Completion/release/local installation remain separate.
+This user-requested addition is outside the original nine-package cycle and is included in [PR #73](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/73) alongside D1. **Status: Complete; merged in PR #73 and shipped in `1.3.0`.** The conditional Head-owned route covers confirmed/suspected Vibe defects, minimal English local reports, deduplication and optional user-reviewed email. Skill validation, mirror consistency, two existing install-manifest checks and the extracted 78-file package check passed (optional Trivy warning only). Instruction review covered confirmed/suspected attribution, environment-only failures, duplicates, sharing, blocked work and unavailable storage; this is policy review, not real-agent conformance. Release and local installation evidence are recorded separately above.
 
 ## How progress stays current
 
@@ -63,7 +74,7 @@ The impact ranking is not the implementation order. Define behavior first so exe
 
 | Phase | Status | Work | Owner | Deliverable | Exit condition | Dependency |
 |---|---|---|---|---|---|---|
-| 0 | Complete | Set shared contracts and compatibility rules. | Head / maintainer. | [P0 design](references/shared-improvement-contracts.md): small behavior, receipt and specialist-return formats; policy for legacy reports and acceptance snapshots. | Minimal formats, trust limits and migration specified; relevant checks passed in PR #62. Runtime delivery remains later work. | Existing source inspection. |
+| 0 | Complete | Set shared contracts and compatibility rules. | Head / maintainer. | [P0 design](references/shared-improvement-contracts.md): small behavior, receipt and specialist-return formats; policy for legacy reports and acceptance snapshots. | Minimal formats, trust limits and migration specified; relevant checks passed in PR #62. Runtime implementation followed in phases 1-3. | Existing source inspection. |
 | 1 | Complete | Carry the user scenario through Define, Plan, Build and Verify. | Head; relevant specialist contributes domain detail. | B1 guidance and B2 linked acceptance IDs with state/handoff/resume propagation. | Scope and observable expectations survive planning and handoff; no blanket extra approval. Merged in PR #64. | Phase 0. |
 | 2 | Complete | Record real execution and validate required receipts at completion. | Head and local tooling. | E1 local collection and E2 schema-3 local receipt resolution/manual observation records. | Failed/missing/stale receipts and mismatched artifacts do not qualify; sufficient evidence is reused. Merged in PR #66. | Phase 1. |
 | 3 | Complete | Accept specialist updates and task output against the shared contracts. | Head accepts; selected specialist supplies domain work. | S1 instruction compatibility and S2 retained stage returns/separate Head acceptance. Merged in PR #68. | Required conflicts are resolved or the affected workflow remains blocked; no standalone specialist lifecycle. | Phases 1 and 2. |

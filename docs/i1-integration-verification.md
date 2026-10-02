@@ -1,8 +1,8 @@
 # I1: portable workflow integration
 
-Implementation verified on 2026-10-03 (Asia/Tehran), against main baseline `3676be55d0499f9a25ccba94732f6dc90fba2526`. I1 completion takes effect when its implementation PR is merged. D1 documentation remains a separate, unstarted package.
+Historical verification snapshot: implementation verified on 2026-10-03 (Asia/Tehran), against main baseline `3676be55d0499f9a25ccba94732f6dc90fba2526`. I1 subsequently merged in PR #72, merge `512272202f9fc178dd6ec191e4a9f0d0f411b881`. D1 documentation and follow-up F1 merged in [PR #73](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/73); the completed cycle shipped in `1.3.0`. See [the roadmap](../ROADMAP.md) for current release and local-delivery status.
 
-[Implementation PR #72](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/72) records the current source revision, CI and merge state.
+[Implementation PR #72](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/72) records the I1 source revision, CI and merge evidence.
 
 ## What changed
 
@@ -21,8 +21,8 @@ The cross-boundary route reuses the existing specialist test fixture with explic
 - All three new representative routes passed locally on Windows/Python 3.13. After extending the cross-boundary route with plan-binding checks, that affected route alone was rerun and passed.
 - Building the test ZIP also verified the existing portable mirror, required runtime resources and extracted offline installation. Optional tool warnings remain warnings; required failures fail the integration setup.
 - Existing B2/E1/E2/S1/S2 and WordPress checks remain in the repository's validation workflows. No WordPress adapter was changed: existing exact-ZIP/runtime tests are reused, and these integration fixtures do not claim WordPress installation or upgrade behavior.
-- The current source ZIP is a temporary integration candidate; unchanged `VERSION` metadata does not make it a new published release or the already published 1.2.0 artifact.
-- No model evaluation, API key, live tool installation, automatic old-version fallback, release or global skill installation is involved. Test fixtures/state stay outside product source and are cleaned up.
+- At the original I1 verification, the source ZIP was a temporary integration candidate; its unchanged `VERSION` metadata did not make it a new published release or the already published 1.2.0 artifact.
+- The I1 verification itself involved no model evaluation, API key, live tool installation, automatic old-version fallback, release or global skill installation. Test fixtures/state stayed outside product source and were cleaned up. Subsequent release/local installation is recorded separately in the roadmap.
 
 Run the focused integration check:
 
