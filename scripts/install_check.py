@@ -50,6 +50,7 @@ RUNTIME_SCRIPTS = [
 ]
 
 REQUIRED_REFS = [
+    "skill-feedback.md",
     "shared-improvement-contracts.md",
     "specialist-authority.md",
     "operating-model.md",

@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "SKILL.md"
 REQUIRED_REFS = [
+    "references/skill-feedback.md",
     "references/specialist-authority.md",
     "references/specialist-composition.md",
     "references/operating-model.md",

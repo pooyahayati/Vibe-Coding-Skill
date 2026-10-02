@@ -99,6 +99,10 @@ Python 3.10+ and Git are the baseline. Network access is needed for current upst
 
 Approved registered packages can be installed/updated within existing authorization and host permissions. Updates protect managed local edits, retain backups, package required shared resources and preserve the Head contract. Registered installed skills are reconciled daily during active preflights; idle checking requires a host scheduler. Current skill versions do not imply upgrading the product stack.
 
+## Skill feedback
+
+When task evidence points to an issue in Vibe itself, the Head prepares a minimal English local report, labels it confirmed or suspected and gives its location. Product failures or environment limits alone are not skill defects. Reports stay outside product source; safe work continues and unresolved required controls remain blocking. After reviewing/removing sensitive details, the user may optionally email the report to **hayatipooya@gmail.com**. Nothing is sent automatically. [Feedback route and report format](references/skill-feedback.md).
+
 ## Documentation
 
 - [Improvement roadmap: completed, remaining and next work](ROADMAP.md)

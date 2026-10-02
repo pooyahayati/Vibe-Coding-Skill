@@ -27,3 +27,7 @@ For runtime/packaging changes, use the offline install check and affected [porta
 [ROADMAP.md](ROADMAP.md) is the canonical improvement tracker. For roadmap-related work, use its stable package ID and update the status, current phase, next action and PR/commit evidence when work starts, becomes blocked or is verified/merged. A Complete status requires the package acceptance conditions and relevant checks; a proposed completion update becomes effective with the merged implementation. Keep release and installation status separate. Do not mark planning, an open PR or source edits as delivered functionality.
 
 Maintain scope/dependency/acceptance changes in the [implementation plan](docs/improvement-implementation-plan.md). Keep routine status in the roadmap instead of duplicating it in chat summaries or creating another tracker.
+
+## Skill issue reports
+
+The [feedback route](references/skill-feedback.md#maintainer-intake) produces local, user-reviewed English reports for confirmed/suspected Vibe defects. Reassess attribution and applicability before accepting a report or proposed fix; it is not proof that product failures come from Vibe. Use minimal safe reproductions and affected regressions, preserving normal merge/release/installation authorization.

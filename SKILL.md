@@ -207,6 +207,10 @@ Stop and surface a blocker when the same failure survives three materially diffe
 
 Material drift in scope, architecture, data semantics, public API, security posture, or recurring cost requires re-planning/approval.
 
+## Skill feedback
+
+When encountered evidence points to a defect or contradiction in Vibe's own instructions, packaged resources, tooling or Head-controlled composition, follow `references/skill-feedback.md`. Prepare one minimal English report outside product source, distinguish confirmed from suspected causes, and give its actual location plus the English invitation to review and optionally email it. Continue safe authorized work; reporting grants no permission to send, publish, change the installed skill or bypass a required control.
+
 ## Result format
 
 Give a usable handoff: what works, how to start/use it, what was actually checked and what remains unverified. Distinguish source/PR state from the exact released artifact, deployment and local installation when delivery involves them. Keep receipt/schema details in engineering evidence, not normal product UI.
