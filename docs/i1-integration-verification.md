@@ -2,6 +2,8 @@
 
 Implementation verified on 2026-10-03 (Asia/Tehran), against main baseline `3676be55d0499f9a25ccba94732f6dc90fba2526`. I1 completion takes effect when its implementation PR is merged. D1 documentation remains a separate, unstarted package.
 
+[Implementation PR #72](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/72) records the current source revision, CI and merge state.
+
 ## What changed
 
 `tests/test_portable_integration.py` builds the current source ZIP using the existing release builder, which runs the extracted package's offline installation check. It then extracts that exact ZIP and exercises actual runtime entrypoints from outside the maintainer repository. The existing cross-platform smoke matrix runs these routes on Linux, macOS and Windows. No new runtime module, specialist, host dependency or universal product-test mandate is added.
