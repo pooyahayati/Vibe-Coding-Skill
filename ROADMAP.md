@@ -1,6 +1,6 @@
 # Improvement Roadmap
 
-Status: P0/B1/B2/E1/E2/S1 merged; S2 stage-return acceptance implemented and verified, with completion taking effect when its implementation PR is merged. This is the canonical improvement-progress record.
+Status: P0/B1/B2/E1/E2/S1/S2 merged; preflight resource-validation fixes merged in [PR #69](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/69). Version 1.2.0 packages these changes; I1/D1 remain planned. This is the canonical improvement-progress record.
 Baseline: version `1.1.0`; repository main commit `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](docs/improvement-implementation-plan.md).
 
@@ -8,10 +8,10 @@ Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](doc
 
 - **Current phase:** Phase 3 completed with S2's merge; Phase 4 integration/documentation remains planned.
 - **Completed in this improvement cycle:** P0 shared contracts, B1/B2 observable behavior propagation, E1/E2 execution receipts/completion, S1 instruction compatibility and S2 scoped specialist-return/Head acceptance.
-- **Implementation progress:** 7 of 9 work packages complete when this S2 completion update is merged. This counts work packages, not software quality or test coverage.
+- **Implementation progress:** 7 of 9 work packages complete. This counts work packages, not software quality or test coverage.
 - **Next action:** I1 affected-route regressions and portable-package integration. I1 has not started.
-- **Blockers:** none currently identified. Specialist task-return acceptance remains planned work.
-- **Next release:** version/date not assigned; publication and installation remain separate delivery states.
+- **Blockers:** none currently identified for completed packages; broader I1 integration evidence remains planned.
+- **Release delivery:** version `1.2.0` is prepared by this release update. The [release page](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.2.0) becomes authoritative when publication succeeds; installation remains a separate action.
 
 ## Completed baseline
 

@@ -2,7 +2,7 @@
 
 A risk-adaptive engineering Head for reliable AI-assisted development of small, medium and large software projects, including WordPress plugins. Works with OpenAI Codex, Claude Code and compatible skill-based agents.
 
-Current version: `1.1.0`. This release includes the eight-stage lifecycle and four scoped specialists. Updating repository source or publishing a release does not automatically update local installations.
+Current version: `1.2.0`. Adds retained behavior contracts, local execution receipts, independent specialist acceptance and corrected package preflight to the eight-stage Head workflow. Updating repository source or publishing a release does not automatically update local installations.
 
 ## One engineering Head, focused specialists
 

@@ -2,11 +2,15 @@
 
 ## Unreleased
 
+No unreleased runtime changes.
+
+## 1.2.0 — Bound outcomes, receipts and specialist acceptance
+
 - Fix fresh Head preflight rejecting the valid 1.1.0 package because prose mentions the specialist-owned `vibe-head-contract.md`. Require that contract only for `head-delegated` packages. Share dependency extraction between validation and relocation: ignore illustrative/literal Markdown, retain executable command dependencies, check nested owner-relative resources and inline links with angle destinations/titles, and preserve fragments and URL-encoded paths during relocation. Advance the adapter fingerprint so prior cached validation is rechecked. Regressions cover the real portable Head package, missing delegated resources, cold/cached adoption, resource syntax and relocation containment without modifying the product or global installation.
 
 - Implement S2 scoped assignments and separate Head acceptance against actual project changes, local receipts, required-finding history and producer/consumer contract decisions. Bind stage/source/task identities and delivery inputs, defer instruction replacement during active assignments, and prevent schema-3 Done from bypassing retained specialist acceptance. Analysis-stage acceptance stays historical; current-delivery stage checks remain fresh. Preserve tiny/legacy routes and existing authorization; no new model evaluation or blanket test gate.
 
-- Implement S1 instruction-compatibility assessments separately from specialist currency/package checks. Provide bounded resource diffs and an explicit Head decision for authority, platform, dependencies, verification and scope/authorization. Bind cached acceptance to observed source, installed resources and Head/domain controls; reject mismatches and unresolved conflicts. Only affected active delegation blocks; unchanged acceptance is reused without another assessment or model evaluation. Task-return acceptance remains S2.
+- Implement S1 instruction-compatibility assessments separately from specialist currency/package checks. Provide bounded resource diffs and an explicit Head decision for authority, platform, dependencies, verification and scope/authorization. Bind cached acceptance to observed source, installed resources and Head/domain controls; reject mismatches and unresolved conflicts. Only affected active delegation blocks; unchanged acceptance is reused without another assessment or model evaluation. Task-return acceptance is implemented by S2.
 
 - Implement E2 schema-3 completion against independently retained task contracts and local receipts. Resolve bounded task-local references/digests, validate identity/origin/obligations, recompute scoped input/artifact/context bindings and retain risk/evidence-family rules. Keep schema-2 reports explicitly declared evidence; retain receipt workflow activation through state/handoff/resume and reject downgrade. Support actual manual observations without invented execution; imported remote claims require a separate authorized resolver and remain unverified here.
 
@@ -16,7 +20,7 @@
 
 - Implement B1's observable-behavior guidance: reuse acceptance criteria, express actor/action/result and only material failure/protected-state expectations, keep tiny tasks inline and persist durable/high-risk decisions in existing appropriate locations. Choose checks from those outcomes; schema-2 reports use existing descriptions and evidence links until B2/E2 implement structured propagation/receipts.
 
-- Specify P0's shared behavior, receipt, specialist assignment/return and Head-acceptance contracts, trust limits and explicit completion-schema migration. Runtime collection/validation remains future work; schema 2 and release version 1.1.0 are unchanged.
+- Specify P0's shared behavior, receipt, specialist assignment/return and Head-acceptance contracts, trust limits and explicit completion-schema migration. B2/E1/E2/S1/S2 implement the retained-contract, receipt and acceptance routes; schema-2 compatibility remains available for explicitly reported legacy evidence.
 - Link the design from relevant operating references and maintain the roadmap's implementation/merge status separately from release and installation.
 
 ## 1.1.0 — Lifecycle and scoped specialists
