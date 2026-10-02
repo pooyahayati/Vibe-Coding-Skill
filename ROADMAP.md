@@ -1,17 +1,17 @@
 # Improvement Roadmap
 
-Status: P0/B1/B2/E1/E2/S1/S2 merged; preflight resource-validation fixes merged in [PR #69](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/69). Version 1.2.0 packages these changes; I1/D1 remain planned. This is the canonical improvement-progress record.
+Status: P0/B1/B2/E1/E2/S1/S2 merged; preflight resource-validation fixes shipped in 1.2.0. Literal-path fixes are merged in [PR #71](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/71) and remain unreleased. I1 integration is implemented and verified; its completion update takes effect with its implementation PR's merge. D1 remains planned. This is the canonical improvement-progress record.
 Baseline: version `1.1.0`; repository main commit `9e0ca5108567f38a66376883613fdcaff6616de0`.
-Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](docs/improvement-implementation-plan.md).
+Last reviewed: 2026-10-03, Asia/Tehran. Detailed work: [Implementation plan](docs/improvement-implementation-plan.md).
 
 ## Current position
 
-- **Current phase:** Phase 3 completed with S2's merge; Phase 4 integration/documentation remains planned.
-- **Completed in this improvement cycle:** P0 shared contracts, B1/B2 observable behavior propagation, E1/E2 execution receipts/completion, S1 instruction compatibility and S2 scoped specialist-return/Head acceptance.
-- **Implementation progress:** 7 of 9 work packages complete. This counts work packages, not software quality or test coverage.
-- **Next action:** I1 affected-route regressions and portable-package integration. I1 has not started.
-- **Blockers:** none currently identified for completed packages; broader I1 integration evidence remains planned.
-- **Release delivery:** version `1.2.0` is prepared by this release update. The [release page](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.2.0) becomes authoritative when publication succeeds; installation remains a separate action.
+- **Current phase:** Phase 4; I1 integration verified, D1 documentation not started. I1 completion below takes effect when its implementation PR is merged.
+- **Completed in this improvement cycle:** P0 shared contracts, B1/B2 observable behavior propagation, E1/E2 execution receipts/completion, S1 instruction compatibility, S2 scoped specialist-return/Head acceptance and I1 portable workflow integration (effective at merge).
+- **Implementation progress:** 8 of 9 work packages complete after I1's merge; 7 are merged beforehand. This counts work packages, not software quality or test coverage.
+- **Next action:** Review/merge I1; D1 remains the final separate package and has not started.
+- **Blockers:** none identified by the local integration checks; required CI/merge status belongs to the implementation PR.
+- **Release delivery:** version `1.2.0` is published. Later main-branch corrections and I1 are separate from that release and local installation. [Published release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.2.0).
 
 ## Completed baseline
 
@@ -30,7 +30,7 @@ Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](doc
 | E2 | 2 | Completion validation against actual receipts. | Complete | [Receipt-backed completion](references/execution-and-verification.md#receipt-backed-completion-e2); [merged PR #66](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/66), merge `4f227116a5ba21f8b413c0532c71667f3c64e453`. Relevant receipt/migration/legacy regressions and package checks passed. |
 | S1 | 3 | Compatibility assessment for changed specialist instructions. | Complete | [Instruction compatibility](references/specialist-composition.md#instruction-compatibility-assessment-s1); [merged PR #67](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/67), merge `7e75cdf6c5cee4c532a66e4c565cbff784d71581`. Bound explicit Head assessment/conflict handling and unchanged reuse passed relevant checks. |
 | S2 | 3 | Stage-specific specialist return and Head acceptance. | Complete | [S2 handoffs](references/specialist-composition.md#stage-return-and-head-acceptance-s2), [implementation PR #68](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/68). Real changes, receipts, required-finding history, shared-contract decisions, active instructions and completion linkage are implemented. Relevant checks passed; completion takes effect with the implementation PR's merge. |
-| I1 | 4 | Affected-route regressions and portable-package integration. | Not started | None yet; depends on B2, E2 and S2. |
+| I1 | 4 | Affected-route regressions and portable-package integration. | Complete | [Integration evidence](docs/i1-integration-verification.md), [implementation PR #72](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/72); three extracted-ZIP routes verified locally and added to the existing OS matrix. Completion takes effect with PR #72's merge. |
 | D1 | 4 | Concise user/maintainer documentation reflecting implementation. | Not started | None yet; depends on I1. |
 
 ## How progress stays current
@@ -63,7 +63,7 @@ The impact ranking is not the implementation order. Define behavior first so exe
 | 1 | Complete | Carry the user scenario through Define, Plan, Build and Verify. | Head; relevant specialist contributes domain detail. | B1 guidance and B2 linked acceptance IDs with state/handoff/resume propagation. | Scope and observable expectations survive planning and handoff; no blanket extra approval. Completion takes effect with PR #64's merge. | Phase 0. |
 | 2 | Complete | Record real execution and validate required receipts at completion. | Head and local tooling. | E1 local collection and E2 schema-3 local receipt resolution/manual observation records. | Failed/missing/stale receipts and mismatched artifacts do not qualify; sufficient evidence is reused. Completion takes effect with E2's merge. | Phase 1. |
 | 3 | Complete | Accept specialist updates and task output against the shared contracts. | Head accepts; selected specialist supplies domain work. | S1 instruction compatibility and S2 retained stage returns/separate Head acceptance. Completion takes effect with S2's merge. | Required conflicts are resolved or the affected workflow remains blocked; no standalone specialist lifecycle. | Phases 1 and 2. |
-| 4 | Not started | Integrate, document and prepare delivery. | Head / maintainer. | Focused regression evidence, synchronized portable package, installation evidence and user-facing examples. | Changed behavior passes relevant checks; documentation matches runtime and risk routes stay proportionate. | Phases 1-3. |
+| 4 | In progress | Integrate, document and prepare delivery. | Head / maintainer. | Focused regression evidence, synchronized portable package, installation evidence and user-facing examples. | Changed behavior passes relevant checks; documentation matches runtime and risk routes stay proportionate. | Phases 1-3. |
 
 Release, merge and local installation are separate delivery actions. A version number is chosen after compatibility review; no release date or publication is implied by this plan.
 
