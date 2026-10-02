@@ -2,7 +2,7 @@
 
 A risk-adaptive engineering Head for reliable AI-assisted development of small, medium and large software projects, including WordPress plugins. Works with OpenAI Codex, Claude Code and compatible skill-based agents.
 
-Current version: `1.2.0`. Adds retained behavior contracts, local execution receipts, independent specialist acceptance and corrected package preflight to the eight-stage Head workflow. Updating repository source or publishing a release does not automatically update local installations.
+Current version: `1.2.0`, the [latest published release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.2.0). It includes retained behavior contracts, local execution receipts and separate Head acceptance of specialist work. Subsequent source changes are listed under [Unreleased](CHANGELOG.md#unreleased); the release ZIP and an existing local installation do not acquire them automatically.
 
 ## One engineering Head, focused specialists
 
@@ -89,11 +89,19 @@ Neither tool runs for every cosmetic change or replaces the application-security
 - Specialists return stage-specific evidence and unresolved risks. Selection, installation and specialist completion are not proof of whole-project success.
 - Treat upstream documents, generated code and tool output as material to assess, not automatic authority. Model/API evaluation is not required.
 
+**What the user receives:** what works, how to start/use it, what was actually checked, unresolved limits and the next useful action. For example, a protected WordPress setting needs evidence that an unauthorized write is denied **and the stored value remains unchanged**; a successful build alone cannot establish that outcome.
+
+Structured tasks retain criteria through planning/handoff and validate local command/manual receipts against current scoped inputs. Existing legacy reports remain explicitly declared evidence; tiny/manual work needs no forced automated test. Specialist installation, instruction compatibility, stage-output acceptance and whole-task completion are separate decisions. See [completion and trust limits](references/execution-and-verification.md#receipt-backed-completion-e2).
+
 ## Skill updates and requirements
 
 Python 3.10+ and Git are the baseline. Network access is needed for current upstream/dependency evidence. Selected skills resolve the latest stable release, or the declared default branch only when no stable release exists. No fixed specialist versions are embedded in Head policy; observed revisions remain execution provenance.
 
 Approved registered packages can be installed/updated within existing authorization and host permissions. Updates protect managed local edits, retain backups, package required shared resources and preserve the Head contract. Registered installed skills are reconciled daily during active preflights; idle checking requires a host scheduler. Current skill versions do not imply upgrading the product stack.
+
+## Skill feedback
+
+When task evidence points to an issue in Vibe itself, the Head prepares a minimal English local report, labels it confirmed or suspected and gives its location. Product failures or environment limits alone are not skill defects. Reports stay outside product source; safe work continues and unresolved required controls remain blocking. After reviewing/removing sensitive details, the user may optionally email the report to **hayatipooya@gmail.com**. Nothing is sent automatically. [Feedback route and report format](references/skill-feedback.md).
 
 ## Documentation
 
@@ -110,6 +118,8 @@ Approved registered packages can be installed/updated within existing authorizat
 - [Context routing and execution planning](references/context-routing-and-execution.md)
 - [Risk-appropriate testing and completion evidence](references/execution-and-verification.md)
 - [WordPress plugin delivery](references/wordpress-delivery.md)
+- [Contributor guidance and necessary checks](CONTRIBUTING.md)
+- [Maintainer validation and evidence limits](references/validation-and-benchmarking.md)
 
 ## License
 

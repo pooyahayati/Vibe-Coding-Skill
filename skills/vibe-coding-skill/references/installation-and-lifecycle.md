@@ -35,6 +35,8 @@ The check is intentionally offline. It validates:
 
 Missing optional tools produce warnings, not a false installation failure.
 
+An offline PASS/WARN establishes package validity on this host, not upstream currency, specialist instruction compatibility or product correctness. A source checkout and a published ZIP may share a version string while containing different unreleased resources; retain the installed ref/revision and package provenance. Reload changed instructions before use. Publishing or merging does not replace existing local installations.
+
 ## Cross-platform policy
 
 Portable core behavior is tested on Linux, macOS, and Windows.

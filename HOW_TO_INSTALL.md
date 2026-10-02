@@ -1,6 +1,6 @@
 # How to Install
 
-Current Skill version: `1.2.0`
+Current Skill version: `1.2.0`, the latest published release. Main-branch changes under [Unreleased](CHANGELOG.md#unreleased) are separate from this release. Choose the published package for a stable installation; a source checkout follows its selected ref, even if `VERSION` has not yet changed.
 
 Keep the Skill installation outside the repositories you use it on. Vibe Coding operational state is intentionally local-only.
 
@@ -17,6 +17,7 @@ Use the Skill installer with this repository:
 ```text
 Use $skill-installer to install this skill from:
 https://github.com/pooyahayati/Vibe-Coding-Skill
+Use ref v1.2.0 and path skills/vibe-coding-skill for the published version.
 ```
 
 Then invoke the Skill for a project:
@@ -32,7 +33,7 @@ If installing manually, keep the directory name as `vibe-coding-skill` so it mat
 Recommended global installation:
 
 ```bash
-git clone --depth 1 https://github.com/pooyahayati/Vibe-Coding-Skill.git \
+git clone --depth 1 --branch v1.2.0 https://github.com/pooyahayati/Vibe-Coding-Skill.git \
   "$HOME/.claude/skills/vibe-coding-skill"
 ```
 
@@ -46,11 +47,15 @@ Invoke it with:
 
 ## Update an existing Git installation
 
-From the Skill checkout:
+Inspect the current installation, preserve local edits and record a validated backup before replacing it. A published-tag installation is detached; reinstall the chosen latest stable ZIP/tag through the installation mechanism rather than running `git pull` there.
+
+For an explicitly chosen source branch installation, from its clean Skill checkout:
 
 ```bash
 git pull --ff-only
 ```
+
+This updates that branch, not necessarily the latest stable release. The task-start Head/specialist preflight resolves stable upstream currency separately; an offline installation check cannot establish it. Reload updated instructions and rerun preflight before delegation. See [upgrade and rollback guidance](references/installation-and-lifecycle.md).
 
 The Skill resolves managed external tools such as `Graphify` and `Trivy` using its compatibility-gated latest-stable policy. You do not need to pin their normal operating versions manually.
 
