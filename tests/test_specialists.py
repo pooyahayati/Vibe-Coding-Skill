@@ -168,6 +168,77 @@ class SpecialistTests(unittest.TestCase):
             self.assertEqual(request.call_count, 2)
         self.assertEqual(manager.installed_hashes(target), before)
 
+    def test_samples_and_literal_links_do_not_hide_runnable_dependencies(self):
+        header = b"---\nname: ui-ux-skill\n---\n"
+        for sample in (b"```text\nreferences/example.md\n[Example](missing.md)\n```\n",
+                       b"~~~json\r\n{\"example\": \"config/sample.json\"}\r\n~~~\r\n",
+                       b"```\nreferences/example.md\n```\n",
+                       b"A literal `[Example](references/missing.md)` is an example.\n"):
+            with self.subTest(sample=sample):
+                manager.validate_package({"SKILL.md": header + sample}, "ui-ux-skill")
+        for command in (b"```sh\npython scripts/check.py\n```\n", b"~~~powershell\npython scripts/check.py\n~~~\n"):
+            with self.subTest(command=command):
+                files = {"SKILL.md": header + command}
+                with self.assertRaises(ValueError):
+                    manager.validate_package(files, "ui-ux-skill")
+                files["scripts/check.py"] = b"print('check')\n"
+                manager.validate_package(files, "ui-ux-skill")
+
+    def test_nested_explicit_paths_resolve_from_their_actual_owner(self):
+        files = {"SKILL.md": b"---\nname: ui-ux-skill\n---\n[Guide](references/detail.md)\n",
+                 "references/detail.md": b"Read `../config/product-types.json`.\n"}
+        with self.assertRaises(ValueError):
+            manager.validate_package(files, "ui-ux-skill")
+        files["config/product-types.json"] = b"{}"
+        manager.validate_package(files, "ui-ux-skill")
+        files["references/detail.md"] = b"Read `./config/product-types.json`.\n"
+        # The existing root config must not satisfy a different owner-relative path.
+        with self.assertRaises(ValueError):
+            manager.validate_package(files, "ui-ux-skill")
+        files["references/detail.md"] = b"Read `../../config/product-types.json`.\n"
+        with self.assertRaisesRegex(ValueError, "external required resource"):
+            manager.validate_package(files, "ui-ux-skill")
+
+    def test_inline_link_forms_keep_fragments_titles_and_containment(self):
+        for link in ("[Guide](<references/guide.md#topic>)", '[Guide](references/guide.md "Title")',
+                     "[Guide](references/guide.md 'Title')", "[Guide](references/guide.md (Title))",
+                     '[Guide](<references/guide.md#topic> "Title")'):
+            with self.subTest(link=link):
+                files = {"SKILL.md": ("---\nname: ui-ux-skill\n---\n" + link + "\n").encode()}
+                with self.assertRaises(ValueError):
+                    manager.validate_package(files, "ui-ux-skill")
+                files["references/guide.md"] = b"Guide\n"
+                manager.validate_package(files, "ui-ux-skill")
+        manager.validate_package({"SKILL.md": b"---\nname: ui-ux-skill\n---\n[Remote](<https://example.com/references/remote.md> \"Title\")\n"}, "ui-ux-skill")
+        manager.validate_package({"SKILL.md": b"---\nname: ui-ux-skill\n---\n[references/remote.md](https://example.com/remote.md)\n"}, "ui-ux-skill")
+        for path in ("../outside.md", "%2e%2e/outside.md", "..%5coutside.md"):
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                manager.validate_package({"SKILL.md": ("---\nname: ui-ux-skill\n---\n[Escape](<" + path + ">)\n").encode()}, "ui-ux-skill")
+
+    def test_relocation_preserves_link_syntax_and_does_not_import_samples(self):
+        entry = next(row for row in manager.registry()["specialists"] if row["id"] == "security-and-hardening")
+        source = {"skills/security-and-hardening/SKILL.md": b"---\nname: security-and-hardening\n---\n[Guide](<../../references/shared%20notes.md#topic> \"Title\")\n```text\n../../references/example.md\n```\n```sh\npython ../../references/check.py\n```\n",
+                  "references/shared notes.md": b"[Next](next.md 'Next title')\n",
+                  "references/next.md": b"Next\n", "references/check.py": b"print('check')\n"}
+        files = manager.adapt_resources(source, entry)
+        self.assertIn(b'[Guide](<upstream-references/shared%20notes.md#topic> "Title")', files["SKILL.md"])
+        self.assertIn(b"python upstream-references/check.py", files["SKILL.md"])
+        self.assertIn(b"../../references/example.md", files["SKILL.md"])
+        self.assertIn("upstream-references/next.md", files)
+        manager.validate_package(files, entry["skill_name"])
+        del source["references/next.md"]
+        with self.assertRaisesRegex(ValueError, "missing upstream resource"):
+            manager.adapt_resources(source, entry)
+
+    def test_changed_validation_policy_rechecks_previously_cached_installation(self):
+        with patch.object(manager, "PACKAGE_ADAPTER", manager.PACKAGE_ADAPTER - 1):
+            self.ensure(True)
+        with patch.object(manager, "resolve_latest", return_value=self.source), patch.object(manager, "source_package", return_value=self.files) as package:
+            self.assertEqual(manager.ensure(self.entry, self.skills, self.state)["status"], "current")
+            package.assert_called_once()
+            self.assertEqual(manager.ensure(self.entry, self.skills, self.state)["status"], "current")
+            package.assert_called_once()
+
     def test_shared_references_are_relocated_transitively_without_other_skills(self):
         entry = next(row for row in manager.registry()["specialists"] if row["id"] == "security-and-hardening")
         payload = io.BytesIO()
