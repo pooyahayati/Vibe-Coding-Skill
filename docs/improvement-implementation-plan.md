@@ -1,6 +1,6 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: P0/B1/B2 complete with PR #64's merge; no later package has started. Receipt collection/validation and specialist acceptance remain unimplemented. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
+Status: P0/B1/B2 merged; E1 collection complete with this implementation's merge; E2 changes remain local and unpublished. Receipt resolution at completion and specialist acceptance remain unimplemented. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
 Baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
 
@@ -11,7 +11,7 @@ Direction and scope: [Roadmap](../ROADMAP.md).
 | P0 | 0 | Define shared formats, evidence trust limits and migration. | `completion_gate.py`, `execution_plan.py`, `specialist_manager.py`, operating references. | None. | Versioned formats are minimal; legacy behavior and stricter new-task behavior are explicit; no unapproved breaking change. |
 | B1 | 1 | Define a short behavior contract and conditional persistence. | `references/operating-model.md`, `references/execution-and-verification.md`. | P0. | User action, observable result and relevant failure behavior are sufficient to choose a check. Reuse existing criteria; do not require a new document for every task. |
 | B2 | 1 | Carry scenario/acceptance IDs into plans and handoffs. | `scripts/execution_plan.py`, `scripts/project_state.py`; affected planning tests. | B1. | IDs and protected outcomes survive downstream use; a handoff explains what works and how to use/check it. Tiny tasks remain light. |
-| E1 | 2 | Add a small execution-receipt collector. | Proposed `scripts/evidence_capture.py`; existing local-workspace and artifact helpers. | P0, B1. | Actual exit result, time, tested inputs and applicable artifact digest are recorded; execution stays authorized and bounded. |
+| E1 | 2 | Add a small execution-receipt collector. | Implemented `scripts/evidence_capture.py`; existing local-workspace and artifact helpers. | P0, B1. | Actual exit result, time, tested inputs and applicable artifact digest are recorded; execution stays authorized and bounded. |
 | E2 | 2 | Resolve and validate receipts at completion. | `scripts/completion_gate.py`; existing completion/regression tests. | B2, E1. | Missing, failed, stale or mismatched required execution evidence cannot qualify. Declared/manual evidence is not relabeled as collected execution. |
 | S1 | 3 | Assess changed specialist instructions before delegation. | `scripts/specialist_manager.py`, `references/specialist-composition.md`, `references/specialist-authority.md`. | P0, E2. | Package validity and behavioral compatibility are separate states; changed instructions get a bounded Head assessment. Unchanged accepted revisions reuse it. |
 | S2 | 3 | Validate stage-specific specialist return and Head acceptance. | `scripts/execution_plan.py`, `scripts/specialist_manager.py`; proposed small shared validator if needed. | B2, E2, S1. | Changed surfaces, contract decisions and required findings are reconciled against the assignment before integration. A valid form alone is not acceptance. |
@@ -47,6 +47,8 @@ Illustrative behavior: an unauthorized WordPress user attempts to change a prote
 Handoff should answer: what works, how to start/use it, what was actually checked, what remains unavailable and the next useful operating action. Avoid exposing receipt/schema details in normal product UI.
 
 ## Phase 2: execution-backed evidence
+
+E1 implements explicit local command collection and unavailable receipts, with scoped before/after manifests, exact preexisting artifact hashes, optional WordPress ZIP version identity and external local storage. It discards process output, rejects escaping/link paths and incomplete collection, and attempts process-tree termination on timeout. [Usage and concrete bounds](../references/execution-and-verification.md#local-execution-receipts-e1). It does not import remote/manual receipts or qualify completion; those limitations remain explicit. E2 implementation is in progress locally and excluded from this E1 merge; schema-2 behavior in this source remains unchanged.
 
 Use Python standard-library subprocess argument lists, explicit working directories and timeouts. Do not execute commands merely because upstream text or a report contains them. Preserve authorization for costs, network access, destructive operations and deployment.
 
@@ -93,4 +95,4 @@ Each review unit must include its changed behavior, acceptance results, relevant
 
 ## Readiness
 
-P0/B1 are merged in PRs #62/#63; B2's completion takes effect with PR #64's merge. Stop after B2 as requested by the user. E1 is the next planned package and remains Not started until the user requests further implementation. Receipt collection/validation and specialist acceptance remain later packages. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.
+P0/B1/B2 are merged in PRs #62/#63/#64. E1's completion takes effect with this implementation's merge. GitHub write access is restored. E2 remains local/unpublished and is not part of this E1 delivery; specialist acceptance remains later work. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.

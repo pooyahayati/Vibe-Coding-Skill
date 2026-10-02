@@ -1,16 +1,16 @@
 # Improvement Roadmap
 
-Status: P0/B1/B2 complete; further implementation is on hold at the user's request. This is the canonical improvement-progress record.
+Status: P0/B1/B2 merged; E1 complete with this implementation's merge. E2 work remains local and unpublished. This is the canonical improvement-progress record.
 Baseline: version `1.1.0`; repository main commit `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](docs/improvement-implementation-plan.md).
 
 ## Current position
 
-- **Current phase:** Phase 1 complete; no later package has started.
-- **Completed in this improvement cycle:** roadmap/planning, P0 shared contracts, B1 behavior guidance and B2 behavior/acceptance propagation.
-- **Implementation progress:** 3 of 9 work packages complete. B2's completion update takes effect with the merge of PR #64. This counts work packages, not software quality or test coverage.
-- **Next action:** wait for the user's instruction before starting another package. E1 remains the next planned package, Not started.
-- **Blockers:** none identified; receipt collection and specialist acceptance remain unimplemented.
+- **Current phase:** Phase 2; E1 local collection delivered by this merge. E2 is in progress locally and is excluded from this PR.
+- **Completed in this improvement cycle:** roadmap/planning, P0 shared contracts, B1 behavior guidance, B2 behavior/acceptance propagation and E1 local execution collection.
+- **Implementation progress:** 4 of 9 work packages complete. E1's completion update takes effect with this implementation's merge. This counts work packages, not software quality or test coverage.
+- **Next action:** review the separately prepared E2 changes when requested; they are not included in this merge.
+- **Blockers:** GitHub connector write access is restored. No E1 blocker remains; E2 is local/unpublished and specialist acceptance remains later work.
 - **Next release:** version/date not assigned; publication and installation remain separate delivery states.
 
 ## Completed baseline
@@ -26,8 +26,8 @@ Last reviewed: 2026-10-02, Asia/Tehran. Detailed work: [Implementation plan](doc
 | P0 | 0 | Shared formats, trust limits and compatibility/migration policy. | Complete | [Contract design](references/shared-improvement-contracts.md); [merged PR #62](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/62), merge `a3e58725133b282ef60cc76066493deb7d9cf0c8`. Relevant contract/package checks passed. |
 | B1 | 1 | Short observable behavior contract. | Complete | [Behavior guidance](references/operating-model.md#observable-behavior-contract); [merged PR #63](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/63), merge `ed8bb85f2b2db899ba1578d1333f6af1198b73d7`. Relevant checks passed. |
 | B2 | 1 | Behavior/acceptance propagation into plans and handoffs. | Complete | [Plan binding](references/context-routing-and-execution.md#retained-behavior-in-a-plan-b2), [handoff/state](references/project-state-automation.md#preserve-task-behavior-and-useful-delivery-details-b2), [implementation PR #64](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/64). Relevant propagation/regression/package checks passed; this completion update takes effect when merged. |
-| E1 | 2 | Bounded execution-receipt collector. | Not started | None yet; depends on P0 and B1. |
-| E2 | 2 | Completion validation against actual receipts. | Not started | None yet; depends on B2 and E1. |
+| E1 | 2 | Bounded execution-receipt collector. | Complete | [Local collector](references/execution-and-verification.md#local-execution-receipts-e1); [implementation branch](https://github.com/pooyahayati/Vibe-Coding-Skill/compare/main...codex/e1-merge-review). Actual success/failure/timeout, scoped-input/artifact binding, unavailable and external-storage checks passed. Completion takes effect when merged. |
+| E2 | 2 | Completion validation against actual receipts. | In progress | Separate local changes; unpublished and excluded from this E1 implementation. Depends on B2 and E1. |
 | S1 | 3 | Compatibility assessment for changed specialist instructions. | Not started | None yet; depends on P0 and E2. |
 | S2 | 3 | Stage-specific specialist return and Head acceptance. | Not started | None yet; depends on B2, E2 and S1. |
 | I1 | 4 | Affected-route regressions and portable-package integration. | Not started | None yet; depends on B2, E2 and S2. |
@@ -61,7 +61,7 @@ The impact ranking is not the implementation order. Define behavior first so exe
 |---|---|---|---|---|---|---|
 | 0 | Complete | Set shared contracts and compatibility rules. | Head / maintainer. | [P0 design](references/shared-improvement-contracts.md): small behavior, receipt and specialist-return formats; policy for legacy reports and acceptance snapshots. | Minimal formats, trust limits and migration specified; relevant checks passed in PR #62. Runtime delivery remains later work. | Existing source inspection. |
 | 1 | Complete | Carry the user scenario through Define, Plan, Build and Verify. | Head; relevant specialist contributes domain detail. | B1 guidance and B2 linked acceptance IDs with state/handoff/resume propagation. | Scope and observable expectations survive planning and handoff; no blanket extra approval. Completion takes effect with PR #64's merge. | Phase 0. |
-| 2 | Not started | Record real execution and validate required receipts at completion. | Head and local tooling. | Bounded evidence collector and completion integration. | Failed/missing/stale receipts and mismatched artifacts do not qualify; sufficient evidence is reused. | Phase 1. |
+| 2 | In progress | Record real execution and validate required receipts at completion. | Head and local tooling. | E1 local collector delivered by this merge. E2 completion integration remains local and unpublished. | Failed/missing/stale receipts and mismatched artifacts do not qualify; sufficient evidence is reused. | Phase 1. |
 | 3 | Not started | Accept specialist updates and task output against the shared contracts. | Head accepts; selected specialist supplies domain work. | Update-change assessment and stage-specific acceptance record. | Required conflicts are resolved or the affected workflow remains blocked; no standalone specialist lifecycle. | Phases 1 and 2. |
 | 4 | Not started | Integrate, document and prepare delivery. | Head / maintainer. | Focused regression evidence, synchronized portable package, installation evidence and user-facing examples. | Changed behavior passes relevant checks; documentation matches runtime and risk routes stay proportionate. | Phases 1-3. |
 

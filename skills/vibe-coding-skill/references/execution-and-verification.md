@@ -123,7 +123,41 @@ Weak evidence:
 
 Evidence used for completion should link to the acceptance criterion it proves.
 
-For roadmap implementation, [shared improvement contracts](shared-improvement-contracts.md) defines the behavior/receipt formats and migration. The current schema-2 gate checks declared evidence and provenance; it does not resolve execution receipts. P0 specifies that future capability without activating it.
+For roadmap implementation, [shared improvement contracts](shared-improvement-contracts.md) defines the behavior/receipt formats and migration. E1 records local execution; the current schema-2 gate still checks declared evidence/provenance and does not resolve receipts. E2 supplies that separate completion capability.
+
+### Local execution receipts (E1)
+
+Use `scripts/evidence_capture.py` only for a relevant, already-authorized local check whose retained task contract has an `origin: collected` obligation. It never executes command text from a contract/report, grants permissions, starts remote verification or changes task completion. A tiny visual/manual task need not use this runner or add an automated test.
+
+The requirement's `input_paths` must cover relevant source, configuration, dependencies and test definitions; `input_excludes` are explicit justified subtree exclusions. Use concrete project-relative forward-slash paths, not globs, absolute input paths or parent traversal. Capture includes relevant untracked/ignored files and directory membership. At least one regular file must be in scope; missing expected files are recorded alongside it. Do not include secrets or generated receipts/logs. Scope/check relevance belongs to the Head, not a hashing algorithm.
+
+Example contract obligation (within an accepted version-1 task contract):
+
+```json
+{"id":"settings-check","criterion_ids":["settings-preserved"],"kind":"unit-test","origin":"collected","required":true,"input_paths":["src/settings","tests/settings_test.py","pyproject.toml"],"input_excludes":[]}
+```
+
+Run the explicit command after `--`, from an explicit project root (optional `--cwd` stays inside it):
+
+```bash
+python /path/to/skill/scripts/evidence_capture.py run --root /path/to/project --task-contract /path/to/local/task.json --requirement settings-check --timeout 60 -- python -m unittest tests.settings_test
+```
+
+The runner uses argument-list execution with `shell=False`, closed stdin and discarded stdout/stderr; it does not use an output pipe or unlimited log. Prefer a checked-in test script rather than a long inline command. Never put credentials in command arguments, contract/context values or unavailable reasons: these are stored exactly. The command inherits the current environment without recording it; use existing host controls for secret access. Optional `--context` accepts an explicit JSON object with relevant runtime/check/dataset identity, not an environment dump. Hashes cannot identify mutable remote service/dataset state unless the Head supplies the relevant identity and check.
+
+Results are `pass`, `fail`, `timeout`, `error` or `unavailable`. A pass requires exit code zero, unchanged scoped input/artifact snapshots and complete collection. A zero exit code does not prove assertion relevance, coverage or product acceptance. Timeout attempts terminate the launched process group/tree and record whether termination was confirmed; this runner is not a sandbox against a process escaping that group/tree. No automatic retry follows. The command timeout defaults to 60 seconds and must be finite, positive and at most 86,400 seconds. Collection is bounded to 10,000 manifest entries and 1 GiB of hashed input bytes per snapshot; exceeding a limit is an error, never a narrower successful receipt.
+
+`artifact_paths` names the exact preexisting files being checked, either relative to the project or explicit authorized absolute files. Capture hashes them before and after; a missing/changed artifact is an error. Build/package first, then run the check against those exact bytes. Artifact lists have the same count/total hashing bound. For an installable WordPress ZIP, add `--wordpress-artifacts` to reuse `wordpress_artifact.py` validation/version identity; ZIP inspection is bounded to 10,000 entries, 1 GiB expanded size and 8 MiB per PHP member. Packaging/version evidence does not establish installation, runtime or seeded-data preservation.
+
+Receipts are unique JSON files under the existing external local project workspace, `test-artifacts/receipts/<task-hash>/`. Task IDs are hashed for safe, short paths, with full task/contract identities retained in each receipt. An explicitly configured local workspace inside product source is rejected. The command returns receipt identity/digest and its local reference/root; it does not write product documents, modify Git excludes, invoke another agent or claim completion. Store referenced receipts under project retention rules; host write controls remain necessary because a privileged writer can forge records and inputs.
+
+When a collected check cannot run, record the actual limitation without inventing a command, exit code or input snapshot:
+
+```bash
+python /path/to/skill/scripts/evidence_capture.py unavailable --root /path/to/project --task-contract /path/to/local/task.json --requirement settings-check --reason "Required runtime is unavailable on this host"
+```
+
+The CLI exits zero only for a collected pass, and two for other results/configuration errors. E1 does not relabel manual/reported obligations, import CI results, or treat its receipts as schema-2 completion evidence automatically. Manual/legacy routes remain available under their existing rules. E2 must resolve receipt/contract/requirement identities and recompute relevant input/artifact/context bindings at delivery; E1 collection alone cannot establish later freshness.
 
 `Done` requires at least one required acceptance criterion; an all-optional checklist cannot pass. For Tier 2/3 or scope-changing work, retain the approved criteria before implementation and pass that independently retained JSON array to `completion_gate.py report.json --acceptance-baseline approved-criteria.json --json`. The gate blocks removed, downgraded, or rewritten required outcomes. The caller must protect that baseline from implementation edits; the gate reports whether it was supplied and does not authenticate an agent-written checklist by itself.
 
