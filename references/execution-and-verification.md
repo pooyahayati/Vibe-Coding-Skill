@@ -123,7 +123,7 @@ Weak evidence:
 
 Evidence used for completion should link to the acceptance criterion it proves.
 
-For roadmap implementation, [shared improvement contracts](shared-improvement-contracts.md) defines the behavior/receipt formats and migration. E1 records local execution; the current schema-2 gate still checks declared evidence/provenance and does not resolve receipts. E2 supplies that separate completion capability.
+For roadmap implementation, [shared improvement contracts](shared-improvement-contracts.md) defines the formats and migration. E1 records local execution; E2 resolves local receipts for schema-3 tasks. In-flight schema-2 checks remain explicitly declared evidence.
 
 ### Local execution receipts (E1)
 
@@ -212,6 +212,34 @@ For schema/data changes verify migration reproducibility, referential integrity,
 Destructive migrations require explicit approval and recovery planning.
 
 ## Release gate
+
+### Receipt-backed completion (E2)
+
+For new structured-completion tasks, retain the accepted version-1 contract outside product source before implementation. Use schema 3 at completion, supplying that contract and the actual intended delivery root independently of the report:
+
+```bash
+python /path/to/skill/scripts/completion_gate.py /path/to/local/report.json --task-contract /path/to/local/task.json --root /path/to/project --json
+```
+
+The report has `schema_version: 3`, `status`, `risk_tier`, `task_id`, `contract_sha256`, existing criteria with actual `met`/`evidence_ids`, evidence and blockers. Tier 2/3 also names the actual delivery `commit`. Every evidence entry carries `id`, `kind`, `origin`, `result`, `required`, `requirement_id`, `receipt_ref` and `receipt_sha256` from the capture/observation result. References stay inside the task receipt workspace; report-controlled absolute paths, parent traversal, links, oversized files and unknown versions cannot qualify. Hashes detect mismatches, not user approval or privileged forgery.
+
+Every required obligation needs its own qualifying receipt. Required outcomes must retain their description, behavior, required status and actual evidence links. Resolution checks task/contract/obligation/origin/result identity, actual launch/exit or concrete observation, ordered timestamps, matching before/after manifests and the current scoped inputs/artifacts. A partial scope, changed required input/artifact, failed/timeout/unavailable check or unresolved external claim blocks completion. An unrelated excluded change does not require rerunning an unchanged relevant check. Optional failed/unverified evidence needs a real justification and cannot satisfy a required outcome.
+
+Pass independent current runtime/dataset identity via `--context '<JSON object>'` when relevant; it must match the receipt. The runner/gate cannot infer mutable remote state or inspect all host dependencies. Missing adequate context is a Head evidence gap; refresh it from actual project evidence rather than copying the receipt's old claim.
+
+Resolved provenance binds the current delivery HEAD through fresh scoped hashes. `receipt_resolution[].tested_commit` preserves the original observed test revision; the receipt is not rewritten to claim the command ran on a later commit. A report's target commit must equal actual delivery HEAD. Head review must still establish the scope/check covers the criterion; successful exit and metadata validity do not prove assertion quality or all vulnerabilities absent.
+
+A tiny manual/visual task can record an actual observation without running a command:
+
+```bash
+python /path/to/skill/scripts/receipt_validation.py --root /path/to/project --task-contract /path/to/local/task.json --requirement label-view --observation '{"description":"Observed the corrected label with settings unchanged","method":"Rendered settings inspection","environment":"Test browser and seeded account"}'
+```
+
+Use this only for an accepted `origin: manual` obligation and an observation actually performed. The writer binds current scoped files/artifacts and stores no exit code; `receipt_verified` may be true while `execution_verified` stays false for manual evidence. If the requirement lacks `input_paths`, a manual observation uses the retained task scope. Do not replace collected requirements with manual claims. Remote `reported` metadata, even `resolution: verified`, needs a separately authorized resolver; this gate has no remote resolver and labels it unverified rather than fetching arbitrary URLs.
+
+Activate `--receipt-completion` in `project_state.py capture` or `handoff`, and supply independent `--delivery-context` when relevant. Activation is retained across captures/resume; omitting the flag later does not revert to schema 2. New structured tasks use it. Existing unactivated snapshots remain the supported in-flight schema-2 route until the Head reconciles criteria/obligations and deliberately migrates. Migration creates no evidence or permission; collect missing/stale evidence only. Schema-2 `PASS` is never receipt-verified. Non-Done states may report limitations without qualifying receipts and do not establish completion.
+
+Schema-3 state/resume re-resolves current scoped receipt bindings and shows `receipt-qualified`, `unmet` or `unverified`. It replaces B2's broad whole-tree staleness guard for this workflow; legacy schema-2 snapshots retain that conservative guard. Local acceptance/receipts are editable files, not an independent security boundary; retain host writer controls where needed.
 
 Before release, verify only what is relevant to the changed product: core workflow, affected regression, integrations, build/deployment, security, migrations, recovery, environment documentation, and repository state.
 

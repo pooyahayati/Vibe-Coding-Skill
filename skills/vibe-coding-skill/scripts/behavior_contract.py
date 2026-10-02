@@ -154,15 +154,32 @@ def plan_failures(plan: dict[str, Any], baseline: dict[str, Any] | None = None) 
     return failures
 
 
-def completion(contract: dict[str, Any], report: dict[str, Any] | None, stale: bool = False) -> dict[str, Any]:
+def completion(contract: dict[str, Any], report: dict[str, Any] | None, stale: bool = False,
+               *, root=None, expected_schema=2, context=None) -> dict[str, Any]:
     outcomes = [{"id": c["id"], "description": c["description"], "behavior": c.get("behavior"),
                  "required": c["required"], "status": "unverified", "evidence_ids": []}
                 for c in contract["acceptance_criteria"]]
-    if report is None or stale:
+    if report is None or (stale and expected_schema != 3):
         return {"gate": "UNVERIFIED", "outcomes": outcomes, "execution_verified": False,
                 "reason": "source/contract context changed" if stale else "no completion report"}
     if not isinstance(report, dict):
         raise ValueError("completion report must be an object")
+    if expected_schema == 3:
+        result = _gate.evaluate(report, task_contract=contract, root=root, context=context)
+        criteria = report.get("acceptance_criteria")
+        rows = {r.get("id"): r for r in (criteria if isinstance(criteria, list) else []) if isinstance(r, dict) and text(r.get("id"))}
+        for outcome in outcomes:
+            row = rows.get(outcome["id"], {})
+            if row.get("met") is False:
+                outcome["status"] = "unmet"
+            elif result.get("receipt_verified") and row.get("met") is True:
+                outcome["status"] = "receipt-qualified"
+                outcome["evidence_ids"] = row.get("evidence_ids", [])
+        collected_only = bool(result.get("receipt_resolution")) and all(r.get("qualified") and r.get("origin") == "collected" for r in result["receipt_resolution"])
+        return {"gate": result["gate"], "outcomes": outcomes, "failures": result["failures"],
+                "receipt_verified": result.get("receipt_verified", False),
+                "execution_verified": result.get("receipt_verified", False) and collected_only,
+                "reason": "receipts resolved against retained obligations and current scoped delivery inputs"}
     result = _gate.evaluate(report, contract["acceptance_criteria"])
     if type(report.get("schema_version")) is not int or report["schema_version"] != 2 or str(report.get("status") or "").lower() != "done":
         result["failures"].append("B2 outcome import requires a schema-2 Done report")

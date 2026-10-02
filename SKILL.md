@@ -155,11 +155,11 @@ Read `references/execution-and-verification.md`.
 
 Never report `Done` without explicit acceptance criteria and relevant evidence.
 
-Use `scripts/completion_gate.py` for structured completion reports. Failed required evidence blocks completion; unrelated passing checks cannot cancel it. Evidence kinds must come from the gate's semantic taxonomy, and Tier 2/3 diversity is measured by evidence family rather than arbitrary labels. Higher-risk evidence must carry the required provenance/revision binding.
+For new structured completion, retain the accepted task contract and use `scripts/completion_gate.py --task-contract <contract> --root <project>` with schema-3 receipt references. Activate `--receipt-completion` when persisting this workflow in project state; once activated it cannot accept a schema-2 downgrade. In-flight schema-2 tasks keep their declared-evidence route until explicit reconciliation/migration. Failed required evidence blocks completion; unrelated passing checks cannot cancel it. Evidence kinds use the gate's taxonomy and Tier 2/3 diversity uses semantic families. Higher-risk evidence retains provenance/revision binding.
 
 If evidence is unavailable, report `Unverified` rather than complete.
 
-For an already-authorized local check requiring collected evidence, `scripts/evidence_capture.py` records the scoped inputs, actual exit/timeout and exact existing artifacts outside product source. Read `references/execution-and-verification.md#local-execution-receipts-e1`. A receipt is not automatic acceptance; schema-2 completion does not yet resolve it. Manual/light checks remain available. Maintainers should read `references/shared-improvement-contracts.md` for format and migration limits.
+For already-authorized collected checks, `scripts/evidence_capture.py` records scoped inputs, actual exit/timeout and exact existing artifacts outside product source. Manual/light checks remain available via concrete observations. Read `references/execution-and-verification.md#receipt-backed-completion-e2` for binding, migration and current limits; qualifying receipts still need Head assessment of check relevance. Maintainers use `references/shared-improvement-contracts.md` for format and migration decisions.
 
 Task completion does not automatically imply workstream or objective completion when dependencies/integration evidence remain.
 

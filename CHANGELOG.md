@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Implement E2 schema-3 completion against independently retained task contracts and local receipts. Resolve bounded task-local references/digests, validate identity/origin/obligations, recompute scoped input/artifact/context bindings and retain risk/evidence-family rules. Keep schema-2 reports explicitly declared evidence; retain receipt workflow activation through state/handoff/resume and reject downgrade. Support actual manual observations without invented execution; imported remote claims require a separate authorized resolver and remain unverified here.
+
 - Implement E1 local execution receipts with explicit argument-list commands, bounded timeouts, before/after scoped input and exact-artifact hashes, honest non-pass/unavailable results, external local storage and optional WordPress ZIP version binding. Do not retain process output or environment dumps; reject escaping/link paths and incomplete collection. Package the collector and exercise its actual behavior across supported operating systems. Schema-2 completion remains unchanged; receipt resolution is E2.
 
 - Implement B2 optional version-1 task-contract validation and propagation through execution-plan drafting/validation, local state, handoff and resume. Preserve stable criteria/behavior/evidence obligations and risk floors; compare edited plans/state against retained outcomes. Label schema-2 results as reported, invalidate changed source/contract context, and retain explicit Head reconciliation without treating it as permission or receipt proof. Legacy/light routes remain supported; package the new shared helper.

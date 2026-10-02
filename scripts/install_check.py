@@ -29,6 +29,7 @@ RUNTIME_SCRIPTS = [
     "execution_plan.py",
     "behavior_contract.py",
     "evidence_capture.py",
+    "receipt_validation.py",
     "completion_gate.py",
     "release_readiness.py",
     "local_workspace.py",

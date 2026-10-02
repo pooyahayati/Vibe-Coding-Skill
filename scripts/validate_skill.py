@@ -43,6 +43,7 @@ REQUIRED_SCRIPTS = [
     "execution_plan.py",
     "behavior_contract.py",
     "evidence_capture.py",
+    "receipt_validation.py",
     "validate_evals.py",
     "run_evals.py",
     "evaluate_agent_output.py",

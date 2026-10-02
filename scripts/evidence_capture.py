@@ -20,6 +20,7 @@ import local_workspace
 
 MAX_FILES = 10000
 MAX_BYTES = 1024 * 1024 * 1024
+REQUIREMENT_FIELDS = {"id", "criterion_ids", "kind", "origin", "required", "input_paths", "input_excludes", "artifact_paths", "description"}
 
 
 def now() -> str:
@@ -141,7 +142,7 @@ def artifact_snapshot(root: Path, names: list[str], wordpress: bool = False) -> 
 def requirement(contract: dict, requirement_id: str) -> dict:
     for row in contract["evidence_requirements"]:
         if row["id"] == requirement_id:
-            if set(row) - {"id", "criterion_ids", "kind", "origin", "required", "input_paths", "input_excludes", "artifact_paths", "description"}:
+            if set(row) - REQUIREMENT_FIELDS:
                 raise ValueError("unsupported evidence requirement fields; reconcile before execution")
             if row["origin"] != "collected":
                 raise ValueError("runner cannot relabel manual/reported obligations as collected")
@@ -149,13 +150,18 @@ def requirement(contract: dict, requirement_id: str) -> dict:
     raise ValueError("unknown evidence requirement")
 
 
-def storage(root: Path, task_id: str) -> Path:
+def receipt_directory(root: Path, task_id: str) -> Path:
     workspace = local_workspace.project_workspace(root, create=False)
     if workspace.is_relative_to(root):
         raise ValueError("receipt workspace must stay outside product source")
     task = hashlib.sha256(task_id.encode("utf-8")).hexdigest()[:16]
     destination = workspace / "test-artifacts" / "receipts" / task
     checked_path(local_workspace.workspace_home(), destination)
+    return destination
+
+
+def storage(root: Path, task_id: str) -> Path:
+    destination = receipt_directory(root, task_id)
     destination.mkdir(parents=True, exist_ok=True)
     return destination
 
