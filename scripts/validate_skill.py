@@ -31,6 +31,7 @@ REQUIRED_REFS = [
 ]
 REQUIRED_SCRIPTS = [
     "specialist_manager.py",
+    "specialist_handoff.py",
     "doctor.py",
     "change_budget.py",
     "graphify_compat.py",

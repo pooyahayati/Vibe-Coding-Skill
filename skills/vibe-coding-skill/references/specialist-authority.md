@@ -31,6 +31,8 @@ Use the actual project stack and platform APIs. Generic JavaScript/TypeScript ex
 
 ## Stage-specific handoff
 
+Vibe retains the assignment before work and records a separate Head decision after comparing the actual return, changes and evidence. Use the Head's [S2 handoff workflow](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/main/references/specialist-composition.md#stage-return-and-head-acceptance-s2). Assigned instructions stay stable until acceptance or explicit abandonment; abandoning an assignment does not establish task completion.
+
 Input: current stage, objective, affected surfaces/files, settled decisions, platform/runtime, protected invariants, risk floor, authorized actions, acceptance criteria, and evidence expectations.
 
 Output: domain decisions, changed surfaces, preserved constraints, evidence and its revision/environment, checks not performed, required versus optional findings, unresolved risks, and next action for Vibe. Debugging returns a reproduction, root cause or remaining hypothesis, bounded fix, and meaningful regression evidence. Specialist completion never establishes whole-project completion.

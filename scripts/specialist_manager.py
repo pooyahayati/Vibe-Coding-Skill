@@ -353,6 +353,9 @@ def ensure(entry: dict, skills_dir: Path, state: Path, apply: bool = False) -> d
             and previous["source"].get("package_policy") == source["package_policy"]):
         write_record(record_path, {**result, "files": current, "installation": str(target), "status": "current"})
         return {**result, "status": "current"}
+    if any((state / "active-assignments" / entry["id"]).glob("*.json")):
+        return {**result, "status": "update-deferred-active-assignment",
+                "action": "finish or explicitly abandon the active assignment before replacing its instructions"}
     try:
         files = source_package(entry, source)
     except (OSError, ValueError, KeyError, BadZipFile) as exc:

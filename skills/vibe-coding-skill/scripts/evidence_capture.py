@@ -53,7 +53,7 @@ def checked_path(root: Path, path: Path) -> Path:
     return path
 
 
-def snapshot(root: Path, paths: list[str], excludes: list[str], max_files=MAX_FILES, max_bytes=MAX_BYTES) -> list[dict]:
+def snapshot(root: Path, paths: list[str], excludes: list[str], max_files=MAX_FILES, max_bytes=MAX_BYTES, *, require_file=True) -> list[dict]:
     """Hash scoped files and directory membership, without consulting Git ignore."""
     root = root.resolve()
     selected = [relative(p) for p in paths]
@@ -94,7 +94,7 @@ def snapshot(root: Path, paths: list[str], excludes: list[str], max_files=MAX_FI
             raise ValueError("unsupported input type")
     for name in selected:
         visit(root / name)
-    if not any("sha256" in row for row in rows.values()):
+    if require_file and not any("sha256" in row for row in rows.values()):
         raise ValueError("input scope must contain at least one meaningful regular file")
     return [rows[key] for key in sorted(rows)]
 

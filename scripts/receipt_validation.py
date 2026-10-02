@@ -172,6 +172,8 @@ def evaluate_completion(report, contract, root, receipt_root, context, declared_
             if isinstance(row, dict) and row.get("required") is True:
                 require(any(e in qualified_ids and row["id"] in receipt_links[e] for e in row.get("evidence_ids", [])), "criterion lacks linked qualifying receipt: " + str(row.get("id")))
         result = declared_gate(derived, contract["acceptance_criteria"])
+        import specialist_handoff
+        result["failures"].extend(specialist_handoff.completion_failures(root, contract, context))
         result["failures"].extend(failures)
     except (ValueError, OSError, TypeError, RuntimeError, capture.zipfile.BadZipFile) as exc:
         result = {"gate": "BLOCK", "failures": [str(exc)], "warnings": []}
