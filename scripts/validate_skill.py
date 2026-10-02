@@ -42,6 +42,7 @@ REQUIRED_SCRIPTS = [
     "context_router.py",
     "execution_plan.py",
     "behavior_contract.py",
+    "evidence_capture.py",
     "validate_evals.py",
     "run_evals.py",
     "evaluate_agent_output.py",

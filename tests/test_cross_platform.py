@@ -11,6 +11,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+import copy
+import time
+import zipfile
+from unittest.mock import patch
+sys.path.insert(0, str(ROOT / "scripts"))
+import behavior_contract as behavior
+import evidence_capture as capture
+
+
 
 def git(root: Path, *args: str) -> str:
     p = subprocess.run(["git", *args], cwd=root, text=True, capture_output=True)
@@ -243,6 +252,180 @@ class CrossPlatformInstallTests(unittest.TestCase):
             self.assertEqual(applied.returncode, 0, applied.stdout + applied.stderr)
             self.assertTrue(json.loads(applied.stdout)["applied"])
             self.assertEqual(git(skill, "rev-parse", "HEAD"), v1)
+
+
+def receipt_contract():
+    return {"format": "vibe-task-contract", "schema_version": 1, "task_id": "تنظیمات/../../task",
+            "objective": "Preserve settings", "scope": ["src"], "risk_tier": 1,
+            "acceptance_criteria": [{"id": "setting", "description": "Stored setting unchanged", "required": True}],
+            "evidence_requirements": [{"id": "check", "criterion_ids": ["setting"], "kind": "unit-test",
+                "origin": "collected", "required": True, "input_paths": ["src", "check.py", "expected-missing"],
+                "input_excludes": ["src/generated"]}]}
+
+
+class EvidenceCaptureTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.base = Path(self.temp.name).resolve()
+        self.root = self.base / "product"
+        (self.root / "src" / "generated").mkdir(parents=True)
+        (self.root / "src/settings.txt").write_text("preserved", encoding="utf-8")
+        (self.root / "src/generated/log.txt").write_text("old", encoding="utf-8")
+        (self.root / "check.py").write_text("assert True\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True, capture_output=True)
+        self.env = patch.dict(os.environ, {"VIBE_CODING_HOME": str(self.base / "local-state"), "PYTHONDONTWRITEBYTECODE": "1"})
+        self.env.start()
+        self.c = receipt_contract()
+
+    def tearDown(self):
+        self.env.stop()
+        self.temp.cleanup()
+
+    def run_check(self, code="pass", **options):
+        return capture.capture(self.root, self.c, "check", [sys.executable, "-c", code], **options)
+
+    def test_real_success_failure_and_spawn_error_are_distinct_and_local(self):
+        passed = self.run_check("print('discarded command output')")
+        r = passed["receipt"]
+        self.assertEqual(r["result"], "pass")
+        self.assertEqual(r["command"]["exit_code"], 0)
+        self.assertTrue(r["process_started"])
+        self.assertEqual(r["inputs"]["before_sha256"], r["inputs"]["after_sha256"])
+        self.assertEqual(r["contract_sha256"], behavior.digest(self.c))
+        self.assertEqual(r["criterion_ids"], ["setting"])
+        self.assertNotIn("commit", r["source"])
+        self.assertLessEqual(r["started_at"], r["finished_at"])
+        self.assertFalse(passed["completion_verified"])
+        path = Path(passed["receipt_path"])
+        self.assertFalse(path.is_relative_to(self.root))
+        self.assertEqual(json.loads(path.read_text(encoding="utf-8")), r)
+        self.assertNotIn("log", r)
+        self.assertEqual(self.run_check("raise SystemExit(7)")["receipt"]["command"]["exit_code"], 7)
+        failed = capture.capture(self.root, self.c, "check", [str(self.base / "missing-executable")])["receipt"]
+        self.assertEqual(failed["result"], "error")
+        self.assertFalse(failed["process_started"])
+        self.assertIsNone(failed["command"]["exit_code"])
+
+    def test_manifest_includes_untracked_missing_and_empty_directory_membership(self):
+        obligation = self.c["evidence_requirements"][0]
+        def manifest():
+            return capture.snapshot(self.root, obligation["input_paths"], obligation["input_excludes"])
+        original = manifest()
+        self.assertIn({"path": "expected-missing", "missing": True}, original)
+        (self.root / "src/generated/log.txt").write_text("new", encoding="utf-8")
+        self.assertEqual(original, manifest())
+        (self.root / "src/new.txt").write_text("untracked", encoding="utf-8")
+        self.assertNotEqual(original, manifest())
+        (self.root / "src/new.txt").unlink()
+        (self.root / "src/empty").mkdir()
+        self.assertIn({"path": "src/empty", "directory": True}, manifest())
+        self.assertNotEqual(original, manifest())
+
+    def test_mutating_inputs_and_checked_artifacts_cannot_pass(self):
+        excluded = self.run_check("from pathlib import Path; Path('src/generated/log.txt').write_text('generated output')")["receipt"]
+        self.assertEqual(excluded["result"], "pass")
+        changed = self.run_check("from pathlib import Path; Path('src/settings.txt').write_text('mutated')")["receipt"]
+        self.assertEqual(changed["result"], "error")
+        self.assertNotEqual(changed["inputs"]["before_sha256"], changed["inputs"]["after_sha256"])
+        artifact = self.base / "delivered.zip"
+        artifact.write_bytes(b"exact bytes")
+        self.c["evidence_requirements"][0]["artifact_paths"] = [str(artifact)]
+        r = self.run_check()["receipt"]
+        self.assertEqual(r["result"], "pass")
+        self.assertEqual(r["artifacts"], r["artifacts_before"])
+        self.assertEqual(r["artifacts"][0]["path"], str(artifact))
+        r = self.run_check("from pathlib import Path; Path(" + repr(str(artifact)) + ").write_bytes(b'changed')")["receipt"]
+        self.assertEqual(r["result"], "error")
+        artifact.unlink()
+        r = self.run_check()["receipt"]
+        self.assertEqual(r["result"], "error")
+        self.assertFalse(r["process_started"])
+
+    def test_timeout_stops_child_tree_and_never_becomes_success(self):
+        marker = self.base / "child-survived.txt"
+        child = "import time; from pathlib import Path; time.sleep(1.2); Path(" + repr(str(marker)) + ").write_text('bad')"
+        code = "import subprocess,sys,time; subprocess.Popen([sys.executable,'-c'," + repr(child) + "]); time.sleep(10)"
+        start = time.monotonic()
+        r = self.run_check(code, timeout_seconds=0.3)["receipt"]
+        self.assertEqual(r["result"], "timeout")
+        self.assertTrue(r["termination_confirmed"])
+        self.assertLess(time.monotonic() - start, 8)
+        time.sleep(1.3)
+        self.assertFalse(marker.exists())
+
+    def test_unsafe_paths_scope_erasure_limits_and_origins_fail_before_execution(self):
+        for value in ("../outside", "/outside", "C:/outside", "src/*"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                capture.snapshot(self.root, [value], [])
+        for paths, excluded in ((["src"], ["src"]), (["src"], ["."])):
+            with self.assertRaises(ValueError):
+                capture.snapshot(self.root, paths, excluded)
+        with self.assertRaises(ValueError):
+            capture.snapshot(self.root, ["src"], [], max_files=1)
+        with self.assertRaises(ValueError):
+            capture.snapshot(self.root, ["check.py"], [], max_bytes=1)
+        for timeout in (0, float("nan"), float("inf"), True):
+            with self.assertRaises(ValueError):
+                self.run_check(timeout_seconds=timeout)
+        for origin in ("manual", "reported"):
+            altered = copy.deepcopy(self.c)
+            altered["evidence_requirements"][0]["origin"] = origin
+            with self.assertRaises(ValueError):
+                capture.capture(self.root, altered, "check", [sys.executable, "-c", "pass"])
+        with patch.dict(os.environ, {"VIBE_CODING_HOME": str(self.root / "state")}):
+            with self.assertRaises(ValueError):
+                self.run_check()
+
+    def test_link_escape_is_rejected_including_missing_child(self):
+        link = self.root / "src/link"
+        try:
+            link.symlink_to(self.base, target_is_directory=True)
+        except OSError:
+            if os.name != "nt":
+                self.skipTest("host does not permit symlink creation")
+            created = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(self.base)], capture_output=True)
+            if created.returncode != 0:
+                self.skipTest("host does not permit symlink/junction creation")
+        try:
+            with self.assertRaises(ValueError):
+                capture.snapshot(self.root, ["src/link/missing"], [])
+            r = self.run_check()["receipt"]
+            self.assertEqual(r["result"], "error")
+            self.assertFalse(r["process_started"])
+        finally:
+            if link.is_symlink():
+                link.unlink()
+            else:
+                link.rmdir()  # Remove only the junction itself, never its target.
+
+    def test_wordpress_artifact_reuses_verified_version_and_exact_bytes(self):
+        artifact = self.base / "plugin.zip"
+        with zipfile.ZipFile(artifact, "w") as z:
+            z.writestr("sample/sample.php", "<?php\n/*\nPlugin Name: Sample\nVersion: 1.2.3\n*/\n")
+        self.c["evidence_requirements"][0]["artifact_paths"] = [str(artifact)]
+        r = self.run_check(wordpress_artifacts=True)["receipt"]
+        self.assertEqual(r["result"], "pass")
+        self.assertEqual(r["artifacts"][0]["version"], "1.2.3")
+        artifact.write_bytes(b"invalid ZIP")
+        r = self.run_check(wordpress_artifacts=True)["receipt"]
+        self.assertEqual(r["result"], "error")
+        self.assertFalse(r["process_started"])
+
+    def test_real_cli_and_unavailable_never_fabricate_an_attempt(self):
+        supplied = self.base / "contract.json"
+        supplied.write_text(json.dumps(self.c, ensure_ascii=False), encoding="utf-8")
+        command = [sys.executable, "-X", "utf8", str(ROOT / "scripts/evidence_capture.py"), "run", "--root", str(self.root),
+                   "--task-contract", str(supplied), "--requirement", "check", "--", sys.executable, "check.py"]
+        completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(completed.returncode, 0, completed.stderr + completed.stdout)
+        self.assertEqual(json.loads(completed.stdout)["receipt"]["task_id"], self.c["task_id"])
+        unavailable = capture.unavailable(self.root, self.c, "check", "Runtime not available")["receipt"]
+        self.assertEqual(unavailable["result"], "unavailable")
+        self.assertNotIn("command", unavailable)
+        self.assertNotIn("started_at", unavailable)
+        self.assertNotIn("inputs", unavailable)
+        self.assertIn("recorded_at", unavailable)
+
 
 
 if __name__ == "__main__":

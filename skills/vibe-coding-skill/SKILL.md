@@ -159,7 +159,7 @@ Use `scripts/completion_gate.py` for structured completion reports. Failed requi
 
 If evidence is unavailable, report `Unverified` rather than complete.
 
-Maintainers implementing the roadmap's behavior, receipt or specialist-acceptance changes should read `references/shared-improvement-contracts.md`; its proposed formats are not yet runtime gate capabilities.
+For an already-authorized local check requiring collected evidence, `scripts/evidence_capture.py` records the scoped inputs, actual exit/timeout and exact existing artifacts outside product source. Read `references/execution-and-verification.md#local-execution-receipts-e1`. A receipt is not automatic acceptance; schema-2 completion does not yet resolve it. Manual/light checks remain available. Maintainers should read `references/shared-improvement-contracts.md` for format and migration limits.
 
 Task completion does not automatically imply workstream or objective completion when dependencies/integration evidence remain.
 
