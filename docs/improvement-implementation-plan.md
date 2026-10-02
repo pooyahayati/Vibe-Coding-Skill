@@ -1,6 +1,6 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: P0/B1/B2/E1/E2/S1 merged; S2 stage-specific task acceptance is implemented and verified, with completion taking effect at its implementation PR's merge. I1 integration and D1 final documentation remain planned. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
+Status: P0/B1/B2/E1/E2/S1/S2 merged. I1 portable-package integration is implemented and verified, with completion taking effect at its implementation PR's merge; D1 final documentation remains planned. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
 Baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
 
@@ -95,4 +95,4 @@ Each review unit must include its changed behavior, acceptance results, relevant
 
 ## Readiness
 
-P0/B1/B2/E1/E2/S1 are merged in PRs #62 through #67. S2 retained assignments, actual project/receipt reconciliation, required-finding history, explicit Head acceptance and completion integration have passed relevant checks; its completion update takes effect when its implementation PR is merged. I1 integration and D1 final documentation remain planned. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.
+P0/B1/B2/E1/E2/S1/S2 are merged in PRs #62 through #68. [I1 integration](i1-integration-verification.md) exercises the extracted portable runtime across representative light, receipt-backed and cross-boundary routes; local verification passed and completion takes effect with I1's merge. D1 remains planned. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.

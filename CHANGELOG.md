@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add I1 integration checks that build/extract the portable ZIP and exercise light, receipt-backed and cross-boundary specialist routes through its runtime entrypoints. Run them in the existing OS matrix; preserve legacy/manual evidence, scoped freshness and separate Head acceptance without adding runtime instructions, models or host dependencies.
 - Accept literal bracket-containing project paths in specialist Git baselines, assignments/returns, evidence inputs/exclusions, relative artifacts and receipt references; retain wildcard, traversal and link protections. Add regressions for dynamic/catch-all routes, unrelated assignment scopes, real execution receipts, missing/deleted files and stale acceptance.
 - Check bracket-named skill resources referenced in prose or inline code instead of silently skipping them. Preserve literal paths when relocating prose/commands and URL-encode only Markdown link destinations. Advance the package-adapter policy to revalidate cached packages under the corrected dependency extraction.
 
