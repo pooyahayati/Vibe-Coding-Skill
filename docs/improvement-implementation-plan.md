@@ -1,8 +1,23 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: P0/B1/B2/E1/E2/S1/S2/I1 merged. D1 is merged in PR #73; the original improvement cycle is complete. That PR also implements the separately tracked F1 feedback route. Current package/phase/merge status is maintained in [ROADMAP.md](../ROADMAP.md).
-Baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
+Status: The original cycle and feedback F1 are complete and delivered in `1.3.0`. The next cycle contains four planned hardening packages, `R1`-`R4`; implementation has not started. Current package/phase/merge status is maintained only in [ROADMAP.md](../ROADMAP.md).
+Hardening baseline: `1.3.0`, audited main `156676d502fae98c5c0b3a9bafdf5497698a062e`. Original-cycle baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
+
+## Targeted hardening cycle R1-R4
+
+The final audit justified five findings grouped into four reviewable corrections. Preserve the existing architecture, risk-adaptive light route and authorization boundaries. Full package specifications, acceptance criteria and current progress are canonical in the [active roadmap](../ROADMAP.md#active-hardening-packages); this table records implementation scope and dependencies.
+
+| ID | Implementation scope | Acceptance boundary | Dependency |
+|---|---|---|---|
+| R1 | State/workflow defaults and retained specialist IDs; affected contract, plan, handoff/resume and completion callers. | Fresh structured tasks use receipts; supported legacy tasks remain compatible; required specialist commitments survive unless explicitly reconciled. [Criteria](../ROADMAP.md#r1-retained-contract-and-required-completion-controls). | Existing contract/receipt mechanisms. First in priority order. |
+| R2 | Bounded platform-content discovery and visible inspection limitations in the context router. | Large plugin headers retain WordPress routing; unrelated PHP stays unclassified as WordPress; incomplete relevant scans are visible. [Criteria](../ROADMAP.md#r2-bounded-discovery-without-silent-platform-loss). | None of the other hardening packages. |
+| R3 | Ownership overlap and drift scope semantics in the execution planner. | Project root covers nested paths and overlaps nested writers; disjoint ownership remains valid. [Criteria](../ROADMAP.md#r3-consistent-project-root-ownership). | None of the other hardening packages. |
+| R4 | Active benchmark/agent-output guidance and its runtime mirror, where included. | Release rules match actual gates; portable commands resolve or are clearly optional maintainer routes. [Criteria](../ROADMAP.md#r4-one-accurate-operational-validation-path). | None of the other hardening packages. |
+
+Implement in priority order `R1` -> `R2` -> `R3` -> `R4`; do not treat this sequence as a technical prerequisite. Extend affected existing regressions with the confirmed failures and necessary positive controls. No new orchestration layer, specialist, model evaluation, provider credential, fixed test count or broad unrelated refactor is in scope. Existing required CI and relevant package consistency still apply at their normal gates. Completion, merge, release and installation remain distinct actions.
+
+The sections below retain the completed original cycle's design and evidence; they do not imply implementation of `R1`-`R4`.
 
 ## Work packages
 
@@ -94,5 +109,7 @@ Before coding, refresh the repository baseline, inspect applicable instructions 
 Each review unit must include its changed behavior, acceptance results, relevant checks, limitations and exact Git state. Finish the next-release documentation only after implementation matches it. Publishing, merging and installing require the authorization applicable to those delivery actions.
 
 ## Readiness
+
+The original cycle below is closed. The active hardening cycle is planned only; use the roadmap's `R1`-`R4` acceptance criteria and statuses before claiming any new correction is delivered.
 
 P0/B1/B2/E1/E2/S1/S2 are merged in PRs #62 through #68. [I1 integration](i1-integration-verification.md) is merged in PR #72 and exercises the extracted portable runtime across light, receipt-backed and cross-boundary routes; local checks and the existing OS matrix passed. D1 aligns user/maintainer documentation with these mechanisms and preserves the light route, ownership, important links and full author attribution. Relevant link/structure, skill validation, mirror and offline-install checks passed (optional Trivy warning only); D1 is merged in PR #73. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.
