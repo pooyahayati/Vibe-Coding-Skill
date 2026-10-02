@@ -4,6 +4,14 @@ A short, human-readable summary of what changed in each release.
 
 For full technical details, see [CHANGELOG.md](CHANGELOG.md).
 
+## 1.2.0 — Bound outcomes, execution evidence and specialist acceptance
+- Preserves observable behavior, acceptance criteria and protected invariants across plans, project state and handoffs.
+- Adds local execution receipts bound to scoped inputs and exact artifacts; schema-3 completion validates retained contracts and receipts. Legacy schema-2 work remains explicitly reported evidence until migration.
+- Separates current specialist installation from instruction compatibility and task-output acceptance. The Head assesses actual changes, required findings and shared contracts; active assignments defer instruction replacement.
+- Fixes healthy Head preflight rejection, illustrative-resource false positives, missing nested owner-relative resources and supported Markdown link relocation. Older validation policy is rechecked.
+- Keeps checks proportional to affected outcomes and risk. No model evaluation or provider key is required; no automatic product-stack upgrade is implied.
+- Includes an installation-checked portable ZIP and SHA-256 checksum. Seven roadmap packages are complete; I1 and D1 remain planned. Publication does not update local installations.
+
 ## 1.1.0 — One Head, eight stages and focused specialists
 - Establishes Discover, Define, Plan, Design, Build, Verify, Review and Ship with clear ownership and stage outputs; small changes keep a short path.
 - Adds application-security, API/interface-contract and systematic-debugging specialists alongside the sole UI-UX-Skill design specialist.

@@ -1,12 +1,12 @@
 # How to Install
 
-Current Skill version: `1.1.0`
+Current Skill version: `1.2.0`
 
 Keep the Skill installation outside the repositories you use it on. Vibe Coding operational state is intentionally local-only.
 
 ## Portable release ZIP
 
-Download `Vibe-Coding-Skill-1.1.0.zip` and its SHA-256 checksum file from the [1.1.0 release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.1.0).
+Download `Vibe-Coding-Skill-1.2.0.zip` and its SHA-256 checksum file from the [1.2.0 release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.2.0).
 Extract the contained `vibe-coding-skill` directory into your agent's user-level skills directory. Preserve that directory name. The ZIP includes the complete runtime and does not include credentialed model-evaluation runners.
 Run the offline installation check below from the extracted directory. Optional tool warnings do not block installation.
 
