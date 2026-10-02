@@ -1,17 +1,86 @@
 # Improvement Roadmap
 
-Status: All nine original improvement packages and follow-up F1 are merged and shipped in version `1.3.0`. PR #71 delivered literal-path corrections, PR #72 portable integration, and [PR #73](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/73) D1 guidance/F1 feedback (merge `3c886874e00e331f2d17ec461d10eda0953a423f`). Release publication and the maintainer's authorized local replacement are verified separately below. This is the canonical improvement-progress record.
-Baseline: version `1.1.0`; repository main commit `9e0ca5108567f38a66376883613fdcaff6616de0`.
-Last reviewed: 2026-10-03, Asia/Tehran. Detailed work: [Implementation plan](docs/improvement-implementation-plan.md).
+Status: Four targeted hardening packages (`R1`-`R4`) are planned from the final adversarial audit. Implementation has not started. The original nine-package cycle and feedback follow-up are complete and shipped in `1.3.0`; their evidence is retained below.
+Audit baseline: main commit [`156676d502fae98c5c0b3a9bafdf5497698a062e`](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/156676d502fae98c5c0b3a9bafdf5497698a062e); released runtime `1.3.0`, commit `83fd4f47e60930718a2c9fb5e27fdedb74de2e81`.
+Last reviewed: 2026-10-03, Asia/Tehran. This is the canonical progress tracker; [implementation scope and dependencies](docs/improvement-implementation-plan.md#targeted-hardening-cycle-r1-r4) are maintained in the existing implementation plan.
 
 ## Current position
 
-- **Current phase:** Phase 4 complete; version `1.3.0` published and authorized local replacement complete.
-- **Completed in this improvement cycle:** P0 shared contracts, B1/B2 observable behavior propagation, E1/E2 execution receipts/completion, S1 instruction compatibility, S2 scoped specialist-return/Head acceptance and I1 portable workflow integration; D1 documentation completes the cycle; F1 feedback is an additional merged follow-up.
-- **Implementation progress:** 9 of 9 original packages merged; F1 is tracked separately. This counts work packages, not software quality or test coverage.
-- **Next action:** No work remains in this approved improvement cycle. Retain relevant feedback encountered during ordinary authorized project work; select a concrete improvement before starting another package.
-- **Blockers:** none remain for this cycle or its release/local delivery. The engineering evidence limits below still apply.
-- **Release delivery:** stable version `1.3.0` published; version `1.2.0` is superseded. [Published release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.3.0).
+- **Current phase:** Planning ready; all four hardening packages are **Not started**.
+- **Implementation progress:** 0 of 4 hardening packages complete. The closed original cycle remains 9 of 9, with feedback F1 tracked separately. Counts describe work packages, not quality or coverage.
+- **Next action:** Start `R1` as the next implementation task: reproduce new-task legacy selection and loss of an unstarted required specialist assignment, then enforce the retained contract. This planning update does not implement those fixes.
+- **Execution order:** `R1` -> `R2` -> `R3` -> `R4`, prioritizing silent weakening of required controls. This is a priority order; `R2`-`R4` do not technically depend on `R1`.
+- **Blockers:** none identified for planning. Implementation and acceptance evidence remain outstanding for every active package.
+- **Release delivery:** stable `1.3.0` and its authorized local installation remain the delivered baseline. No next version, release or installation is implied by this plan. [Published release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.3.0).
+
+## Active hardening packages
+
+| ID | Priority | Audit findings | Work | Status | Complexity | Implementation / acceptance evidence |
+|---|---|---|---|---|---|---|
+| R1 | P1 | Audit F1, F2 | Default new structured completion to receipts and preserve required specialist commitments. | Not started | Medium | None yet. |
+| R2 | P1 | Audit F3 | Preserve platform discovery for large files and expose incomplete inspection. | Not started | Medium | None yet. |
+| R3 | P2 | Audit F4 | Use consistent project-root scope semantics in ownership and drift checks. | Not started | Small | None yet. |
+| R4 | P2 | Audit F5 | Remove obsolete mandatory benchmark claims and unavailable portable commands. | Not started | Small | None yet. |
+
+Audit IDs belong to the final audit, not the completed original-cycle package IDs. Audit F1 is distinct from the delivered F1 feedback feature.
+
+## Package specifications
+
+### R1: retained contract and required completion controls
+
+**Why:** Audit F1 showed that a fresh structured task without `--receipt-completion` selects schema 2 and can accept declared results (`PASS` / `reported-met`) without receipts. It correctly leaves `execution_verified` false, but does not enforce the new-task route. Audit F2 showed that removing `specialist_assignment_ids` passes contract comparison and removes the missing-assignment failure before an operation has been created.
+
+**Evidence:** [Workflow default](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/156676d502fae98c5c0b3a9bafdf5497698a062e/scripts/project_state.py#L118-L133), [contract comparison](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/156676d502fae98c5c0b3a9bafdf5497698a062e/scripts/behavior_contract.py#L99-L112) and [required-assignment completion check](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/156676d502fae98c5c0b3a9bafdf5497698a062e/scripts/specialist_handoff.py#L362-L385). Controlled in-memory reproductions exercised the actual functions; these are tooling findings, not an observed application incident.
+
+**Correction / components:** Default new structured tasks to schema 3 in `project_state.py`; keep the supported in-flight legacy route explicit. Preserve required specialist IDs through `behavior_contract.py`, planning, state, handoff/resume and completion. Removal needs the existing Head-reconciled change route with a reason; records do not grant authorization. Retain digest protection for operations already created.
+
+**Acceptance:**
+
+- A fresh structured contract, including `--new-task`, cannot qualify with schema-2 declared evidence merely because an activation flag is omitted.
+- Valid retained legacy work remains supported and accurately labeled; an activated receipt workflow cannot downgrade across capture/handoff/resume. Tiny inline/manual work stays proportionate.
+- Removing a retained required specialist ID is rejected before replacement unless explicitly reconciled. A required assignment that has not started remains visible as missing at completion.
+
+**Verification:** Extend affected behavior/state, receipt and specialist-handoff regressions with the two confirmed reproductions and positive legacy/reconciliation cases. Reuse existing tests; check retained state across handoff/resume and apply affected package checks when runtime resources change.
+
+### R2: bounded discovery without silent platform loss
+
+**Why:** Audit F3 used identical WordPress headers in a simulated 2 KB and 70 KB `plugin.php`. The larger file lost the WordPress pack while reporting no uncertainty because `safe_text` discards an oversized file entirely.
+
+**Evidence:** [Whole-file rejection and scan bounds](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/156676d502fae98c5c0b3a9bafdf5497698a062e/scripts/context_router.py#L256-L293).
+
+**Correction / components:** Update `context_router.py` to read a bounded header/prefix where appropriate and surface oversized, unreadable or budget-limited inspection. Keep locality and total scan limits; insufficient discovery of an affected entrypoint needs an explicit Head assessment, not an unconditional platform assumption.
+
+**Acceptance:**
+
+- The same plugin header selects WordPress rules in both small and oversized affected files.
+- Unrelated PHP remains PHP; this fix must not classify every PHP project as WordPress.
+- Incomplete relevant inspection produces a visible limitation/uncertainty, and scan metrics distinguish content inspected from files skipped or truncated.
+
+**Verification:** Add the confirmed large-file routing regression, a non-WordPress control and a relevant unreadable/budget-limited case to existing router tests. Preserve literal-path and bounded/locality regressions; no unbounded repository scan.
+
+### R3: consistent project-root ownership
+
+**Why:** Audit F4 validated a bound two-owner plan with scopes `.` and `scripts` and recommended parallelism 2; it returned `PASS`. The same helper also reported that `.` does not cover `scripts/feature.py`.
+
+**Evidence:** [Scope helpers](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/156676d502fae98c5c0b3a9bafdf5497698a062e/scripts/execution_plan.py#L91-L110) and [ownership gate](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/156676d502fae98c5c0b3a9bafdf5497698a062e/scripts/execution_plan.py#L365-L393).
+
+**Correction / components:** Make `execution_plan.py` ownership and drift checks consistently interpret `.` as the project root, matching retained-contract semantics. Normalize equivalent project-relative forms without broad unrelated path refactoring.
+
+**Acceptance:** Different writers owning `.` and a nested scope are blocked; genuinely disjoint scopes pass; a nested file within an approved root scope is not reported as outside scope. Equivalent `./` forms give the same result and literal filenames remain literal.
+
+**Verification:** Extend existing plan overlap/drift tests with the confirmed root case, a disjoint positive case and root coverage. Preserve current cross-platform/literal-path checks.
+
+### R4: one accurate operational validation path
+
+**Why:** Audit F5 found current benchmark guidance referring to a removed workflow and requiring credentialed agent runs for stable releases, contrary to the active six-workflow release gate. Packaged agent-output guidance also names runners absent from the portable package.
+
+**Evidence:** [Obsolete workflow claim](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/156676d502fae98c5c0b3a9bafdf5497698a062e/benchmarks/README.md#L53-L62), [obsolete stable gate](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/156676d502fae98c5c0b3a9bafdf5497698a062e/benchmarks/README.md#L121-L123) and [portable guide commands](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/156676d502fae98c5c0b3a9bafdf5497698a062e/evals/AGENT_OUTPUT_SCHEMA.md#L37-L84).
+
+**Correction / components:** Reconcile `benchmarks/README.md`, `evals/AGENT_OUTPUT_SCHEMA.md` and their active references with actual workflows and package contents. Remove or explicitly archive obsolete requirements. Retain optional maintainer evaluation only with a clear external/maintainer boundary; do not reintroduce runners, provider-key requirements or model campaigns.
+
+**Acceptance:** Active release guidance agrees with the implemented gate. Every command in portable guidance resolves to an included entrypoint or a clearly identified optional maintainer route. Ordinary skill use and release readiness require no provider API key.
+
+**Verification:** Check affected links, workflow/command targets and portable-guide resources; synchronize edited runtime mirrors. No model execution or new wording-only tests.
 
 ## Delivery evidence
 
@@ -24,7 +93,12 @@ Last reviewed: 2026-10-03, Asia/Tehran. Detailed work: [Implementation plan](doc
 
 The installation row records one verified host snapshot, not automatic updates for every user or already-loaded agent instructions. Later roadmap-only changes do not change the immutable release artifact or require reinstalling unchanged runtime files.
 
+<details>
+<summary>Completed original cycle: baseline, packages and feedback</summary>
+
 ## Completed baseline
+
+Original baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`. The nine original packages and feedback follow-up are delivered in `1.3.0`; none is counted as a new hardening package.
 
 - Version `1.1.0` published with the eight-stage Head lifecycle and four scoped specialists. [Release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.1.0), [implementation PR #59](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/59).
 - README project-size/risk tables restored, Start section removed and full author attribution moved to the end. [Merged PR #60](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/60).
@@ -48,17 +122,24 @@ The installation row records one verified host snapshot, not automatic updates f
 
 This user-requested addition is outside the original nine-package cycle and is included in [PR #73](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/73) alongside D1. **Status: Complete; merged in PR #73 and shipped in `1.3.0`.** The conditional Head-owned route covers confirmed/suspected Vibe defects, minimal English local reports, deduplication and optional user-reviewed email. Skill validation, mirror consistency, two existing install-manifest checks and the extracted 78-file package check passed (optional Trivy warning only). Instruction review covered confirmed/suspected attribution, environment-only failures, duplicates, sharing, blocked work and unavailable storage; this is policy review, not real-agent conformance. Release and local installation evidence are recorded separately above.
 
+</details>
+
 ## How progress stays current
 
-This file is maintained in Git; it is not an automatic live monitor. Update it when a roadmap package starts, a blocker changes, implementation is verified/merged, or a release is delivered. Use the same stable package IDs in implementation PRs and link the relevant PR/commit and concise verification evidence here. Update the implementation plan only when scope, dependencies or acceptance decisions change.
+This file is maintained in Git; it is not an automatic live monitor. Update it when a roadmap package starts, a blocker changes, implementation is verified/merged, or a release is delivered. Use `R1`-`R4` in this cycle's implementation PRs and link the relevant PR/commit and concise acceptance evidence in the active tracker. Keep closed-cycle evidence separate. Update the implementation plan only when scope, dependencies or acceptance decisions change.
 
 Statuses: **Not started**, **In progress**, **Blocked**, **Complete**. Opening a PR or writing code does not make a package Complete. Completion requires its acceptance conditions, relevant verification and merged implementation; a completion update proposed in that implementation PR takes effect when merged. Track release/deployment/local-installation separately when they are part of the objective.
 
-Phase status and the completed count must agree with the work-package tracker. Keep the current position and next action accurate; do not replace the tracker with a growing diary or an unsupported percentage. A blocked item must state the cause and next resolving action. [Contributor update rule](CONTRIBUTING.md#roadmap-progress).
+Current phase, next action and the completed count must agree with the active tracker and change as packages progress; do not replace the tracker with a growing diary or an unsupported percentage. A blocked item must state the cause and next resolving action. Planning this cycle does not close a finding. [Contributor update rule](CONTRIBUTING.md#roadmap-progress).
+
+Verification stays proportional: extend affected regressions, reuse passing relevant evidence and run existing required CI at its normal gate. Do not repeat unrelated full suites after wording-only edits. Runtime/reference changes require mirror/package consistency; release and local installation remain separate authorized delivery actions.
 
 ## Outcome
 
 Improve the delivered software, not the volume of code, instructions or tests. A non-programmer should receive the intended behavior, supported by relevant execution evidence, with specialist work integrated under one accountable engineering Head.
+
+<details>
+<summary>Original cycle: priorities and delivery sequence</summary>
 
 ## Three priorities
 
@@ -81,6 +162,8 @@ The impact ranking is not the implementation order. Define behavior first so exe
 | 4 | Complete | Integrate, document and prepare delivery. | Head / maintainer. | Focused regression evidence, synchronized portable package, installation evidence and user-facing examples. | Changed behavior passes relevant checks; documentation matches runtime and risk routes stay proportionate. | Phases 1-3. |
 
 Release, merge and local installation are separate delivery actions. A version number is chosen after compatibility review; no release date or publication is implied by this plan.
+
+</details>
 
 ## Application by project route
 
@@ -107,7 +190,7 @@ Project size never substitutes for task risk. Failure scenarios are added only w
 
 ## Evidence and limits
 
-The baseline gaps are based on source inspection, including `completion_gate.py`, `specialist_manager.py`, `execution_plan.py` and the operating references. They are not a claim that a produced application was observed to fail.
+The active packages address five confirmed tooling/instruction findings from the audited source and controlled in-memory reproductions. They are not claims that a produced application was observed to fail. Release/package/installation consistency was checked separately and showed no material drift; it is not an additional improvement package.
 
 A command receipt can show the recorded command/result and detect later mismatches. It cannot prove that the selected check tests the right requirement, prevent a privileged actor from forging local records, or prove every vulnerability absent. Head review and host permissions remain necessary. Semantic compatibility review is an engineering assessment, not an automatic proof from keyword checks.
 
