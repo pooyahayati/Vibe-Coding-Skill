@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No changes yet.
+
+## 1.3.0 — Local skill feedback and portable workflow reliability
+
 - Add an evidence-triggered Head-owned skill-feedback route for confirmed/suspected Vibe instruction, resource, tooling and composition defects. Prepare minimal English reports outside product source, deduplicate locally, preserve attribution and safe task progress, and invite optional user-reviewed email to hayatipooya@gmail.com. No automatic sending, telemetry, product-UI notice, model evaluation or bypass of required controls; include the reference in portable/install validation.
 
 - Complete D1 guidance for usable behavior-led handoffs, current schema-3 versus declared legacy completion, extracted-package evidence limits, risk-appropriate maintainer checks and stable/source installation choices. Preserve workflow/project-size tables, important links and full author attribution; correct stale implementation descriptions and the contributor newline typo. No runtime behavior, version bump, model evaluation or additional project gate.

@@ -4,6 +4,14 @@ A short, human-readable summary of what changed in each release.
 
 For full technical details, see [CHANGELOG.md](CHANGELOG.md).
 
+## 1.3.0 — Skill feedback and portable workflow reliability
+- Adds a Head-owned route for confirmed/suspected defects in the skill itself: minimal English local reports, installed-version attribution and an optional user-reviewed email invitation. No automatic sending or telemetry.
+- Fixes valid literal bracket paths in project/evidence/specialist workflows and skill-resource validation/relocation, preserving wildcard, traversal and link protections.
+- Verifies light, receipt-backed and cross-boundary specialist routes through the extracted portable ZIP on Linux, macOS and Windows.
+- Aligns user/maintainer guides with actual completion/evidence limits and stable/source installation choices; preserves workflow/project-size tables, important links and full author attribution.
+- Completes the nine-package improvement cycle and the separate feedback follow-up. Tests remain risk-appropriate; no model evaluation or provider API key is required.
+- Includes an installation-checked portable ZIP and SHA-256 checksum. Updating source or publishing does not automatically replace existing local installations.
+
 ## 1.2.0 — Bound outcomes, execution evidence and specialist acceptance
 - Preserves observable behavior, acceptance criteria and protected invariants across plans, project state and handoffs.
 - Adds local execution receipts bound to scoped inputs and exact artifacts; schema-3 completion validates retained contracts and receipts. Legacy schema-2 work remains explicitly reported evidence until migration.
