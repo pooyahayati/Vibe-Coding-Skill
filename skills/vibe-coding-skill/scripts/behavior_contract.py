@@ -7,6 +7,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,23 @@ def strings(value: Any, nonempty: bool = False) -> bool:
 def digest(value: Any) -> str:
     raw = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def normalize_scope(value: str) -> str:
+    scope = value.replace("\\", "/").strip().strip("/")
+    if not scope:
+        return ""
+    # Normalize whole dot components without changing hidden or bracket names.
+    return "/".join(part for part in scope.split("/") if part and part != ".") or "."
+
+
+def path_covered(path: str, scopes: list[str]) -> bool:
+    value = normalize_scope(path)
+    relative = path.replace("\\", "/").strip()
+    if not value or relative.startswith("/") or re.match(r"^[A-Za-z]:", relative) or ".." in value.split("/"):
+        return False
+    return any(scope == "." or value == scope or value.startswith(scope + "/")
+               for scope in map(normalize_scope, scopes) if scope)
 
 
 def validate(value: Any) -> dict[str, Any]:
@@ -147,10 +165,9 @@ def plan_failures(plan: dict[str, Any], baseline: dict[str, Any] | None = None) 
             failures.append("workstream has missing or unknown acceptance links")
             continue
         covered.update(links)
-        if "." not in contract["scope"]:
-            for path in (row.get("scope") or []):
-                if text(path) and not any(path == scope or path.startswith(scope.rstrip("/") + "/") for scope in contract["scope"]):
-                    failures.append("workstream exceeds retained task scope: " + path)
+        for path in (row.get("scope") or []):
+            if text(path) and not path_covered(path, contract["scope"]):
+                failures.append("workstream exceeds retained task scope: " + path)
         for item in contract["evidence_requirements"]:
             if item["required"] and set(item["criterion_ids"]) & set(links) and item["id"] not in evidence:
                 failures.append("workstream lost required evidence obligation: " + item["id"])

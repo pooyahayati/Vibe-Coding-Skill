@@ -26,6 +26,34 @@ def contract(tier=0):
 
 
 class BehaviorContractTests(unittest.TestCase):
+    def test_bound_root_owner_conflicts_with_nested_owner_but_disjoint_scopes_pass(self):
+        c = contract()
+        c["scope"] = ["."]
+        with tempfile.TemporaryDirectory() as td:
+            plan = execution_plan.draft(Path(td), c["objective"], task_contract=c)
+        first = plan["workstreams"][0]
+        first.update(id="root", owner="agent-a")
+        plan["workstreams"].append(dict(copy.deepcopy(first), id="nested", owner="agent-b", scope=["scripts"]))
+        plan["coordination"]["recommended_parallelism"] = 2
+        for scope in (".", "./", ".\\"):
+            with self.subTest(scope=scope):
+                first["scope"] = [scope]
+                result = execution_plan.validate_plan(plan, c)
+                self.assertEqual(result["gate"], "BLOCK")
+                self.assertTrue(any("ownership scopes overlap" in f for f in result["failures"]))
+        first["scope"] = ["./scripts/backend/"]
+        plan["workstreams"][1]["scope"] = ["scripts/frontend"]
+        self.assertEqual(execution_plan.validate_plan(plan, c)["gate"], "PASS")
+        for root in ("./", ".\\"):
+            with self.subTest(retained_scope=root):
+                c["scope"] = [root]
+                plan["task_contract"] = copy.deepcopy(c)
+                plan["task_contract_sha256"] = behavior.digest(c)
+                self.assertEqual(execution_plan.validate_plan(plan, c)["gate"], "PASS")
+                with tempfile.TemporaryDirectory() as td:
+                    nested = execution_plan.draft(Path(td), c["objective"], ["./scripts/[id]/feature.py"], task_contract=c)
+                self.assertEqual(execution_plan.validate_plan(nested, c)["gate"], "PASS")
+
     def test_contract_rejects_invalid_identity_behavior_and_requirement_links(self):
         original = contract()
         variants = [dict(original, schema_version=True), dict(original, risk_tier=True)]
