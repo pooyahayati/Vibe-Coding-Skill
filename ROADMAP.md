@@ -1,25 +1,37 @@
 # Improvement Roadmap
 
-Status: `R1`-`R4` are complete, merged and delivered in `1.3.1`, with the published package and local installation verified. This hardening cycle is closed. The original nine-package cycle and feedback follow-up shipped in `1.3.0`; their evidence is retained below.
+Status: The three approved delivery follow-ups are complete, merged and delivered in `1.4.0`, with the publication security gate, published package and local installation verified. No delivery action remains open. The completed `R1`-`R4` cycle shipped in `1.3.1`; the original nine-package cycle and feedback follow-up shipped in `1.3.0`. Their historical evidence is retained below.
 Audit baseline: main commit [`156676d502fae98c5c0b3a9bafdf5497698a062e`](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/156676d502fae98c5c0b3a9bafdf5497698a062e); released runtime `1.3.0`, commit `83fd4f47e60930718a2c9fb5e27fdedb74de2e81`.
 Last reviewed: 2026-10-04, Asia/Tehran. This is the canonical progress tracker; [implementation scope and dependencies](docs/improvement-implementation-plan.md#targeted-hardening-cycle-r1-r4) are maintained in the existing implementation plan.
 
 ## Current position
 
-- **Current phase:** Three approved follow-ups are integrated in the `1.4.0` source candidate: native publication security, document/runtime routing, and conditional product installation/local runtime. The `R1`-`R4` cycle remains delivered in `1.3.1`.
-- **Implementation progress:** All three follow-ups are implemented. Historical cycle counts remain 4 of 4 audit packages and 9 of 9 original packages, with feedback F1 tracked separately. Counts are not quality or coverage scores.
-- **Next action:** Complete combined-revision checks, merge, publish `1.4.0` and replace the local installation with verified release bytes. These delivery actions are authorized; no new feature or model campaign is planned.
-- **Release / local state:** Existing published and local runtime remains `1.3.1` until the candidate is delivered. Record observed merge, artifact and installation evidence after delivery; do not infer them from source completion.
+- **Current phase:** Delivered `1.4.0`: native publication security, document/runtime routing, and conditional product installation/local runtime. PRs #83 and #84 were merged through the combined release PR #85.
+- **Implementation progress:** All 3 of 3 approved follow-ups are complete. Historical cycle counts remain 4 of 4 audit packages and 9 of 9 original packages, with feedback F1 tracked separately. Counts are not quality or coverage scores.
+- **Next action:** Gather meaningful feedback from actual use; no implementation, publication or local replacement remains pending. No new feature or model campaign is planned.
+- **Release / local state:** Stable `v1.4.0` and the verified local runtime are `1.4.0`. The release tag points to `9aa2c9db69ab14cb6530f7b1e84dd8effeb56ccb`; the installed 79-file package matches the published archive. Observed evidence is recorded below.
 
 ## Approved delivery follow-ups — 1.4.0
 
 | Work | Source status | Acceptance / retained evidence |
 |---|---|---|
-| Native security and Trivy publication gate | Integrated from PR #83; its independent PR checks passed. | Native project controls remain proportional. Missing/wrong tooling, failed or invalid scans and blocking findings prevent publication. Final portable ZIP must pass its native security gate. |
-| Document/runtime and excluded-domain routing | Integrated from PR #84; its independent PR checks passed. | Preserve positive executable-source and semantic selection, risk floors and retained commitments. Routing/specialist regressions and the extracted-package route cover the reported failures. |
-| Product installation and local runtime | Implemented in this candidate; source structure and mirror checks passed. | Head-owned selection, documented startup, core user workflow and required persistence. Preserve native client packages and the exact WordPress ZIP. This is instruction/package validation, not execution of a separate product. |
+| Native security and Trivy publication gate | Complete; PR #83 merged through [PR #85](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/85), delivered in `1.4.0`. | Relevant native-tool regressions and final portable-package scan passed. An actual Windows separator mismatch was corrected without relaxing different-target or immutable-image checks. Missing/wrong tooling, failed or invalid scans and blocking findings prevent publication. |
+| Document/runtime and excluded-domain routing | Complete; PR #84 merged through PR #85, delivered in `1.4.0`. | Routing/specialist regressions, extracted-package routes and the required release-commit workflows passed. Positive executable-source and semantic selection, risk floors and retained commitments are preserved. |
+| Product installation and local runtime | Complete; merged in PR #85, delivered in `1.4.0`. | Head-owned installation selection and conditional local Docker/Compose guidance are packaged; mirror, extracted-package and offline installation/resource checks passed. Preserve native client packages and the exact WordPress ZIP. This validates instructions/package integration, not execution of a separate product. |
 
-All three follow-ups use existing tools, contracts and specialists. No additional scanner, model evaluation or fixed product test quota. Merge, release and local installation evidence will be recorded separately.
+All three follow-ups use existing tools, contracts and specialists. No additional scanner, model evaluation or fixed product test quota.
+
+## 1.4.0 delivery evidence
+
+| Delivery action | Verified result |
+|---|---|
+| Release source | [Merged PR #85](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/85), including PRs #83 and #84; stable tag `v1.4.0` points to `9aa2c9db69ab14cb6530f7b1e84dd8effeb56ccb`. [Release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.4.0) published on 2026-10-04 at 13:35:08 UTC. |
+| Release checks | All six required workflows passed on the release commit: Validate Skill, Cross Platform Smoke, Real World Repository Validation, Agent Skills Spec Compatibility, Tool Contract Tests and WordPress Artifact Contract. [Release-commit checks](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/9aa2c9db69ab14cb6530f7b1e84dd8effeb56ccb/checks). |
+| Publication security | The final portable package passed the actual local native Trivy gate on Windows with Trivy `0.75.0`, with no blocking findings. The published archive matched that scanned candidate's digest. Relevant failure/target-binding regressions passed; private raw scan reports were not published. |
+| Published package | `Vibe-Coding-Skill-1.4.0.zip`, 79 files, 232,619 bytes. SHA-256: `1fca6cfe376685bc5a605664ada57067c06d7c9ea446c98f3c8fa11efe212387`. The downloaded published archive matched both the published checksum and the validated local candidate. Archive and checksum are attached to the release. |
+| Local installation snapshot | Verified on 2026-10-04: `C:\Users\Pooya\.codex\skills\vibe-coding-skill` is `1.4.0`; all 79 installed files matched the published archive byte-for-byte, with no extra files. The official installer staged the exact release tag before replacement. The active installation check returned `PASS`, with zero failures and warnings; native Trivy is available at `C:\Users\Pooya\.local\bin\trivy.exe`. The previous active installation was replaced. |
+
+This is a verified release and one local-host snapshot, not proof of every downstream product's security, Docker runtime or automatic updates to other users and already-loaded agent instructions. Roadmap-only updates do not change the immutable runtime release or require reinstalling unchanged files.
 
 ## Completed audit packages
 
@@ -90,7 +102,7 @@ Audit IDs belong to the final audit, not the completed original-cycle package ID
 
 **Verification:** Check affected links, workflow/command targets and portable-guide resources; synchronize edited runtime mirrors. No model execution or new wording-only tests.
 
-## Delivery evidence
+## Historical 1.3.1 delivery evidence
 
 | Delivery action | Verified result |
 |---|---|
