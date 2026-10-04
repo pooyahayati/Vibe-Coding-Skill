@@ -65,6 +65,19 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
+      - uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # reviewed v0.2.6
+        with:
+          version: latest
+          cache: false
+          path: ${{ runner.temp }}/native-trivy
       - name: Contract-test latest-compatible Trivy
         run: |
           python scripts/toolchain_resolution.py trivy --json
+      - name: Native release gate on harmless local fixture
+        run: |
+          mkdir -p "$RUNNER_TEMP/trivy-fixture"
+          echo 'ordinary fixture' > "$RUNNER_TEMP/trivy-fixture/app.txt"
+          python scripts/trivy_compat.py --release-target "$RUNNER_TEMP/trivy-fixture" \
+            --scanners secret --output "$RUNNER_TEMP/trivy-evidence/report.json" --json
+      - name: Native gate on the exact candidate portable ZIP
+        run: python scripts/build_release.py --output-dir "$RUNNER_TEMP/vibe-candidate" --before-publication --json

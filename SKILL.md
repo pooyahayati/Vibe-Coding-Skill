@@ -2,7 +2,7 @@
 name: vibe-coding-skill
 description: A risk-adaptive software-engineering operating skill for building, modifying, debugging, testing, securing, documenting, and delivering software with AI coding agents. Use for greenfield or existing projects when the user wants reliable vibe coding, architecture and stack decisions, staged implementation, project planning, codebase impact analysis, dependency vetting, verification, Git/GitHub traceability, or controlled multi-agent execution.
 license: MIT
-compatibility: Requires Python 3.10+ and Git. Graphify and Trivy are recommended when their capabilities are relevant. Network access is needed only for package-registry, OSV, GitHub, or tool-update checks.
+compatibility: Requires Python 3.10+ and Git. Publication requires an installed native Trivy executable and relevant local release scans. Graphify is conditional. Network access is needed for registry, vulnerability data, GitHub and tool-update checks.
 metadata:
   author: "Pooya Hayati"
   version: "1.3.1"
@@ -175,6 +175,8 @@ Use the Dependency Guard when its ecosystem is supported; missing or contradicto
 
 Security controls follow actual trust boundaries and threat scenarios. Scanner output supplements application-level security review.
 
+Use native project controls during development and Trivy as the only additional security scanner in this Head workflow. Check native Trivy availability when planning delivery; before publication require its actual local scan of the final source/artifact, current relevant data and resolved findings. Missing tooling or unverified scans block publication, not unrelated development. Retain this as required security evidence in the existing task contract/completion route.
+
 Read `references/security-and-dependencies.md`.
 
 ## Local state, traceability, and recovery
@@ -198,7 +200,7 @@ Core requirement: Git.
 Conditional capabilities:
 
 - Graphify: code/project graph when impact relationships justify it.
-- Trivy: vulnerability/secret/container/IaC/license scanning when risk/scope justifies it.
+- Trivy: installed native runtime and relevant local scans are mandatory before publication; scanner selection follows the delivered dependency/artifact/configuration scope.
 - official registries, OSV, GitHub, and optional deps.dev: dependency evidence.
 
 Managed external tools use compatibility-gated latest-stable resolution and an exact selected runtime version. Read `references/toolchain-version-resolution.md`.

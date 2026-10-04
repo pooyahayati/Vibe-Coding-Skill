@@ -9,8 +9,12 @@ Last reviewed: 2026-10-04, Asia/Tehran. This is the canonical progress tracker; 
 - **Current phase:** The `R1`-`R4` cycle is closed and delivered in `1.3.1`. The separately approved conditional product-installation/local-runtime policy is implemented in source; delivery is pending.
 - **Implementation progress:** 4 of 4 hardening packages complete in source. The closed original cycle remains 9 of 9, with feedback F1 tracked separately. Counts describe work packages, not quality or coverage.
 - **Next action:** Review and integrate the approved installation/local-runtime policy, then release/install it only when authorized. Continue collecting meaningful real-project feedback. No extra audit package or model campaign is implied.
+
+- **Current phase:** `R1`-`R4` remain closed and delivered in `1.3.1`. A separate user-authorized security follow-up is implemented and verified, pending review and merge in [PR #83](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/83): native development controls and mandatory local Trivy before publication.
+- **Implementation progress:** 4 of 4 hardening packages complete in source. The closed original cycle remains 9 of 9, with feedback F1 tracked separately. Counts describe work packages, not quality or coverage.
+- **Next action:** Review and merge the security follow-up in [PR #83](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/83). Release and local replacement remain separate delivery actions. No fifth hardening package or model campaign is implied.
 - **Completed order:** `R1` -> `R2` -> `R3` -> `R4`, prioritizing silent weakening of required controls. `R2`-`R4` did not technically depend on `R1`.
-- **Blockers:** none for this completed implementation and delivery cycle.
+- **Blockers:** none for implementation acceptance or the closed hardening cycle. The local host lacks native Trivy and correctly blocks local publication. Actual native scanner and exact-package acceptance passed in the existing tool-contract CI; this does not establish Trivy availability on the local host.
 - **Release delivery:** `1.3.1` is published and the maintainer's local installation was replaced and verified against its exact ZIP on 2026-10-04. [Published release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.3.1).
 
 ## Active hardening packages
@@ -22,6 +26,8 @@ Last reviewed: 2026-10-04, Asia/Tehran. This is the canonical progress tracker; 
 - **Source / delivery state:** Implemented on `feat/portable-local-runtime`; not merged, released or installed. Current released/local `1.3.1` does not include this policy. No additional specialist, runtime dependency or model evaluation.
 
 ### Completed audit packages
+
+User-authorized security follow-up (separate from the closed audit cycle): **Verified; pending review and merge** in [PR #83](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/83). Keep native project security controls and make installed native Trivy plus actual local final-artifact scans mandatory before publication. Implementation extends the existing adapter, receipt guidance and release builder; no new scanner/specialist or model evaluation. Acceptance covers missing native tooling, exit-zero findings, failed/invalid/stale reports, scope/version protections, extracted-package execution and the exact ZIP publication gate. All six required workflows passed on implementation head `fc3f258`; [native Trivy acceptance](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37199221376/job/111427258707) used version `0.75.0` and returned `PASS` for both the fixture and the exact extracted 78-file candidate ZIP. This is candidate evidence, not a new release or local installation. Merge/release/local delivery will be recorded separately.
 
 | ID | Priority | Audit findings | Work | Status | Complexity | Implementation / acceptance evidence |
 |---|---|---|---|---|---|---|

@@ -67,7 +67,7 @@ Run the offline installation check from the Skill directory:
 python scripts/install_check.py --skill-root . --json
 ```
 
-Baseline requirements are `Python 3.10+` and `Git`. `Graphify` and `Trivy` are optional/recommended depending on project risk and task type.
+Baseline installation requirements are `Python 3.10+` and `Git`; Graphify is conditional. A missing Trivy warning does not prevent installing the Skill or safe development. Before publishing software, however, install a verified native Trivy executable on the delivery host and pass the [local release gate](references/security-and-dependencies.md#native-release-gate). Presence or an offline installation check alone is not security approval.
 
 ## Local working state
 

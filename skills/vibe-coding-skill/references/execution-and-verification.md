@@ -70,6 +70,8 @@ Run the affected-area regression set plus checks for changed contracts, data bou
 
 Run release-relevant build, migration, security, integration, smoke/health, and recovery checks according to risk and what changed.
 
+Publication additionally requires the [native Trivy release gate](security-and-dependencies.md#native-release-gate), bound to the final delivery source/artifact as required security evidence. A successful compatibility smoke or an install warning does not qualify. Keep native application security checks; tool/scan unavailability blocks publication without blocking unrelated development.
+
 Do not repeat an expensive full suite after every edit when no affected behavior has changed since the last run.
 
 ## Verification priority

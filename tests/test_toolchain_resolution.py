@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import copy
 import subprocess
 import sys
 import tempfile
@@ -300,6 +301,105 @@ class ToolchainResolutionTests(unittest.TestCase):
             )
             with mock.patch.object(graphify_compat, "ROOT", root):
                 self.assertEqual(graphify_compat.skill_version(), "1.2.3")
+
+
+class NativeTrivyReleaseTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="native-trivy-gate-")
+        self.addCleanup(temporary.cleanup)
+        self.home = Path(temporary.name).resolve()
+        self.target = self.home / "product [release]"
+        self.target.mkdir()
+        self.output = self.home / "private" / "scan.json"
+        self.report = {"SchemaVersion": 2, "ArtifactType": "filesystem",
+                       "ArtifactName": str(self.target), "Results": []}
+        self.ready = mock.patch.object(trivy_compat, "local_readiness",
+            return_value={"gate": "PASS", "runtime": "native", "version": "1.2.3"})
+        self.ready.start()
+        self.addCleanup(self.ready.stop)
+
+    def scan(self, report=None, *, returncode=0, stderr="", write=True):
+        value = copy.deepcopy(self.report if report is None else report)
+
+        def execute(cmd, **kwargs):
+            if write:
+                Path(cmd[cmd.index("--output") + 1]).write_text(json.dumps(value), encoding="utf-8")
+            self.command, self.execution = cmd, kwargs
+            return subprocess.CompletedProcess(cmd, returncode, "", stderr)
+
+        with mock.patch.object(trivy_compat.shutil, "which", return_value="native-trivy"), \
+                mock.patch.object(trivy_compat.subprocess, "run", side_effect=execute):
+            return trivy_compat.release_scan(str(self.target), self.output, version="1.2.3")
+
+    def test_clean_local_scan_preserves_actual_json_and_warns_on_coverage(self):
+        result = self.scan()
+        self.assertEqual(result["gate"], "PASS")
+        self.assertTrue(result["release_scan_verified"])
+        self.assertEqual(json.loads(self.output.read_text()), self.report)
+        self.assertEqual(self.command[-1], str(self.target))
+        self.assertNotIn("docker", self.command)
+        self.assertIn("--skip-db-update=false", self.command)
+        self.assertEqual(self.scan(stderr="WARN unsupported input")['gate'], "WARN")
+
+    def test_exit_zero_does_not_hide_blocking_findings(self):
+        for key, finding in (("Vulnerabilities", {"Severity": "HIGH"}),
+                             ("Misconfigurations", {"Severity": "CRITICAL", "Status": "FAIL"}),
+                             ("Secrets", {"Severity": "LOW", "Match": "must-not-be-echoed"})):
+            with self.subTest(key=key):
+                report = dict(self.report, Results=[{key: [finding]}])
+                result = self.scan(report)
+                self.assertEqual(result["gate"], "BLOCK")
+                self.assertEqual(result["findings"]["blocking"], 1)
+                self.assertNotIn("must-not-be-echoed", json.dumps(result))
+
+    def test_stale_output_failed_process_and_invalid_report_never_qualify(self):
+        self.output.parent.mkdir()
+        self.output.write_text(json.dumps(self.report))
+        for kwargs in ({"write": False}, {"returncode": 1},
+                       {"report": {"SchemaVersion": 2}},
+                       {"report": dict(self.report, Results=[{"Secrets": "invalid"}])},
+                       {"report": dict(self.report, ArtifactName="another-target")}):
+            with self.subTest(kwargs=kwargs):
+                result = self.scan(**kwargs)
+                self.assertEqual(result["gate"], "BLOCK")
+                self.assertFalse(result["release_scan_verified"])
+
+    def test_missing_native_and_timeout_block_without_container_fallback(self):
+        self.ready.stop()
+        with mock.patch.object(trivy_compat.shutil, "which", return_value=None):
+            result = trivy_compat.release_scan(str(self.target), self.output, version="1.2.3")
+        self.assertEqual(result["gate"], "BLOCK")
+        self.ready.start()
+        with mock.patch.object(trivy_compat.subprocess, "run",
+                               side_effect=subprocess.TimeoutExpired("trivy", 1)):
+            self.assertEqual(trivy_compat.release_scan(str(self.target), self.output,
+                             version="1.2.3")["gate"], "BLOCK")
+
+    def test_scanner_removal_wrong_version_and_output_inside_source_block(self):
+        for kwargs in ({"scanners": "vuln"}, {"version": "9.9.9"},
+                       {"output": self.target / "scan.json"}):
+            with self.subTest(kwargs=kwargs):
+                options = {"version": "1.2.3", "output": self.output, **kwargs}
+                self.assertEqual(trivy_compat.release_scan(str(self.target), **options)["gate"], "BLOCK")
+
+    def test_mutable_image_cannot_qualify_as_final_release_artifact(self):
+        result = trivy_compat.release_scan("example:latest", self.output,
+                     target_type="image", version="1.2.3")
+        self.assertEqual(result["gate"], "BLOCK")
+
+    def test_publication_builder_checks_the_extracted_zip_and_blocks(self):
+        from scripts import build_release
+
+        def blocked(target, output, **kwargs):
+            installed = Path(target)
+            self.assertEqual((installed / "VERSION").read_text().strip(),
+                             (ROOT / "VERSION").read_text().strip())
+            self.assertTrue((installed / "scripts/trivy_compat.py").is_file())
+            return {"gate": "BLOCK", "failures": ["fixture blocking finding"]}
+
+        with mock.patch.object(build_release.trivy_compat, "release_scan", side_effect=blocked):
+            with self.assertRaisesRegex(ValueError, "publication blocked"):
+                build_release.build(self.home / "package", before_publication=True)
 
 
 if __name__ == "__main__":

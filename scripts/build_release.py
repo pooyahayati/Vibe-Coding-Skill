@@ -13,12 +13,16 @@ import tempfile
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
-import sync_package
+try:
+    from . import sync_package, trivy_compat
+except ImportError:  # direct maintainer CLI
+    import sync_package
+    import trivy_compat
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def build(output_dir: Path) -> dict:
+def build(output_dir: Path, *, before_publication: bool = False) -> dict:
     version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
     if not re.fullmatch(r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?", version):
         raise ValueError("VERSION is not a semantic version")
@@ -63,6 +67,16 @@ def build(output_dir: Path) -> dict:
             raise ValueError("extracted installation did not pass its required checks")
         if installation.get("skill", {}).get("version") != version:
             raise ValueError("extracted Skill version does not match VERSION")
+        security = None
+        if before_publication:
+            # The portable Skill distributes text/stdlib-only runtime resources.
+            # Scan the exact extracted ZIP for secrets; application releases must
+            # select their additional dependency/configuration scanners separately.
+            security = trivy_compat.release_scan(
+                str(installed), output_dir / "trivy-release.json", scanners="secret")
+            if security["gate"] != "PASS":
+                raise ValueError("publication blocked by native Trivy release check: " +
+                                 "; ".join(security.get("failures") or security.get("warnings") or []))
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     checksums = output_dir / f"Vibe-Coding-Skill-{version}-SHA256SUMS.txt"
     checksums.write_text(f"{digest}  {archive.name}\n", encoding="utf-8", newline="\n")
@@ -85,6 +99,7 @@ def build(output_dir: Path) -> dict:
         "files": len(sources), "bytes": archive.stat().st_size,
         "installation_status": installation["status"],
         "installation_warnings": installation.get("warnings", []),
+        "publication_security": security,
     }
 
 
@@ -92,9 +107,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--before-publication", action="store_true",
+                        help="require native Trivy security gate on the exact extracted release ZIP")
     args = parser.parse_args()
     try:
-        result = build(args.output_dir)
+        result = build(args.output_dir, before_publication=args.before_publication)
     except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         print(f"Release package failed: {exc}", file=sys.stderr)
         return 2
