@@ -1,6 +1,6 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: The original cycle and feedback F1 are complete and delivered in `1.3.0`. The next cycle contains four planned hardening packages, `R1`-`R4`; implementation has not started. Current package/phase/merge status is maintained only in [ROADMAP.md](../ROADMAP.md).
+Status: The original cycle and feedback F1 are complete and delivered in `1.3.0`. The active hardening cycle contains `R1`-`R4`; current package/phase/merge status is maintained only in [ROADMAP.md](../ROADMAP.md).
 Hardening baseline: `1.3.0`, audited main `156676d502fae98c5c0b3a9bafdf5497698a062e`. Original-cycle baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
 
@@ -110,6 +110,6 @@ Each review unit must include its changed behavior, acceptance results, relevant
 
 ## Readiness
 
-The original cycle below is closed. The active hardening cycle is planned only; use the roadmap's `R1`-`R4` acceptance criteria and statuses before claiming any new correction is delivered.
+The original cycle below is closed. Use the active roadmap's `R1`-`R4` acceptance criteria, evidence and statuses before claiming any new correction is delivered.
 
 P0/B1/B2/E1/E2/S1/S2 are merged in PRs #62 through #68. [I1 integration](i1-integration-verification.md) is merged in PR #72 and exercises the extracted portable runtime across light, receipt-backed and cross-boundary routes; local checks and the existing OS matrix passed. D1 aligns user/maintainer documentation with these mechanisms and preserves the light route, ownership, important links and full author attribution. Relevant link/structure, skill validation, mirror and offline-install checks passed (optional Trivy warning only); D1 is merged in PR #73. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.

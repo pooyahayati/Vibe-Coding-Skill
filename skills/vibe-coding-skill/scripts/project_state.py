@@ -118,7 +118,9 @@ def current_state(root: Path, task_contract=None, completion_report=None, delive
     if contract is not None:
         current["task_contract"] = contract
         current["task_contract_sha256"] = behavior_contract.digest(contract)
-        expected_schema = 3 if receipt_completion else previous.get("completion_schema", 2)
+        # Only an independently retained task can carry the legacy workflow.
+        # Fresh contracts and --new-task must not depend on an activation flag.
+        expected_schema = 3 if receipt_completion or not previous.get("task_contract") else previous.get("completion_schema", 2)
         if type(expected_schema) is not int or expected_schema not in (2, 3):
             raise ValueError("unsupported retained completion workflow")
         current["completion_schema"] = expected_schema
@@ -250,7 +252,7 @@ def main() -> int:
         p.add_argument("--json", action="store_true")
         p.add_argument("--task-contract", help="optional retained behavior contract JSON")
         p.add_argument("--completion-report", help="completion JSON for the retained schema-2 or schema-3 workflow")
-        p.add_argument("--receipt-completion", action="store_true", help="activate/retain schema-3 completion; reconcile legacy migration within existing authority")
+        p.add_argument("--receipt-completion", action="store_true", help="migrate a retained legacy task to schema 3; new structured tasks use it automatically")
         p.add_argument("--delivery-context", help="independent relevant runtime/dataset JSON for receipt freshness")
         p.add_argument("--new-task", action="store_true", help="begin a different explicitly supplied task, within existing authorization")
         p.add_argument("--accept-contract-change", metavar="REASON", help="record a Head-reconciled material change; does not grant authorization")

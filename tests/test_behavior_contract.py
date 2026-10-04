@@ -94,6 +94,16 @@ class BehaviorContractTests(unittest.TestCase):
         report["acceptance_criteria"][0]["met"] = False
         self.assertEqual(behavior.completion(c, report)["outcomes"][0]["status"], "unmet")
 
+    def test_plan_preserves_required_specialist_ids_against_independent_baseline(self):
+        baseline = dict(contract(), specialist_assignment_ids=["security-review", "ui-review"])
+        reordered = dict(copy.deepcopy(baseline), specialist_assignment_ids=["ui-review", "security-review", "extra-review"])
+        self.assertEqual(behavior.compare(baseline, reordered), [])
+        with tempfile.TemporaryDirectory() as td:
+            plan = execution_plan.draft(Path(td), baseline["objective"], task_contract=contract())
+        failures = execution_plan.validate_plan(plan, baseline)["failures"]
+        self.assertIn("required specialist assignment removed: security-review", failures)
+        self.assertIn("required specialist assignment removed: ui-review", failures)
+
     def test_cli_capture_handoff_resume_preserve_contract_and_stale_result(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
@@ -116,6 +126,7 @@ class BehaviorContractTests(unittest.TestCase):
             plan = cli("execution_plan.py", "draft", "--root", str(root), "--task-contract", str(c_path), "--json")
             self.assertEqual(plan["task_contract"]["acceptance_criteria"][0]["id"], "label")
             first = cli("project_state.py", "capture", "--root", str(root), "--task-contract", str(c_path), "--json")
+            self.assertEqual(first["completion_schema"], 3)
             snapshot = Path(first["state_path"])
             before = snapshot.read_bytes()
             changed = contract()
@@ -124,32 +135,40 @@ class BehaviorContractTests(unittest.TestCase):
             c_path.write_text(json.dumps(changed), encoding="utf-8")
             cli("project_state.py", "capture", "--root", str(root), "--task-contract", str(c_path), "--json", expected=2)
             self.assertEqual(before, snapshot.read_bytes())
-            report = {"schema_version": 2, "status": "Done", "risk_tier": 0,
-                      "acceptance_criteria": [dict(accepted["acceptance_criteria"][0], met=True, evidence_ids=["view"])],
-                      "evidence": [{"id": "view", "kind": "visual-check", "required": True, "result": "pass"}]}
+            c_path.write_text(json.dumps(accepted), encoding="utf-8")
+            observed = cli("receipt_validation.py", "--root", str(root), "--task-contract", str(c_path), "--requirement", "view",
+                           "--observation", json.dumps({"description": "Read the supplied label; stored setting is unchanged",
+                                                        "method": "inspect fixture text", "environment": "local fixture"}))
+            report = {"schema_version": 3, "status": "Done", "risk_tier": 0,
+                      "task_id": accepted["task_id"], "contract_sha256": behavior.digest(accepted),
+                      "acceptance_criteria": [dict(accepted["acceptance_criteria"][0], met=True, evidence_ids=[observed["receipt"]["id"]])],
+                      "evidence": [{"id": observed["receipt"]["id"], "kind": "visual-check", "origin": "manual",
+                                    "required": True, "result": "pass", "requirement_id": "view",
+                                    "receipt_ref": observed["receipt_ref"], "receipt_sha256": observed["receipt_sha256"]}]}
             r_path = base / "report.json"
             r_path.write_text(json.dumps(report), encoding="utf-8")
             done = cli("project_state.py", "handoff", "--root", str(root), "--completion-report", str(r_path),
                        "--how-to-use", "Open settings", "--how-to-check", "Inspect the supplied label", "--next-action", "Review the change", "--write-local", "--json")
-            self.assertIn("reported-met", done["markdown"])
+            self.assertIn("receipt-qualified", done["markdown"])
+            self.assertFalse(done["state"]["acceptance"]["execution_verified"])
             self.assertIn("Stored setting unchanged", done["markdown"])
             self.assertIn("باز کردن تنظیمات", done["markdown"])
             self.assertIn("How to use: Open settings", done["markdown"])
             (root / "settings.txt").write_text("another label", encoding="utf-8")
             resumed = cli("resume_context.py", "--root", str(root), "--json")
-            self.assertEqual(resumed["local_state"]["project_state"]["acceptance"]["gate"], "UNVERIFIED")
+            self.assertEqual(resumed["local_state"]["project_state"]["acceptance"]["gate"], "BLOCK")
             for _ in range(2):
-                state = cli("project_state.py", "capture", "--root", str(root), "--json")
+                state = cli("project_state.py", "capture", "--root", str(root), "--json", expected=2)
                 self.assertEqual(state["acceptance"]["outcomes"][0]["status"], "unverified")
             self.assertFalse((root / "handoff.md").exists())
             self.assertEqual(sorted(p.name for p in root.iterdir()), [".git", "settings.txt"])
             changed["risk_tier"] = 2
             c_path.write_text(json.dumps(changed), encoding="utf-8")
             reconciled = cli("project_state.py", "capture", "--root", str(root), "--task-contract", str(c_path),
-                             "--accept-contract-change", "Head accepted the changed protected outcome", "--json")
+                             "--accept-contract-change", "Head accepted the changed protected outcome", "--json", expected=2)
             self.assertEqual(reconciled["contract_reconciliation"]["previous_sha256"], behavior.digest(accepted))
             self.assertFalse(reconciled["contract_reconciliation"]["authorization_verified"])
-            self.assertEqual(reconciled["acceptance"]["gate"], "UNVERIFIED")
+            self.assertEqual(reconciled["acceptance"]["gate"], "BLOCK")
             changed["risk_tier"] = 0
             c_path.write_text(json.dumps(changed), encoding="utf-8")
             before = snapshot.read_bytes()

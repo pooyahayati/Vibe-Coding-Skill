@@ -95,6 +95,12 @@ class PortableIntegrationTests(unittest.TestCase):
                   "evidence": [{"id": "read", "kind": "manual-check", "required": True, "result": "pass"}]}
         result = self.cli("completion_gate.py", self.json_file("legacy", legacy), "--json")
         self.assertFalse(result["receipt_verified"])
+        # Seed an in-flight pre-receipt snapshot. Fresh structured tasks must
+        # not acquire legacy eligibility from omitting the activation flag.
+        saved = self.cli("project_state.py", "capture", "--root", self.product, "--task-contract", contract_path, "--json")
+        self.assertEqual(saved["completion_schema"], 3)
+        saved.pop("completion_schema")
+        Path(saved["state_path"]).write_text(json.dumps(saved), encoding="utf-8")
         handoff = self.cli("project_state.py", "handoff", "--root", self.product, "--task-contract", contract_path,
                            "--completion-report", self.json_file("legacy", legacy), "--write-local", "--json")
         self.assertEqual(handoff["state"]["acceptance"]["outcomes"][0]["status"], "reported-met")
@@ -127,7 +133,7 @@ class PortableIntegrationTests(unittest.TestCase):
         complete_args = [report_path, "--task-contract", contract_path, "--root", self.product, "--json"]
         self.assertTrue(self.cli("completion_gate.py", *complete_args)["receipt_verified"])
         state = self.cli("project_state.py", "capture", "--root", self.product, "--task-contract", contract_path,
-                         "--receipt-completion", "--completion-report", report_path, "--json")
+                         "--completion-report", report_path, "--json")
         self.assertEqual(state["completion_schema"], 3)
         self.assertTrue(state["acceptance"]["receipt_verified"])
         (self.product / "README.md").write_text("unrelated fixture note", encoding="utf-8")

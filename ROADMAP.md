@@ -1,14 +1,14 @@
 # Improvement Roadmap
 
-Status: Four targeted hardening packages (`R1`-`R4`) are planned from the final adversarial audit. Implementation has not started. The original nine-package cycle and feedback follow-up are complete and shipped in `1.3.0`; their evidence is retained below.
+Status: `R1` is in progress; `R2`-`R4` remain not started. The original nine-package cycle and feedback follow-up are complete and shipped in `1.3.0`; their evidence is retained below.
 Audit baseline: main commit [`156676d502fae98c5c0b3a9bafdf5497698a062e`](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/156676d502fae98c5c0b3a9bafdf5497698a062e); released runtime `1.3.0`, commit `83fd4f47e60930718a2c9fb5e27fdedb74de2e81`.
-Last reviewed: 2026-10-03, Asia/Tehran. This is the canonical progress tracker; [implementation scope and dependencies](docs/improvement-implementation-plan.md#targeted-hardening-cycle-r1-r4) are maintained in the existing implementation plan.
+Last reviewed: 2026-10-04, Asia/Tehran. This is the canonical progress tracker; [implementation scope and dependencies](docs/improvement-implementation-plan.md#targeted-hardening-cycle-r1-r4) are maintained in the existing implementation plan.
 
 ## Current position
 
-- **Current phase:** Planning ready; all four hardening packages are **Not started**.
+- **Current phase:** `R1` implementation and verification in progress; `R2`-`R4` are **Not started**.
 - **Implementation progress:** 0 of 4 hardening packages complete. The closed original cycle remains 9 of 9, with feedback F1 tracked separately. Counts describe work packages, not quality or coverage.
-- **Next action:** Start `R1` as the next implementation task: reproduce new-task legacy selection and loss of an unstarted required specialist assignment, then enforce the retained contract. This planning update does not implement those fixes.
+- **Next action:** Review and merge `R1` after its existing required CI passes. Local acceptance checks are verified; do not start `R2` as part of this package.
 - **Execution order:** `R1` -> `R2` -> `R3` -> `R4`, prioritizing silent weakening of required controls. This is a priority order; `R2`-`R4` do not technically depend on `R1`.
 - **Blockers:** none identified for planning. Implementation and acceptance evidence remain outstanding for every active package.
 - **Release delivery:** stable `1.3.0` and its authorized local installation remain the delivered baseline. No next version, release or installation is implied by this plan. [Published release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.3.0).
@@ -17,7 +17,7 @@ Last reviewed: 2026-10-03, Asia/Tehran. This is the canonical progress tracker; 
 
 | ID | Priority | Audit findings | Work | Status | Complexity | Implementation / acceptance evidence |
 |---|---|---|---|---|---|---|
-| R1 | P1 | Audit F1, F2 | Default new structured completion to receipts and preserve required specialist commitments. | Not started | Medium | None yet. |
+| R1 | P1 | Audit F1, F2 | Default new structured completion to receipts and preserve required specialist commitments. | In progress | Medium | Both failures reproduced before correction. Local acceptance verified: affected contract/receipt/handoff regressions, all 3 extracted-package routes (including offline install validation), skill validation and mirror consistency passed. [Implementation comparison](https://github.com/pooyahayati/Vibe-Coding-Skill/compare/main...fix/r1-retained-completion-contract); CI/review/merge pending. |
 | R2 | P1 | Audit F3 | Preserve platform discovery for large files and expose incomplete inspection. | Not started | Medium | None yet. |
 | R3 | P2 | Audit F4 | Use consistent project-root scope semantics in ownership and drift checks. | Not started | Small | None yet. |
 | R4 | P2 | Audit F5 | Remove obsolete mandatory benchmark claims and unavailable portable commands. | Not started | Small | None yet. |
