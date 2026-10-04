@@ -140,6 +140,8 @@ Individual task success cannot imply objective success while required dependenci
 
 Validate or check drift:
 
+Ownership and drift scopes are project-relative. `.` owns the whole project; `./` and backslash/dot-component equivalents have the same meaning. A root owner overlaps any nested owner, while disjoint sibling scopes remain valid. Retained-contract containment uses the same dot-component normalization without changing stored contracts or their fingerprints. Bracket and hidden names stay literal. Root coverage never covers absolute/parent-escaping changed paths or bypasses material architecture/security/other drift triggers; unresolved placeholder scopes remain discovery hints, not concrete ownership.
+
 ```bash
 python scripts/execution_plan.py validate plan.json --json
 python scripts/execution_plan.py drift plan.json change.json --json

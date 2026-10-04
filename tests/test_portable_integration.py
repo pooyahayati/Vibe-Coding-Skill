@@ -99,6 +99,31 @@ class PortableIntegrationTests(unittest.TestCase):
         self.assertFalse(drafted["execution_plan_required"])
         self.assertTrue(drafted["context_plan"]["task"]["routing_uncertainties"])
 
+    def test_installed_root_ownership_blocks_conflicts_and_preserves_covered_drift(self):
+        contract = self.contract()
+        contract["scope"] = ["./"]
+        contract_path = self.json_file("root-contract", contract)
+        plan = self.cli("execution_plan.py", "draft", "--root", self.product,
+                        "--task-contract", contract_path, "--path", "scripts/[id]/feature.py", "--json")
+        first = plan["workstreams"][0]
+        first.update(id="root", owner="agent-a", scope=["."])
+        plan["workstreams"].append(dict(copy.deepcopy(first), id="nested", owner="agent-b", scope=["./scripts"]))
+        plan["coordination"]["recommended_parallelism"] = 2
+        blocked = self.cli("execution_plan.py", "validate", self.json_file("overlap", plan),
+                           "--task-contract", contract_path, "--json", expected=2)
+        self.assertTrue(any("ownership scopes overlap" in f for f in blocked["failures"]))
+        plan["workstreams"] = [first]
+        plan["coordination"]["recommended_parallelism"] = 1
+        plan_path = self.json_file("root-plan", plan)
+        self.assertEqual(self.cli("execution_plan.py", "validate", plan_path, "--task-contract", contract_path, "--json")["gate"], "PASS")
+        change = self.json_file("covered-change", {"changed_paths": ["scripts/[id]/feature.py"]})
+        self.assertEqual(self.cli("execution_plan.py", "drift", plan_path, change, "--json")["gate"], "CONTINUE")
+        first["scope"] = ["./scripts/backend"]
+        plan["workstreams"].append(dict(copy.deepcopy(first), id="frontend", owner="agent-b", scope=["scripts/frontend"]))
+        plan["coordination"]["recommended_parallelism"] = 2
+        self.assertEqual(self.cli("execution_plan.py", "validate", self.json_file("disjoint", plan),
+                                 "--task-contract", contract_path, "--json")["gate"], "PASS")
+
     def test_light_route_preserves_legacy_claims_without_forcing_receipts_or_plans(self):
         (self.product / "settings.txt").write_text("accepted", encoding="utf-8")
         self.git("add", ".")

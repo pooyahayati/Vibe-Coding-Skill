@@ -40,6 +40,9 @@ def load_behavior_contract():
     return module
 
 
+_scope_contract = load_behavior_contract()
+
+
 def load_specialist_handoff():
     directory = str(ROOT / "scripts")
     if directory not in sys.path:
@@ -89,7 +92,9 @@ def dependency_cycles(workstreams: list[dict[str, Any]]) -> list[list[str]]:
 
 
 def normalize_scope(value: str) -> str:
-    return value.replace("\\", "/").strip().strip("/").removesuffix("/*")
+    # Retain the planner's legacy trailing /* directory shorthand; retained
+    # task-contract scopes themselves do not acquire wildcard interpretation.
+    return _scope_contract.normalize_scope(value.replace("\\", "/").strip().strip("/").removesuffix("/*"))
 
 
 def scope_overlap(left: str, right: str) -> bool:
@@ -97,17 +102,11 @@ def scope_overlap(left: str, right: str) -> bool:
     b = normalize_scope(right)
     if not a or not b or "refine after impact analysis" in a or "refine after impact analysis" in b:
         return False
-    return a == b or a.startswith(b + "/") or b.startswith(a + "/")
+    return a == "." or b == "." or a == b or a.startswith(b + "/") or b.startswith(a + "/")
 
 
 def path_covered(path: str, scopes: list[str]) -> bool:
-    value = normalize_scope(path)
-    return any(
-        value == normalize_scope(scope)
-        or value.startswith(normalize_scope(scope) + "/")
-        for scope in scopes
-        if normalize_scope(scope)
-    )
+    return _scope_contract.path_covered(path, [normalize_scope(scope) for scope in scopes])
 
 
 def draft(
@@ -129,7 +128,7 @@ def draft(
         if task != contract["objective"]:
             raise ValueError("task differs from retained contract objective")
         paths = paths or contract["scope"]
-        if "." not in contract["scope"] and any(not path_covered(p, contract["scope"]) for p in paths):
+        if any(not path_covered(p, contract["scope"]) for p in paths):
             raise ValueError("draft paths exceed retained task scope")
     router = load_context_router()
     route = router.plan(

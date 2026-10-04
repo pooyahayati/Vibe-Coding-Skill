@@ -1247,6 +1247,28 @@ class ExecutionPlanTests(unittest.TestCase):
         self.assertEqual(result["gate"], "APPROVAL_REQUIRED")
         self.assertIn("scope", result["triggered"])
 
+    def test_plan_root_coverage_and_equivalent_relative_paths_preserve_literal_names(self):
+        for scope in (".", "./", ".\\", "././"):
+            with self.subTest(scope=scope):
+                plan = {"objective": "Refactor local helper", "workstreams": [{"scope": [scope]}]}
+                self.assertTrue(self.planner.path_covered("scripts/[id]/feature.py", [scope]))
+                result = self.planner.evaluate_drift(plan, {"changed_paths": ["scripts/[id]/feature.py"]})
+                self.assertEqual(result["gate"], "CONTINUE")
+                # Root ownership never authorizes material architecture drift.
+                result = self.planner.evaluate_drift(plan, {"changed_paths": ["scripts/feature.py"], "architecture": True})
+                self.assertEqual(result["gate"], "APPROVAL_REQUIRED")
+        for path in ("src/[id]/view.tsx", "./src/[id]/view.tsx", "src\\[id]\\view.tsx"):
+            with self.subTest(path=path):
+                self.assertTrue(self.planner.path_covered(path, ["./src/[id]/"]))
+                self.assertFalse(self.planner.path_covered(path, ["src/[slug]"]))
+        self.assertFalse(self.planner.path_covered(".config/settings.json", ["config"]))
+        self.assertFalse(self.planner.path_covered("src/payments-old/a.php", ["src/payments"]))
+        self.assertFalse(self.planner.scope_overlap("", "."))
+        self.assertFalse(self.planner.scope_overlap(".", "task-defined affected subsystem; refine after impact analysis"))
+        for path in ("", "../outside.py", "/outside.py", "C:\\outside.py"):
+            with self.subTest(path=path):
+                self.assertFalse(self.planner.path_covered(path, ["."]))
+
     def test_plan_drift_requires_approval_for_architecture_or_security_change(self):
         plan = {"objective": "Add checkout integration"}
         result = self.planner.evaluate_drift(
