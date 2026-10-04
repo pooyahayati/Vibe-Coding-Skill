@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-No changes yet.
+- R1: Default fresh structured task state and `--new-task` to schema-3 receipt-backed completion; reserve schema 2 for retained in-flight legacy tasks, including older snapshots without a workflow field. Keep explicit legacy migration and prevent downgrade across capture/handoff/resume. Preserve required specialist assignment IDs against the retained contract before state replacement and plan validation; show commitments in handoffs and require recorded Head reconciliation for removal. Add focused regressions for both confirmed failures, positive compatibility/manual routes and the extracted portable runtime. No version bump, model evaluation or change to authorization.
 
 ## 1.3.0 — Local skill feedback and portable workflow reliability
 

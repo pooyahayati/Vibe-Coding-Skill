@@ -155,7 +155,7 @@ Read `references/execution-and-verification.md`.
 
 Never report `Done` without explicit acceptance criteria and relevant evidence.
 
-For new structured completion, retain the accepted task contract and use `scripts/completion_gate.py --task-contract <contract> --root <project>` with schema-3 receipt references. Activate `--receipt-completion` when persisting this workflow in project state; once activated it cannot accept a schema-2 downgrade. In-flight schema-2 tasks keep their declared-evidence route until explicit reconciliation/migration. Failed required evidence blocks completion; unrelated passing checks cannot cancel it. Evidence kinds use the gate's taxonomy and Tier 2/3 diversity uses semantic families. Higher-risk evidence retains provenance/revision binding.
+For new structured completion, retain the accepted task contract and use `scripts/completion_gate.py --task-contract <contract> --root <project>` with schema-3 receipt references. New structured state uses schema 3 automatically; `--receipt-completion` explicitly migrates a retained legacy task. Once selected, schema 3 cannot downgrade. Retained in-flight schema-2 tasks keep their declared-evidence route until reconciliation/migration. Required specialist commitments cannot disappear without recorded Head reconciliation. Failed required evidence blocks completion; unrelated passing checks cannot cancel it. Evidence kinds use the gate's taxonomy and Tier 2/3 diversity uses semantic families. Higher-risk evidence retains provenance/revision binding.
 
 If evidence is unavailable, report `Unverified` rather than complete.
 

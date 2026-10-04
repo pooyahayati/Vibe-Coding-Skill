@@ -109,6 +109,9 @@ def compare(baseline: dict[str, Any], current: dict[str, Any]) -> list[str]:
         for row in baseline[field]:
             if row["required"] and actual.get(row["id"]) != row:
                 failures.append("required " + field + " changed or removed: " + row["id"])
+    missing_assignments = set(baseline.get("specialist_assignment_ids", [])) - set(current.get("specialist_assignment_ids", []))
+    for assignment_id in sorted(missing_assignments):
+        failures.append("required specialist assignment removed: " + assignment_id)
     return failures
 
 
@@ -216,6 +219,8 @@ def handoff_lines(state: dict[str, Any]) -> list[str]:
                   "Task: " + contract["task_id"], "Objective: " + contract["objective"],
                   "Contract SHA-256: " + state["task_contract_sha256"],
                   "Acceptance: " + state["acceptance"]["gate"], state["acceptance"]["reason"], ""]
+        if contract.get("specialist_assignment_ids"):
+            lines.append("Required specialist assignments: " + ", ".join(contract["specialist_assignment_ids"]))
         for row in state["acceptance"]["outcomes"]:
             lines.append(f"- {row['id']} ({'required' if row['required'] else 'optional'}): {row['description']} — {row['status']}")
             for key, value in (row.get("behavior") or {}).items():

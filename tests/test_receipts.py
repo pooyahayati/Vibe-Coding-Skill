@@ -159,6 +159,94 @@ class ReceiptCompletionTests(unittest.TestCase):
         self.assertEqual(state["acceptance"]["gate"], "BLOCK")
         self.assertEqual(state["completion_schema"], 3)
 
+    def test_fresh_structured_state_defaults_to_receipts_through_handoff_and_resume(self):
+        import resume_context
+        # The caller omits activation, exactly as in the reported new-task gap.
+        old = copy.deepcopy(self.report)
+        old["schema_version"] = 2
+        state = project_state.capture(self.root, task_contract=self.c, completion_report=old)
+        self.assertEqual(state["completion_schema"], 3)
+        self.assertEqual(state["acceptance"]["gate"], "BLOCK")
+        state = project_state.handoff(self.root, True, completion_report=self.report)["state"]
+        self.assertTrue(state["acceptance"]["execution_verified"])
+        resumed = resume_context.build_context(self.root)["local_state"]["project_state"]
+        self.assertEqual(resumed["completion_schema"], 3)
+        self.assertTrue(resumed["acceptance"]["receipt_verified"])
+
+    def test_retained_legacy_is_supported_but_new_tasks_do_not_inherit_it(self):
+        import resume_context
+        # Model an actual pre-receipt snapshot, not a flag allowing fresh tasks
+        # to opt out. Older B2 snapshots have no completion_schema field.
+        saved = project_state.capture(self.root, task_contract=self.c)
+        for legacy_schema in (None, 2):
+            with self.subTest(legacy_schema=legacy_schema):
+                legacy = copy.deepcopy(saved)
+                legacy.pop("completion_schema")
+                if legacy_schema is not None:
+                    legacy["completion_schema"] = legacy_schema
+                project_state.state_path(self.root).write_text(json.dumps(legacy), encoding="utf-8")
+                old = copy.deepcopy(self.report)
+                old["schema_version"] = 2
+                old["evidence"][0]["provenance"] = {"source": "local fixture observation", "reference": self.r["receipt_path"]}
+                state = project_state.capture(self.root, completion_report=old)
+                self.assertEqual(state["completion_schema"], 2)
+                self.assertEqual(state["acceptance"]["gate"], "PASS")
+                self.assertFalse(state["acceptance"]["execution_verified"])
+                self.assertEqual(state["acceptance"]["outcomes"][0]["status"], "reported-met")
+                resumed = resume_context.build_context(self.root)["local_state"]["project_state"]
+                self.assertEqual(resumed["completion_schema"], 2)
+                migrated = project_state.capture(self.root, receipt_completion=True, completion_report=self.report)
+                self.assertTrue(migrated["acceptance"]["execution_verified"])
+                self.assertEqual(project_state.capture(self.root, completion_report=old)["acceptance"]["gate"], "BLOCK")
+                project_state.state_path(self.root).write_text(json.dumps(legacy), encoding="utf-8")
+                replacement = dict(copy.deepcopy(self.c), task_id="next-task")
+                next_state = project_state.capture(self.root, task_contract=replacement, new_task=True, completion_report=old)
+                self.assertEqual(next_state["completion_schema"], 3)
+                self.assertEqual(next_state["acceptance"]["gate"], "BLOCK")
+        # A project-only snapshot is not evidence of an in-flight legacy task.
+        project_state.state_path(self.root).write_text(json.dumps({"completion_schema": 2}), encoding="utf-8")
+        self.assertEqual(project_state.capture(self.root, task_contract=self.c)["completion_schema"], 3)
+
+    def test_unstarted_required_specialist_survives_state_and_explicit_reconciliation(self):
+        import resume_context
+        import specialist_handoff
+        c = dict(copy.deepcopy(self.c), specialist_assignment_ids=["security-review"])
+        state = project_state.capture(self.root, task_contract=c)
+        snapshot = project_state.state_path(self.root)
+        before = snapshot.read_bytes()
+        for ids in (None, [], ["replacement-review"]):
+            changed = copy.deepcopy(c)
+            changed.pop("specialist_assignment_ids")
+            if ids is not None:
+                changed["specialist_assignment_ids"] = ids
+            with self.subTest(ids=ids), self.assertRaisesRegex(ValueError, "required specialist assignment"):
+                project_state.capture(self.root, task_contract=changed)
+            self.assertEqual(snapshot.read_bytes(), before)
+        transferred = project_state.handoff(self.root, True)
+        self.assertEqual(transferred["state"]["task_contract"]["specialist_assignment_ids"], ["security-review"])
+        self.assertIn("security-review", transferred["markdown"])
+        resumed = resume_context.build_context(self.root)["local_state"]["project_state"]
+        self.assertEqual(resumed["task_contract"]["specialist_assignment_ids"], ["security-review"])
+        self.assertIn("required specialist assignment missing: security-review",
+                      specialist_handoff.completion_failures(self.root, c))
+        r = capture.capture(self.root, c, "check", [sys.executable, "check.py"])
+        pending_report = copy.deepcopy(self.report)
+        pending_report["contract_sha256"] = behavior.digest(c)
+        pending_report["acceptance_criteria"][0]["evidence_ids"] = [r["receipt"]["id"]]
+        pending_report["evidence"][0].update(id=r["receipt"]["id"], receipt_ref=r["receipt_ref"], receipt_sha256=r["receipt_sha256"])
+        blocked = project_state.capture(self.root, completion_report=pending_report)
+        self.assertEqual(blocked["acceptance"]["gate"], "BLOCK")
+        self.assertTrue(any("security-review" in failure for failure in blocked["acceptance"]["failures"]))
+        changed = copy.deepcopy(c)
+        changed.pop("specialist_assignment_ids")
+        reconciled = project_state.capture(self.root, task_contract=changed,
+            accept_contract_change="Head removed the unstarted review after reconciling scope")
+        self.assertEqual(reconciled["contract_reconciliation"]["previous_contract"], c)
+        self.assertFalse(reconciled["contract_reconciliation"]["authorization_verified"])
+        self.assertEqual(reconciled["acceptance"]["gate"], "BLOCK")
+        # A pre-reconciliation receipt cannot qualify against the new digest.
+        self.assertEqual(project_state.capture(self.root, completion_report=pending_report)["acceptance"]["gate"], "BLOCK")
+
     def test_high_risk_requires_all_obligations_and_distinct_families(self):
         c = copy.deepcopy(self.c)
         c["risk_tier"] = 2

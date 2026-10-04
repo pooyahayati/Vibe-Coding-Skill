@@ -10,7 +10,7 @@ Historical verification snapshot: implementation verified on 2026-10-03 (Asia/Te
 
 | Representative route | Package-level integration exercised | Meaningful failure checks |
 |---|---|---|
-| Light / legacy | Retained criterion → lightweight plan → schema-2 declared completion → external handoff → resumed task identity. | No forced execution plan or receipt workflow; a legacy claim never becomes receipt-verified evidence. |
+| Light / legacy | Retained in-flight legacy snapshot → lightweight plan → schema-2 declared completion → external handoff → resumed task identity. | No forced execution plan or legacy migration; fresh structured state uses schema 3 automatically. A legacy claim never becomes receipt-verified evidence. |
 | Bounded / receipt-backed | Actual failing/successful command on a literal `[id]` input → schema-3 gate → retained state → resume. | Failed checks, schema downgrade and changed tested inputs block; an unrelated document does not invalidate scoped evidence. |
 | Cross-boundary specialist | Bound plan/criterion/assignment → retained specialist return → installed review CLI → separate Head decision → installed completion CLI. | Dropping a required assignment, omitting scope/shared-contract reconciliation, premature completion and stale accepted inputs block. |
 
