@@ -4,6 +4,7 @@
 
 ## 1.4.0 — Reliable routing, native release security and local runtime
 
+- Accept native Trivy's Windows path separators by binding filesystem reports to the canonical absolute host path. Keep other targets and altered immutable image identities rejected; add the actual platform reproduction to the existing release-gate tests.
 - Add a Head-owned, conditional product installation/runtime policy: prefer Compose for suitable self-hosted products, offer user-selected local Docker execution, retain native/WordPress delivery routes, and verify the documented clean-start/core-workflow and required data persistence. Route the policy through planning, build, verification and delivery; document safe local defaults, prerequisites and honest target-specific evidence. No new runtime module, specialist or fixed test suite.
 - Keep security native to the project during development and require installed native Trivy before publication. Add planning preflight and local release scans to the existing Trivy adapter, inspecting fresh target-bound JSON findings instead of treating exit zero or compatibility smoke as approval. Bind required scan evidence to final delivery; gate the Skill's own extracted ZIP before automated publication. Preserve ordinary offline installation, proportional checks and existing specialists; add no scanner ecosystem, model evaluation or host auto-installation.
 

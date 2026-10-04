@@ -341,6 +341,12 @@ class NativeTrivyReleaseTests(unittest.TestCase):
         self.assertIn("--skip-db-update=false", self.command)
         self.assertEqual(self.scan(stderr="WARN unsupported input")['gate'], "WARN")
 
+    def test_native_filesystem_report_accepts_path_spelling_not_another_target(self):
+        report = dict(self.report, ArtifactName=self.target.as_posix())
+        self.assertEqual(self.scan(report)["gate"], "PASS")
+        report["ArtifactName"] = (self.home / "unscanned").as_posix()
+        self.assertEqual(self.scan(report)["gate"], "BLOCK")
+
     def test_exit_zero_does_not_hide_blocking_findings(self):
         for key, finding in (("Vulnerabilities", {"Severity": "HIGH"}),
                              ("Misconfigurations", {"Severity": "CRITICAL", "Status": "FAIL"}),
