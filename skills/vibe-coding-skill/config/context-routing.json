@@ -38,6 +38,7 @@
       "project_markers": [
         "<?php"
       ],
+      "source_marker_extensions": [".php"],
       "task_keywords": [
         "php"
       ],
@@ -68,6 +69,7 @@
         "register_activation_hook(",
         "wp_enqueue_"
       ],
+      "source_marker_extensions": [".php"],
       "task_keywords": [
         "wordpress",
         "wp plugin",
@@ -106,6 +108,7 @@
         "wc_get_order(",
         "WC_Payment_Gateway"
       ],
+      "source_marker_extensions": [".php", ".js", ".jsx", ".ts", ".tsx"],
       "task_keywords": [
         "woocommerce",
         "woo commerce"
@@ -148,6 +151,8 @@
         "document.",
         "window."
       ],
+      "source_marker_extensions": [".js", ".jsx", ".ts", ".tsx", ".html", ".htm", ".php", ".vue", ".svelte", ".astro", ".mdx"],
+      "embedded_script_extensions": [".html", ".htm", ".php", ".astro", ".mdx"],
       "task_keywords": [
         "javascript",
         "typescript",
@@ -191,6 +196,7 @@
         "WP_REST_",
         "permission_callback"
       ],
+      "source_marker_extensions": [".php"],
       "task_keywords": [
         "rest endpoint",
         "rest api",

@@ -71,6 +71,34 @@ def registry() -> dict:
     return data
 
 
+def domain_task_text(task: str, terms: list[str]) -> str:
+    """Mask clearly excluded domain mentions, preserving other positive signals.
+
+    This is bounded text-signal handling, not semantic parsing or a risk override.
+    Actual affected surfaces, structured facts and explicit selection still apply.
+    """
+    lowered = task.casefold()
+    masked = list(lowered)
+    prefix = re.compile(
+        r"\b(?:(?:do not|don't)\s+(?:change|modify|touch|update|implement)|"
+        r"without\s+(?:changing|modifying|touching|updating|implementing))\s+"
+        r"(?:(?:any|the|product|existing)\s+){0,4}$"
+    )
+    no_work = re.compile(r"\bno\s+(?:(?:any|the|product|existing)\s+){0,4}$")
+    suffix = re.compile(
+        r"^(?:\s+(?:changes?|work|code|development|implementation|design|ui|ux|is|are)){0,5}"
+        r"\s+(?:out of scope\b|excluded\b|not required\b|خارج از محدوده)"
+    )
+    for term in set(terms):
+        for match in re.finditer(r"(?<!\w)" + re.escape(term.casefold()) + r"(?!\w)", lowered):
+            before = lowered[max(0, match.start() - 120):match.start()]
+            after = lowered[match.end():match.end() + 120]
+            excluded_work = no_work.search(before) and re.match(r"\s+(?:changes?|work|development|implementation)\b", after)
+            if prefix.search(before) or suffix.search(after) or excluded_work:
+                masked[match.start():match.end()] = " " * (match.end() - match.start())
+    return "".join(masked)
+
+
 def select_specialists(task: str, paths: list[str] | None = None,
                        facts: dict | None = None, explicit: list[str] | None = None,
                        stage: str = "discover", risk_facts: dict | None = None) -> list[dict]:
@@ -86,7 +114,7 @@ def select_specialists(task: str, paths: list[str] | None = None,
         concerns.add("sensitive-data")
     paths = [path.replace("\\", "/") for path in paths or []]
     # Documentation edits do not change the discussed runtime boundary.
-    documents_only = bool(paths) and all(Path(path).suffix.casefold() in {".md", ".txt", ".rst"} for path in paths)
+    documents_only = bool(paths) and all(Path(path).suffix.casefold() in {".md", ".markdown", ".txt", ".rst", ".adoc"} for path in paths)
     selected = []
     for entry in entries.values():
         activation = entry["activation"]
@@ -96,7 +124,8 @@ def select_specialists(task: str, paths: list[str] | None = None,
         if concerns & set(activation["concerns"]):
             reasons.append("structured domain concern")
         if not documents_only:
-            if any(re.search(r"(?<!\w)" + re.escape(term.casefold()) + r"(?!\w)", task.casefold()) for term in activation["terms"]):
+            signal_text = domain_task_text(task, activation["terms"])
+            if any(re.search(r"(?<!\w)" + re.escape(term.casefold()) + r"(?!\w)", signal_text) for term in activation["terms"]):
                 reasons.append("task domain signal; confirm affected boundary")
             if any(Path(path).suffix.casefold() in activation["extensions"] for path in paths):
                 reasons.append("affected domain surface")

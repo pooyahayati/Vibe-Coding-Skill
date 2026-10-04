@@ -2,8 +2,12 @@
 
 ## Unreleased
 
-- Add a Head-owned, conditional product installation/runtime policy: prefer Compose for suitable self-hosted products, offer user-selected local Docker execution, retain native/WordPress delivery routes, and verify the documented clean-start/core-workflow and required data persistence. Route the policy through planning, build, verification and delivery; document safe local defaults, prerequisites and honest target-specific evidence. No new runtime tool, dependency, specialist, fixed test suite or version bump.
+## 1.4.0 — Reliable routing, native release security and local runtime
+
+- Add a Head-owned, conditional product installation/runtime policy: prefer Compose for suitable self-hosted products, offer user-selected local Docker execution, retain native/WordPress delivery routes, and verify the documented clean-start/core-workflow and required data persistence. Route the policy through planning, build, verification and delivery; document safe local defaults, prerequisites and honest target-specific evidence. No new runtime module, specialist or fixed test suite.
 - Keep security native to the project during development and require installed native Trivy before publication. Add planning preflight and local release scans to the existing Trivy adapter, inspecting fresh target-bound JSON findings instead of treating exit zero or compatibility smoke as approval. Bind required scan evidence to final delivery; gate the Skill's own extracted ZIP before automated publication. Preserve ordinary offline installation, proportional checks and existing specialists; add no scanner ecosystem, model evaluation or host auto-installation.
+
+- Fix real-project runtime routing from Markdown prose/examples: share source-type marker gates across project and affected-file scans, ignore document path/directory signals, match complete extensions, and keep metadata descriptions out of executable platform/browser evidence. Read browser markers from embedded script bodies rather than page prose. Ignore clear excluded-domain mentions when selecting task packs and required specialists while retaining positive signals, actual source surfaces, explicit/structured selection, conservative risk floors and retained commitments. Add focused reproductions and an extracted-package router/planner route; preserve the existing portable layout and dependencies.
 
 ## 1.3.1 — Targeted reliability hardening
 
