@@ -48,6 +48,8 @@ For Trivy:
 - otherwise use the official `aquasec/trivy:<version>` container;
 - if neither is available, report the capability unavailable.
 
+These fallback rules are for compatibility/general tool execution. Publication has a stricter native-only requirement: `trivy_compat.py --check-local` is the planning preflight and `--release-target ... --output ...` performs the actual local release scan. A container compatibility pass does not satisfy that requirement. See [the security release gate](security-and-dependencies.md#native-release-gate).
+
 A native installation therefore can satisfy the compatibility/runtime contract without `uvx` or Docker when it is the exact selected version.
 
 ## Filesystem targets

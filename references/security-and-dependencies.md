@@ -14,17 +14,40 @@ The Head owns the security floor, dependency decisions and release gates. The re
 
 When relevant, verify authentication, authorization, input validation, secret handling, dependency vulnerabilities, sensitive logging, exposed interfaces, and infrastructure configuration.
 
-Critical findings block release.
+Confirmed exploitable critical/high findings and real exposed credentials block publication. Scanner flags require assessment; an unassessed blocking finding is not release approval.
 
 ## Trivy
 
-Use Trivy's supported scanners when the affected dependency, artifact or configuration warrants them; installation alone does not require scanning every task.
+Keep security controls native to the project during development: existing authorization/input/output controls, relevant behavioral checks and the detected package manager's audit. Trivy is the only additional scanner in this Head workflow; do not install other scanners from standalone specialist defaults. The specialist supplies detailed methods and assesses findings under the Head's scope and authority.
 
-Useful scopes include dependency vulnerabilities, secrets, container images, filesystem/repository, IaC misconfiguration, and license information.
+For an authorized publication/release/deployment, native Trivy must be installed on the executing host, executable and at the selected verified stable version. Check availability during Plan; inability to install/update within existing permissions blocks publication while safe development can continue. Use official distribution and verify artifact integrity before installation. Development, a review PR and a candidate package are not publication.
 
-Do not treat Trivy as complete application SAST.
+Select the smallest sufficient scope: secret scanning for every delivered source/package; add vulnerability scanning for shipped supported dependencies and misconfiguration scanning for affected infrastructure. Use the immutable image identity for a container release. Trivy does not establish authorization, payment correctness or application source security; retain native allow/deny, data-preservation and relevant abuse checks.
 
-For high-risk code, add CodeQL, Semgrep, or a language-native analyzer when justified.
+### Native release gate
+
+Planning preflight (presence/version only; never scan evidence):
+
+```bash
+python scripts/trivy_compat.py --check-local --json
+```
+
+Before publication, run the real check against the final prepared delivery tree and store the report outside product source:
+
+```bash
+python scripts/trivy_compat.py --release-target <prepared-release-dir> \
+  --scanners vuln,secret --output <local-workspace>/security/trivy.json --json
+```
+
+Add `misconfig` only for relevant infrastructure. For containers, use `--target-type image --release-target <image@sha256:digest>`. Extract an installable ZIP into a local delivery tree first; a directory scan must not claim it inspected arbitrary ZIP contents. Bind the exact ZIP/image and relevant source in the existing required `security-scan` receipt/criterion. The Head confirms coverage of supported dependencies and necessary native checks; a clean empty report for unsupported inputs is insufficient.
+
+The helper requires native Trivy (no Docker fallback), uses the latest stable version by default, enables normal data/check updates, creates fresh JSON, checks target binding and inspects findings even when Trivy exits zero. `--version` is only for reuse of the exact version already resolved/verified in this execution; it is not permission to select an arbitrary old release. No fixed operating version belongs in Head instructions.
+
+Missing/unexecutable/wrong-version tooling, failed/timed-out scans, unavailable required data and missing/malformed/mismatched reports return `BLOCK`. High/critical findings and detected secrets remain blocking until resolved; the helper does not silently apply project ignore files or downgrade findings. Lower-severity findings/coverage warnings require Head assessment before acceptance. False positives need a scoped, evidenced Head decision through the existing contract/handoff route; do not manufacture a passing helper result or remove the required scan.
+
+Capture this command through the existing execution-receipt route for structured delivery tasks. Retain native findings and the scan result across handoff/resume. Reuse only evidence still bound to the final source/artifact and current relevant tool/data context. Correct the cause and rerun the affected check; no retry loop or repeated unrelated suite. Reports may contain secret matches: keep them private locally, redact user-facing summaries and never upload them automatically.
+
+The Skill's own release workflow installs native Trivy and calls `build_release.py --before-publication`. This gates the exact extracted portable ZIP with secret scanning because its runtime contains text/stdlib resources, not bundled third-party libraries. The six existing baseline workflows remain required; their compatibility checks alone do not prove an application release secure. Ordinary Skill installation remains possible without Trivy, with an availability warning.
 
 ## Dependency Intelligence
 

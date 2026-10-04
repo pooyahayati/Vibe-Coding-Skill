@@ -16,12 +16,12 @@ Vibe is the project manager and senior engineer. It owns scope, stack, architect
 |---|---|---|---|
 | **1 · Discover** | Inspect the project, rules, affected boundaries and risk; select relevant capabilities. | **Head**; **Supporting:** debugging for unclear failures, UI for a necessary interface assessment, Graphify for consequential impact. | Start of a new objective or when impact/scope evidence changes. |
 | **2 · Define** | State the user outcome, scope, protected behavior and observable acceptance criteria. | **Head**; **Supporting:** UI user flows, security assets/trust boundaries, API consumer obligations. | Requirements or material constraints are not yet clear; reuse settled decisions. |
-| **3 · Plan** | Choose the simplest adequate approach, ownership, sequence, dependencies and verification. | **Head**; **Supporting:** relevant specialist prerequisites and impact evidence. | Write a plan for high-risk/cross-boundary work; keep local low-risk work brief. |
+| **3 · Plan** | Choose the simplest adequate approach, ownership, sequence, dependencies and verification; preflight native Trivy for planned publication. | **Head**; **Supporting:** relevant specialist prerequisites and impact evidence. | Write a plan for high-risk/cross-boundary work; keep local low-risk work brief. |
 | **4 · Design** | Make implementable UI, interface-contract and security decisions; reconcile their boundaries. | **Both:** UI/API/security specialists own applicable domain detail; Head owns architecture and integration. | A changed interface or trust boundary needs design; reuse adequate existing designs. |
 | **5 · Build** | Implement and integrate small runnable slices within existing conventions. | **Head** implementation; **Both** for assigned specialist surfaces; debugging supports unclear failures. | The task is ready and necessary domain decisions are settled. |
 | **6 · Verify** | Prove acceptance behavior and relevant failure modes with the cheapest sufficient evidence. | **Head** selects checks; **Both** for UI/API/security/debugging evidence; Trivy is a supporting scanner. | After changed behavior; use affected checks and reuse sufficient evidence. |
 | **7 · Review** | Assess the actual diff, quality, scope, compatibility, findings and evidence sufficiency. | **Head** owns readiness; **Supporting:** applicable specialist domain review. | Before meaningful integration/merge; do not restart specialist workflows or repeat unrelated tests. |
-| **8 · Ship** | Deliver the authorized artifact/release/deployment and verify its actual state. | **Head**; **Supporting:** retained domain evidence, relevant artifact scans, debugging on delivery failure. | Delivery is requested/authorized and required gates pass; local handoff can be the delivery. |
+| **8 · Ship** | Deliver the authorized artifact/release/deployment and verify its actual state; require native Trivy scans before publication. | **Head**; **Supporting:** retained domain evidence, relevant artifact scans, debugging on delivery failure. | Delivery is requested/authorized and required gates pass; local handoff can be the delivery. |
 
 These are eight responsibilities, not eight mandatory documents, meetings or approval questions. Small tasks combine stages; medium/large work iterates vertical slices. A failed check returns to the affected decision, not the beginning of the whole project. Post-delivery incidents and feedback become new bounded objectives.
 
@@ -76,9 +76,11 @@ These are instruction/ownership boundaries, not an OS sandbox or an extra access
 | Tool | Purpose | When and where to use | What it does not prove |
 |---|---|---|---|
 | [Graphify](https://github.com/Graphify-Labs/graphify) | Map code relationships to support dependency, impact and unfamiliar-codebase analysis. | Discover/Plan and targeted Review when cross-module impact matters; source inspection is the fallback. Use relevant local code analysis; semantic processing is not a blanket model/API authorization. | A graph is evidence to confirm against source/runtime; inferred relationships do not establish correctness or security. |
-| [Trivy](https://github.com/aquasecurity/trivy) | Scan relevant dependencies/artifacts for vulnerabilities, secrets and misconfiguration using supported scanners. | Verify/Review/Ship when dependencies, containers, infrastructure or delivered artifacts warrant scanning; keep scope relevant. | A clean scan does not prove authorization, business logic, payment state or complete application security. |
+| [Trivy](https://github.com/aquasecurity/trivy) | Locally scan delivered source/artifacts for secrets and relevant dependency/configuration risks. | Plan: check native availability. Verify/Review: assess related findings. Ship: installed native Trivy and actual final-artifact scans are required before publication. | Missing/failed/incomplete checks block publication. A clean scan does not prove authorization, business logic, payment state or complete application security. |
 
 Neither tool runs for every cosmetic change or replaces the application-security specialist. Keep generated graphs/scans outside product source control.
+
+Security uses native project controls during development and Trivy before publication; [scope, commands and acceptance rules](references/security-and-dependencies.md#native-release-gate) stay in the existing security reference. A missing scanner can warn during Skill installation while still blocking software publication.
 
 ## Verification and important rules
 

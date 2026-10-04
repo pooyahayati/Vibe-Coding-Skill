@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep security native to the project during development and require installed native Trivy before publication. Add planning preflight and local release scans to the existing Trivy adapter, inspecting fresh target-bound JSON findings instead of treating exit zero or compatibility smoke as approval. Bind required scan evidence to final delivery; gate the Skill's own extracted ZIP before automated publication. Preserve ordinary offline installation, proportional checks and existing specialists; add no scanner ecosystem, model evaluation or host auto-installation.
+
 ## 1.3.1 — Targeted reliability hardening
 
 - R4: Reconcile benchmark/scenario-output guidance with the implemented release gate: no model evaluation or provider key is required for ordinary use or publication, and former credentialed workflow/trigger claims are obsolete. Keep optional collection/aggregation tooling explicitly full-source and separately requested; remove unavailable runner commands from portable guidance, retain its included offline scorer, and distinguish declared policy scores from task contracts/receipts and product outcomes. Update related bootstrap/delivery references and portable documentation. No executable/schema/workflow changes, new tests, model runs, version bump or installation.

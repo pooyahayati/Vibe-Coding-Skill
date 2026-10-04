@@ -6,14 +6,16 @@ Last reviewed: 2026-10-04, Asia/Tehran. This is the canonical progress tracker; 
 
 ## Current position
 
-- **Current phase:** Closed hardening cycle: `R1`-`R4` implemented, verified, merged and delivered in `1.3.1`; no further implementation package is defined.
+- **Current phase:** `R1`-`R4` remain closed and delivered in `1.3.1`. A separate user-authorized security follow-up is in progress: native development controls and mandatory local Trivy before publication.
 - **Implementation progress:** 4 of 4 hardening packages complete in source. The closed original cycle remains 9 of 9, with feedback F1 tracked separately. Counts describe work packages, not quality or coverage.
-- **Next action:** No implementation or delivery action is pending. Collect meaningful real-project feedback through the existing feedback route; open another improvement only for a confirmed need. No fifth improvement package or model campaign is implied.
+- **Next action:** Finish focused security-gate/package acceptance and submit the follow-up for review. Merge, release and local replacement remain separate delivery actions. No fifth hardening package or model campaign is implied.
 - **Completed order:** `R1` -> `R2` -> `R3` -> `R4`, prioritizing silent weakening of required controls. `R2`-`R4` did not technically depend on `R1`.
-- **Blockers:** none for this completed implementation and delivery cycle.
+- **Blockers:** none for the closed hardening cycle. The local host lacks native Trivy; actual scanner acceptance is run by the existing tool-contract CI, not claimed from local mocked checks.
 - **Release delivery:** `1.3.1` is published and the maintainer's local installation was replaced and verified against its exact ZIP on 2026-10-04. [Published release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.3.1).
 
 ## Active hardening packages
+
+User-authorized security follow-up (separate from the closed audit cycle): **In progress**. Keep native project security controls and make installed native Trivy plus actual local final-artifact scans mandatory before publication. Implementation extends the existing adapter, receipt guidance and release builder; no new scanner/specialist or model evaluation. Acceptance covers missing native tooling, exit-zero findings, failed/invalid/stale reports, scope/version protections, extracted-package execution and the exact ZIP publication gate. Merge/release/local delivery will be recorded separately.
 
 | ID | Priority | Audit findings | Work | Status | Complexity | Implementation / acceptance evidence |
 |---|---|---|---|---|---|---|

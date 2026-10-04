@@ -47,6 +47,13 @@ class PortableIntegrationTests(unittest.TestCase):
         self.git("config", "user.name", "Portable Integration Fixture")
         self.git("config", "user.email", "i1@example.invalid")
 
+    def test_portable_release_gate_blocks_without_installed_native_trivy(self):
+        self.env["PATH"] = str(self.home / "no-executables")
+        result = self.cli("trivy_compat.py", "--release-target", self.product,
+                          "--output", self.home / "security/report.json", "--json", expected=2)
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertFalse(result["release_scan_verified"])
+
     def git(self, *args):
         return subprocess.run(["git", *args], cwd=self.product, check=True, capture_output=True)
 

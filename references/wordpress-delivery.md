@@ -84,6 +84,8 @@ The runtime check:
 
 Do not claim install/upgrade validation from source-only tests.
 
+Before publishing, scan the final ZIP's extracted delivery tree with the [native Trivy release gate](security-and-dependencies.md#native-release-gate), retaining the ZIP hash in required evidence. Check shipped Composer dependencies with their native audit when relevant. Scanner success does not replace capability/nonce, input/output or protected-data checks.
+
 The helper records the initial plugin list. `fresh_plugin_install_checked` only means that the plugin was absent before this install and no previous artifact was supplied. Existing options/tables may remain, so `fresh_install_checked` and `data_freshness_verified` stay false. Establish a clean database/site independently before claiming a full fresh installation. `upgrade_checked` proves the previous-to-candidate install sequence, not preservation of project data; add a focused seeded-data check when the upgrade can affect stored data.
 
 ## Uninstall and retention
