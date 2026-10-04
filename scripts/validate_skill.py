@@ -14,6 +14,7 @@ REQUIRED_REFS = [
     "references/specialist-authority.md",
     "references/specialist-composition.md",
     "references/operating-model.md",
+    "references/product-installation-and-runtime.md",
     "references/risk-and-autonomy.md",
     "references/project-intelligence.md",
     "references/security-and-dependencies.md",
