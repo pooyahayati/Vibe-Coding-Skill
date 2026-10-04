@@ -49,6 +49,8 @@ When deterministic evidence is incomplete but the developer/agent has explicit s
 
 For mixed repositories, project-scoped evidence is kept local to the affected area when path evidence is available. Common monorepo containers such as `apps/`, `packages/`, `services/`, `plugins/`, and `themes/` treat the contained application/package as the capability area; WordPress plugin/theme directories under `wp-content/` are scoped the same way. Repository-root platform evidence remains repository-wide. Documentation mentions alone are not source-level platform evidence.
 
+Project and affected-file marker scans use the same source-type gate. Documentation prose/examples and metadata descriptions do not establish an executable runtime; document-only affected directories also supply no runtime path signal. Extension signals match the complete suffix (`.json` is not `.js`). Browser markers in embedded-script formats come from executable script bodies or event handlers, not prose, comments or inert JSON blocks. Clear domain exclusions such as `UI changes are out of scope` or `do not change the frontend` do not create a required specialist; positive mentions, actual affected domain surfaces, explicit selection and structured facts still apply. This bounded text handling is not a semantic parser and does not lower risk classification or remove retained commitments. The Head resolves ambiguous scope and supplies confirmed facts when needed.
+
 Directory paths are valid affected-path evidence. The router inspects a bounded subset of text/source files inside that directory so a caller does not need an exact file path before routing.
 
 ### Bounded inspection and uncertainty

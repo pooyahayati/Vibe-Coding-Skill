@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import sys
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
@@ -17,11 +18,15 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "config" / "context-routing.json"
 TEXT_SUFFIXES = {
     ".php", ".json", ".js", ".jsx", ".ts", ".tsx", ".md", ".txt",
-    ".yml", ".yaml", ".xml", ".html", ".css",
+    ".yml", ".yaml", ".xml", ".html", ".htm", ".css",
+    ".vue", ".svelte", ".astro", ".mdx",
 }
 SOURCE_MARKER_SUFFIXES = {
-    ".php", ".json", ".js", ".jsx", ".ts", ".tsx", ".yml", ".yaml", ".xml",
+    ".php", ".json", ".js", ".jsx", ".ts", ".tsx", ".yml", ".yaml", ".xml", ".html", ".htm",
+    ".py", ".go", ".rs", ".java", ".kt", ".cs", ".rb", ".swift", ".dart",
 }
+TEXT_SUFFIXES.update(SOURCE_MARKER_SUFFIXES)
+DOCUMENT_SUFFIXES = {".md", ".markdown", ".txt", ".rst", ".adoc"}
 EXCLUDED_DIRS = {
     ".git", "node_modules", "vendor", "dist", "build", ".next",
     ".cache", ".venv", "venv", "__pycache__",
@@ -393,6 +398,64 @@ def contains_any(text: str, values: list[str]) -> list[str]:
     return [value for value in values if value.lower() in lowered]
 
 
+class EmbeddedScriptText(HTMLParser):
+    """Extract executable script text, excluding comments and inert data blocks."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.active_script = False
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "script":
+            script_type = (attributes.get("type") or "").lower().split(";", 1)[0].strip()
+            self.active_script = script_type in {
+                "", "module", "text/javascript", "application/javascript",
+                "text/ecmascript", "application/ecmascript", "text/babel", "text/jsx",
+            }
+        self.parts.extend(value for name, value in attrs if name.startswith("on") and value)
+
+    def handle_endtag(self, tag):
+        if tag == "script":
+            self.active_script = False
+
+    def handle_data(self, data):
+        if self.active_script:
+            self.parts.append(data)
+
+
+def source_marker_hits(pack: dict[str, Any], rel: str, text: str) -> list[str]:
+    suffix = Path(rel).suffix.lower()
+    allowed = pack.get("source_marker_extensions", SOURCE_MARKER_SUFFIXES)
+    if suffix in DOCUMENT_SUFFIXES or suffix not in allowed:
+        return []
+    if suffix in pack.get("embedded_script_extensions", []):
+        embedded = EmbeddedScriptText()
+        embedded.feed(text)
+        text = "\n".join(embedded.parts)
+    return contains_any(text, pack.get("project_markers", []))
+
+
+def executable_path_signals(paths: list[str], touched: list[tuple[str, str]],
+                            allowed_suffixes: list[str] | None = None) -> list[str]:
+    result = []
+    for raw in paths:
+        rel = normalize_rel(raw)
+        suffix = Path(rel).suffix.lower()
+        if suffix in DOCUMENT_SUFFIXES or (suffix and allowed_suffixes is not None and suffix not in allowed_suffixes):
+            continue
+        descendants = [name for name, _ in touched if name.startswith(rel + "/")]
+        if descendants and not any(
+            Path(name).suffix.lower() not in DOCUMENT_SUFFIXES
+            and (allowed_suffixes is None or Path(name).suffix.lower() in allowed_suffixes)
+            for name in descendants
+        ):
+            continue
+        result.append(raw)
+    return result
+
+
 def pack_project_evidence(
     pack: dict[str, Any],
     files: list[str],
@@ -427,9 +490,7 @@ def pack_project_evidence(
     markers = pack.get("project_markers", [])
     if markers:
         for rel, text in texts:
-            if Path(rel).suffix.lower() not in SOURCE_MARKER_SUFFIXES:
-                continue
-            hits = contains_any(text, markers)
+            hits = source_marker_hits(pack, rel, text)
             if hits:
                 evidence.append(f"marker:{hits[0]}@{rel}")
                 if len(evidence) >= 4:
@@ -449,13 +510,18 @@ def pack_task_evidence(
     for keyword in pack.get("task_keywords", []):
         if keyword.lower() in task_lower:
             evidence.append(f"task:{keyword}")
-    path_text = " ".join(paths).lower()
+    allowed_suffixes = pack.get("source_marker_extensions") if pack.get("category") == "runtime" else None
+    signal_paths = executable_path_signals(paths, touched, allowed_suffixes)
+    path_text = " ".join(signal_paths).lower()
     for keyword in pack.get("path_keywords", []):
-        if keyword.lower() in path_text:
+        matched = (
+            any(Path(rel).suffix.lower() == keyword.lower() for rel in signal_paths)
+            if keyword.startswith(".") else keyword.lower() in path_text
+        )
+        if matched:
             evidence.append(f"path:{keyword}")
-    markers = pack.get("project_markers", [])
     for rel, text in touched:
-        hits = contains_any(text, markers)
+        hits = source_marker_hits(pack, rel, text)
         if hits:
             evidence.append(f"touched-marker:{hits[0]}@{rel}")
     evidence.extend(
@@ -955,6 +1021,10 @@ def plan(
     scan_files, scan_strategy = scan_candidate_files(files, paths, area_roots)
     texts = candidate_texts(root, scan_files, inspection=scans["project"])
     touched = touched_texts(root, paths, files, inspection=scans["affected"])
+    specialist_manager = load_specialist_manager()
+    task_signal_text = specialist_manager.domain_task_text(
+        task, [term for pack in config["packs"].values() for term in pack.get("task_keywords", [])],
+    )
 
     project_ev: dict[str, list[str]] = {}
     task_ev: dict[str, list[str]] = {}
@@ -962,7 +1032,7 @@ def plan(
         project_ev[name] = pack_project_evidence(pack, scan_files, texts)
         task_ev[name] = pack_task_evidence(
             pack,
-            task,
+            task_signal_text,
             paths,
             touched,
             normalized_context_facts,
@@ -1123,7 +1193,7 @@ def plan(
         "interactions": interactions,
         "integration_points": sorted(set(integrations)),
         "optional_specialists": sorted(set(specialists)),
-        "required_specialists": load_specialist_manager().select_specialists(
+        "required_specialists": specialist_manager.select_specialists(
             task, paths, normalized_context_facts, stage=stage, risk_facts=risk_facts),
         "lifecycle": {"stage_owner": "vibe-coding-skill", "stages": load_specialist_manager().registry()["lifecycle"],
                       "rule": "Stage selects the assignment boundary, not all specialists. Reuse settled work; apply only relevant stage controls."},

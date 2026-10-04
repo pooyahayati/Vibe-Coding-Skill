@@ -70,6 +70,8 @@ Run the affected-area regression set plus checks for changed contracts, data bou
 
 Run release-relevant build, migration, security, integration, smoke/health, and recovery checks according to risk and what changed.
 
+Publication additionally requires the [native Trivy release gate](security-and-dependencies.md#native-release-gate), bound to the final delivery source/artifact as required security evidence. A successful compatibility smoke or an install warning does not qualify. Keep native application security checks; tool/scan unavailability blocks publication without blocking unrelated development.
+
 Do not repeat an expensive full suite after every edit when no affected behavior has changed since the last run.
 
 ## Verification priority
@@ -246,6 +248,8 @@ Before release, verify only what is relevant to the changed product: core workfl
 A broad suite may still be required by project policy; do not confuse that policy requirement with evidence that every test was newly necessary for this change.
 
 ## Deployment verification
+
+For a selected product-installation or local container outcome, follow `references/product-installation-and-runtime.md` and retain its real startup/core-workflow evidence in the existing completion route. A local run proves only the verified local target; production deployment needs its own relevant evidence.
 
 `Deploy → Health Check → Smoke Test → Core Workflow → Accept`
 

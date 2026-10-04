@@ -47,6 +47,13 @@ class PortableIntegrationTests(unittest.TestCase):
         self.git("config", "user.name", "Portable Integration Fixture")
         self.git("config", "user.email", "i1@example.invalid")
 
+    def test_portable_release_gate_blocks_without_installed_native_trivy(self):
+        self.env["PATH"] = str(self.home / "no-executables")
+        result = self.cli("trivy_compat.py", "--release-target", self.product,
+                          "--output", self.home / "security/report.json", "--json", expected=2)
+        self.assertEqual(result["gate"], "BLOCK")
+        self.assertFalse(result["release_scan_verified"])
+
     def git(self, *args):
         return subprocess.run(["git", *args], cwd=self.product, check=True, capture_output=True)
 
@@ -78,6 +85,24 @@ class PortableIntegrationTests(unittest.TestCase):
                 "evidence": [{"id": receipt["id"], "kind": receipt["kind"], "origin": receipt["origin"],
                     "result": receipt["result"], "required": True, "requirement_id": "check",
                     "receipt_ref": result["receipt_ref"], "receipt_sha256": result["receipt_sha256"]}]}
+
+    def test_installed_document_and_python_route_does_not_invent_runtime_or_specialists(self):
+        (self.product / "scripts").mkdir()
+        for name in ("README.md", "ROADMAP.md"):
+            (self.product / name).write_text(
+                "The output is a document.\n```js\ndocument.querySelector('button');\n```\n"
+                "WooCommerce example: <?php /* Plugin Name: Example */\n", encoding="utf-8")
+        (self.product / "scripts/validate_release.py").write_text("VALUE = 1\n", encoding="utf-8")
+        args = ["--root", self.product, "--task",
+                "Update repository guidance and Python validation; product UI changes are out of scope",
+                "--path", "README.md", "--path", "ROADMAP.md",
+                "--path", "scripts/validate_release.py", "--context-runtime", "python"]
+        route = self.cli("context_router.py", *args, "--json")
+        self.assertEqual(route["packs"], [])
+        self.assertEqual(route["required_specialists"], [])
+        self.assertEqual(route["integration_points"], [])
+        plan = self.cli("execution_plan.py", "draft", *args, "--json")
+        self.assertEqual(plan["specialist_assignments"], [])
 
     def test_bounded_routing_uses_installed_prefix_reader_and_surfaces_limitations(self):
         entry = self.product / "plugin.php"

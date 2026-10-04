@@ -54,6 +54,7 @@ REQUIRED_REFS = [
     "shared-improvement-contracts.md",
     "specialist-authority.md",
     "operating-model.md",
+    "product-installation-and-runtime.md",
     "risk-and-autonomy.md",
     "project-intelligence.md",
     "security-and-dependencies.md",

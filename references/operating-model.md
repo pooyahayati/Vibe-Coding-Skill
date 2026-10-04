@@ -114,6 +114,8 @@ Keep the decision concise:
 
 Do not create a technology-comparison document when the existing stack is clearly adequate and no material technology choice exists.
 
+For new products or changed installation/deployment behavior, apply `references/product-installation-and-runtime.md`. The Head owns the target and startup method, including a suitable user-selected local container route; product installability is an observable outcome rather than a generated-file claim.
+
 ## Architecture
 
 Prefer the simplest architecture compatible with known requirements.
@@ -194,9 +196,9 @@ Vibe owns every stage and its exit decision. Specialists own assigned domain met
 |---|---|---|---|
 | Discover | Inspect objective, applicable rules, repository, affected boundaries, risk, and current capabilities; route selected specialists. | Debugging localizes unclear failure; UI inspects an affected interface; Graphify supports consequential impact questions. | Justified entry point, affected scope and selected capabilities; re-route if evidence changes them. |
 | Define | Establish one objective, scope, protected behavior, acceptance criteria, and material user-owned decisions. | UI clarifies relevant user flows; security identifies assets/trust boundaries; API clarifies consumer obligations. | Enough clarity to choose a path without hiding a material unresolved decision. |
-| Plan | Choose the simplest adequate stack/architecture, ownership, sequence, dependencies, required evidence and recovery. | Domain estimates and prerequisites supplement one Head plan. | Ready task/vertical slice; a new written plan only when existing risk/scope rules require it. |
+| Plan | Choose the simplest adequate stack/architecture, installation target, ownership, sequence, dependencies, required evidence and recovery. | Domain estimates and prerequisites supplement one Head plan. | Ready task/vertical slice; a new written plan only when existing risk/scope rules require it. |
 | Design | Reconcile cross-domain decisions and preserve platform/business invariants. | UI owns presentation decisions; API owns contract detail; security owns threat scenarios and appropriate controls. | Implementable decisions for the changed boundaries; reuse adequate existing design. |
-| Build | Implement and integrate the smallest maintainable slice within scope and writer boundaries. | Specialists guide or edit assigned domain surfaces; debugging handles unclear failures. | Runnable/inspectable requested behavior with relevant failure handling. |
+| Build | Implement and integrate the smallest maintainable slice and selected installation path within scope and writer boundaries. | Specialists guide or edit assigned domain surfaces; debugging handles unclear failures. | Runnable/inspectable requested behavior with relevant failure handling and selected installation artifacts. |
 | Verify | Choose the cheapest sufficient checks against acceptance and changed failure modes; record provenance and unavailable checks. | UI rendered/accessibility evidence; API contract/failure evidence; security denial/abuse evidence; debugging reproduction/regression; Trivy relevant scans. | Required criteria/boundaries have evidence or are explicitly failed/unverified/blocked. |
 | Review | Assess objective fit, actual diff, scope, maintainability, integration and evidence sufficiency; own merge readiness. | Relevant domain review supplements the Head; do not restart standalone workflows or duplicate test runs. | Required findings resolved; optional findings do not expand scope automatically. |
 | Ship | Perform authorized integration/package/release/deploy/handoff actions; verify delivered revision/artifact/environment and recovery where required. | Reuse relevant specialist findings; debug actual delivery failure; scan the delivered artifact when relevant. | Accurate delivery state, health/core-flow evidence where required, limitations and next operating action. |

@@ -537,6 +537,67 @@ class ContextRouterTests(unittest.TestCase):
         self.assertNotIn("wordpress", names)
         self.assertNotIn("woocommerce", names)
 
+    def test_affected_documents_do_not_supply_runtime_markers_or_path_signals(self):
+        examples = (
+            "The output is a document.\n"
+            "```php\n<?php /* Plugin Name: Example */\n"
+            "add_action('init', 'example'); WC_Payment_Gateway;\n"
+            "register_rest_route('example/v1', '/report', []);\n```\n"
+            "```js\ndocument.querySelector('button'); fetch('/report');\n```\n"
+            "WooCommerce payment_intent Stripe\n"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            for rel in ("README.md", "notes/payment.md", "notes/wordpress.txt", "notes/browser.rst"):
+                write(root, rel, examples)
+            write(root, "scripts/validate_release.py", "VALUE = 1\n")
+            for paths in (["README.md"], ["notes/payment.md"], ["notes/wordpress.txt"],
+                          ["notes/browser.rst"], ["notes"],
+                          ["README.md", "scripts/validate_release.py"]):
+                with self.subTest(paths=paths):
+                    result = self.router.plan(root, "Update repository guidance", paths)
+                    self.assertEqual(result["packs"], [])
+                    self.assertEqual(result["integration_points"], [])
+
+    def test_metadata_mentions_are_not_executable_platform_or_browser_evidence(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            for rel in ("plugin.json", "assets/info.json", "assets"):
+                with self.subTest(rel=rel):
+                    write(root, "plugin.json", json.dumps({"description": "WooCommerce guidance document."}))
+                    write(root, "assets/info.json", json.dumps({"description": "A document."}))
+                    result = self.router.plan(root, "Update package description", [rel])
+                    self.assertEqual(result["packs"], [])
+
+    def test_document_filter_preserves_runtime_sources_and_explicit_domain_facts(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "web/view.html", "<script>document.querySelector('button');</script>\n")
+            write(root, "web/app.js", "document.querySelector('button');\n")
+            write(root, "web/button.htm", '<button onclick="document.title = 1">Update</button>\n')
+            write(root, "plugin.php", WORDPRESS_WOO)
+            write(root, "README.md", "The output is a document.\n")
+            write(root, "web/guide.html", "<p>The output is a document.</p>\n"
+                  '<script type="application/ld+json">{"message":"document."}</script>\n'
+                  "<!-- <script>document.querySelector('button');</script> -->\n")
+            plain = self.router.plan(root, "Update page prose", ["web/guide.html"])
+            self.assertNotIn("browser-js", {row["name"] for row in plain["packs"]})
+            for rel in ("web/view.html", "web/app.js", "web/button.htm"):
+                with self.subTest(rel=rel):
+                    result = self.router.plan(root, "Update view behavior", [rel])
+                    self.assertIn("browser-js", {row["name"] for row in result["packs"]})
+            result = self.router.plan(root, "Update lifecycle behavior", ["plugin.php"])
+            self.assertIn("wordpress", {row["name"] for row in result["packs"]})
+            result = self.router.plan(root, "Document the integration", ["README.md"],
+                                      context_facts={"runtime": "browser"})
+            self.assertIn("browser-js", {row["name"] for row in result["packs"]})
+            write(root, "src/charge.py", "import stripe\nstripe.PaymentIntent.create()\n")
+            result = self.router.plan(root, "Update helper behavior", ["src/charge.py"])
+            self.assertIn("payments", {row["name"] for row in result["packs"]})
+
     def test_interaction_added_pack_without_direct_evidence_is_explainable(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

@@ -6,14 +6,22 @@ Last reviewed: 2026-10-04, Asia/Tehran. This is the canonical progress tracker; 
 
 ## Current position
 
-- **Current phase:** Closed hardening cycle: `R1`-`R4` implemented, verified, merged and delivered in `1.3.1`; no further implementation package is defined.
-- **Implementation progress:** 4 of 4 hardening packages complete in source. The closed original cycle remains 9 of 9, with feedback F1 tracked separately. Counts describe work packages, not quality or coverage.
-- **Next action:** No implementation or delivery action is pending. Collect meaningful real-project feedback through the existing feedback route; open another improvement only for a confirmed need. No fifth improvement package or model campaign is implied.
-- **Completed order:** `R1` -> `R2` -> `R3` -> `R4`, prioritizing silent weakening of required controls. `R2`-`R4` did not technically depend on `R1`.
-- **Blockers:** none for this completed implementation and delivery cycle.
-- **Release delivery:** `1.3.1` is published and the maintainer's local installation was replaced and verified against its exact ZIP on 2026-10-04. [Published release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.3.1).
+- **Current phase:** Three approved follow-ups are integrated in the `1.4.0` source candidate: native publication security, document/runtime routing, and conditional product installation/local runtime. The `R1`-`R4` cycle remains delivered in `1.3.1`.
+- **Implementation progress:** All three follow-ups are implemented. Historical cycle counts remain 4 of 4 audit packages and 9 of 9 original packages, with feedback F1 tracked separately. Counts are not quality or coverage scores.
+- **Next action:** Complete combined-revision checks, merge, publish `1.4.0` and replace the local installation with verified release bytes. These delivery actions are authorized; no new feature or model campaign is planned.
+- **Release / local state:** Existing published and local runtime remains `1.3.1` until the candidate is delivered. Record observed merge, artifact and installation evidence after delivery; do not infer them from source completion.
 
-## Active hardening packages
+## Approved delivery follow-ups — 1.4.0
+
+| Work | Source status | Acceptance / retained evidence |
+|---|---|---|
+| Native security and Trivy publication gate | Integrated from PR #83; its independent PR checks passed. | Native project controls remain proportional. Missing/wrong tooling, failed or invalid scans and blocking findings prevent publication. Final portable ZIP must pass its native security gate. |
+| Document/runtime and excluded-domain routing | Integrated from PR #84; its independent PR checks passed. | Preserve positive executable-source and semantic selection, risk floors and retained commitments. Routing/specialist regressions and the extracted-package route cover the reported failures. |
+| Product installation and local runtime | Implemented in this candidate; source structure and mirror checks passed. | Head-owned selection, documented startup, core user workflow and required persistence. Preserve native client packages and the exact WordPress ZIP. This is instruction/package validation, not execution of a separate product. |
+
+All three follow-ups use existing tools, contracts and specialists. No additional scanner, model evaluation or fixed product test quota. Merge, release and local installation evidence will be recorded separately.
+
+## Completed audit packages
 
 | ID | Priority | Audit findings | Work | Status | Complexity | Implementation / acceptance evidence |
 |---|---|---|---|---|---|---|

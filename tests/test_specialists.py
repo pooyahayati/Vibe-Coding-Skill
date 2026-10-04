@@ -68,6 +68,27 @@ class SpecialistTests(unittest.TestCase):
         sensitive = manager.select_specialists("Change retention", risk_facts={"data_sensitivity": "personal"})
         self.assertEqual([row["id"] for row in sensitive], ["security-and-hardening"])
 
+    def test_explicit_domain_exclusions_do_not_become_required_assignments(self):
+        paths = ["README.md", "ROADMAP.md", "scripts/validate_release.py"]
+        for exclusion in ("product UI changes are out of scope", "do not change the frontend",
+                          "no UI changes", "رابط کاربری خارج از محدوده است"):
+            with self.subTest(exclusion=exclusion):
+                task = "Update repository instructions and Python validation; " + exclusion
+                self.assertEqual(manager.select_specialists(task, paths), [])
+                explicit = manager.select_specialists(task, paths, facts={"concern": "ui"})
+                self.assertEqual([row["id"] for row in explicit], ["ui-ux-skill"])
+        task = "Fix authentication; product UI changes are out of scope"
+        self.assertEqual([row["id"] for row in manager.select_specialists(task, paths)],
+                         ["security-and-hardening"])
+        actual_ui = manager.select_specialists("No UI changes", ["src/settings.tsx"])
+        self.assertEqual([row["id"] for row in actual_ui], ["ui-ux-skill"])
+        positive_ui = manager.select_specialists("Do not change the UI theme; fix the UI error", paths)
+        self.assertEqual([row["id"] for row in positive_ui], ["ui-ux-skill"])
+        missing_ui = manager.select_specialists("Fix the page with no UI rendering", paths)
+        self.assertEqual([row["id"] for row in missing_ui], ["ui-ux-skill"])
+        self.assertEqual([row["id"] for row in manager.select_specialists("Design the product UI")],
+                         ["ui-ux-skill"])
+
     def test_contract_stage_and_assignment_survive_router_and_execution_plan(self):
         spec = importlib.util.spec_from_file_location("specialist_execution_test", ROOT / "scripts/execution_plan.py")
         planner = importlib.util.module_from_spec(spec)

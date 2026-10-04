@@ -12,6 +12,6 @@
     "resolution": "latest-compatible-stable",
     "last_known_good": "0.74.0",
     "policy": "resolve the latest published stable release, pass the compatibility contract, then use that exact version for the current execution",
-    "required": false
+    "required_before_release": true
   }
 }

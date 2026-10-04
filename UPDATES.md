@@ -4,6 +4,12 @@ A short, human-readable summary of what changed in each release.
 
 For full technical details, see [CHANGELOG.md](CHANGELOG.md).
 
+## 1.4.0 — Reliable routing, native release security and local runtime
+- Documentation and metadata no longer masquerade as runtime source; executable browser regions and full file extensions drive routing. Clear excluded-domain mentions do not activate unrelated packs or specialists.
+- Security stays native to the project during development. Publication requires available native Trivy and a real scan of the final delivery target; the Skill's own release checks the exact extracted ZIP.
+- The Head selects a reproducible product installation path and offers suitable local Docker Compose execution. Accepted routes require clean startup, a core user workflow and relevant data persistence; WordPress and native client packages retain their own delivery forms.
+- Includes the verified portable ZIP and SHA-256 checksum. No model evaluation or provider API key is required. Publication and local Skill replacement remain separate actions.
+
 ## 1.3.1 — Targeted reliability hardening
 - Fresh structured tasks use receipt-backed completion by default; retained legacy work remains supported. Required specialist commitments cannot disappear silently across planning, handoff and completion.
 - Large plugin files retain platform routing through bounded prefix reads. Incomplete, unreadable or budget-limited inspection is visible for Head assessment.

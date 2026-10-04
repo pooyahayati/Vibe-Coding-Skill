@@ -150,9 +150,17 @@ jobs:
           )
           python scripts/release_readiness.py "${args[@]}"
 
+      - name: Install native Trivy before publication
+        if: steps.readiness.outputs.base_ready == 'true'
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # reviewed v0.2.6
+        with:
+          version: latest
+          cache: false
+          path: ${{ runner.temp }}/native-trivy
+
       - name: Build and verify portable release package
         if: steps.readiness.outputs.base_ready == 'true'
-        run: python scripts/build_release.py --output-dir "$RUNNER_TEMP/vibe-release" --json
+        run: python scripts/build_release.py --output-dir "$RUNNER_TEMP/vibe-release" --before-publication --json
 
       - name: Create immutable version tag and GitHub Release
         if: steps.readiness.outputs.base_ready == 'true'
