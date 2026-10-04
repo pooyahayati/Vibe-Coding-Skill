@@ -1,6 +1,6 @@
-# Real Delivery Benchmark Contract
+# Maintainer Delivery Fixture Contract
 
-Phase 9A defines the benchmark contract. Phase 9B adds five representative product fixtures with hidden graders. Real Codex/Claude execution adapters remain Phase 9C work.
+This full-source contract covers five deterministic product fixtures and separate hidden graders. Existing real-agent collection adapters are optional maintainer tooling, not future work or installed-skill commands. See the [maintainer boundary](../../benchmarks/README.md#full-source-maintainer-boundary). No model evaluation or provider API key is required for ordinary skill use or [release readiness](../../references/validation-and-benchmarking.md#release-readiness).
 
 ## Scenario catalog
 
@@ -76,12 +76,12 @@ Each result records:
 
 Missing or duplicate repetitions are not success.
 
-## Phase boundaries
+## Verification boundary
 
-Phase 9A contains no provider credentials and no real-agent delivery result. The deterministic self-test exercises the contract with a fake executor.
+The deterministic self-test exercises the contract with an injected executor, without calling a model; it is not a real-agent delivery result.
 
-Phase 9B includes five representative deterministic scenarios: a tiny local copy fix, a brownfield duplicate-save regression, a contained CSV export feature, a mixed-monorepo API-only change with a protected sibling app, and a WordPress installable-artifact change. Each hidden grader is regression-tested so the baseline/broken fixture fails while a known-good implementation passes.
+The five fixture routes are a tiny local copy fix, a brownfield duplicate-save regression, a contained CSV export feature, a mixed-monorepo API-only change with a protected sibling app, and a WordPress installable-artifact change. Existing grader regressions compare broken and known-good fixtures; their success is scoped tooling evidence.
 
-Phase 9C adds real Codex/Claude workspace-write adapters plus enforceable OS/network sandbox behavior and credentialed repetitions.
+Real-agent collection is available only in the full-source runner under a separate explicit maintainer request and its own CLI/authentication setup. No credentialed benchmark workflow or benchmark-trigger route is active, and real-agent results are not a release prerequisite. Hidden graders and collection/aggregate runners remain outside the portable package.
 
-Phase 9D analyzes failures and converts Skill defects into deterministic regressions where possible.
+Convert confirmed skill failures into relevant deterministic regressions where useful; do not treat a declared result, injected self-test or missing run as real-agent evidence.

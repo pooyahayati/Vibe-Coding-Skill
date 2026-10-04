@@ -1,17 +1,10 @@
-# Live Agent Evaluation Contract
+# Optional Agent Scenario-Output Contract
 
-Use this contract to evaluate a real Codex, Claude Code, or other Agent Skills-compatible run without grading prose style.
+This format is for separately requested agent-conformance evaluation. It is not the product task contract, a completion report or an execution receipt. Ordinary skill use and release readiness require no model evaluation or provider API key.
 
-The evaluated agent must receive only:
+For an authorized real evaluation, give the agent the installed skill, scenario ID/prompt and output shape. Do not disclose expected tiers, required/forbidden controls or scorer output before its response.
 
-- the installed Vibe Coding Skill;
-- the scenario ID;
-- the scenario prompt;
-- this output shape.
-
-Do not reveal expected tiers, required controls, forbidden controls, or scorer output before the run.
-
-## Behavior contract
+## Output shape
 
 ```json
 {
@@ -30,57 +23,20 @@ Do not reveal expected tiers, required controls, forbidden controls, or scorer o
 }
 ```
 
-The strict machine schema lives at:
+The strict shape is [agent-output.schema.json](agent-output.schema.json). Expected policy is maintained in [scenarios.json](scenarios.json) for offline scoring.
 
-`evals/agent-output.schema.json`
+## Included offline scorer
 
-## Real runner
-
-Preflight:
-
-```bash
-python scripts/run_agent_benchmark.py preflight --agent codex --require-env-auth --json
-python scripts/run_agent_benchmark.py preflight --agent claude-code --require-env-auth --json
-```
-
-Run one or all scenarios:
-
-```bash
-python scripts/run_agent_benchmark.py run \
-  --agent codex \
-  --scenario all \
-  --results-dir ~/.vibe-coding/benchmarks/vibe-coding-skill/0.10.0/run-001 \
-  --require-env-auth \
-  --json
-```
-
-The runner wraps the raw contract with provenance and integrity metadata. It stores raw stdout/stderr separately and does not commit benchmark evidence.
-
-## Scoring
-
-Tier scoring is risk-adaptive rather than exact-match-only.
-
-- `expected_tier` is the preferred tier for the deterministic scenario.
-- A scenario may define a higher hidden `max_acceptable_tier` when conservative escalation is genuinely defensible.
-- A tier below the preferred tier is `underclassified` and fails.
-- A tier above the allowed ceiling is `overengineered` and fails.
-- A tier above the preferred tier but within the allowed ceiling is `conservative_escalation`; it may pass only if approval, required controls, forbidden actions, and integrity checks also conform.
-- The evaluated agent is never shown the tier policy before scoring.
-
-A raw contract or benchmark envelope can be scored:
+From the installed skill root, score an already available JSON result or benchmark envelope:
 
 ```bash
 python scripts/evaluate_agent_output.py result.json --json
 ```
 
-Complete evidence for both supported agents can be required:
+This included command reads local input and policy; it does not run an agent or require provider credentials. Scoring is risk-adaptive: below the preferred tier fails as `underclassified`; above the scenario ceiling fails as `overengineered`; bounded conservative escalation can pass only when approval, required controls, forbidden actions and applicable envelope-integrity checks conform. A raw declaration has no collected-run provenance and does not prove execution or user outcomes.
 
-```bash
-python scripts/benchmark_agent_outputs.py RESULTS_DIR \
-  --required-agent codex \
-  --required-agent claude-code \
-  --require-complete \
-  --json
-```
+## Optional full-source collection and aggregation
 
-Missing runs are missing data. They are never counted as success.
+Collection and aggregate runners are absent from the portable skill. Their scope and source entrypoints are documented in the [optional maintainer guide](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/main/benchmarks/README.md). Do not invoke that route during ordinary project work or release checks; it requires a separate explicit maintainer request. Missing runs remain missing data.
+
+Use the [active release-readiness policy](../references/validation-and-benchmarking.md#release-readiness) for publication checks, not benchmark aggregates.
