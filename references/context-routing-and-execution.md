@@ -51,6 +51,14 @@ For mixed repositories, project-scoped evidence is kept local to the affected ar
 
 Directory paths are valid affected-path evidence. The router inspects a bounded subset of text/source files inside that directory so a caller does not need an exact file path before routing.
 
+### Bounded inspection and uncertainty
+
+Oversized sources are read as bounded binary prefixes, not discarded or read completely before slicing. Each scan has its own hard limits: area-header discovery uses at most 600 files, 8 KiB per file and 4 MiB total; project markers use 600 files, 64 KiB per file and 8 MiB total; affected paths use 120 files, 64 KiB per file and 1 MiB total; invariant extraction uses 120 documents, 256 KiB per file and 1 MiB total. A remaining byte budget may shorten the last prefix. Header discovery prioritizes known affected paths; project-marker locality and root signals remain unchanged.
+
+`context_plan.inspection.scans` distinguishes attempted/read files, actual bytes read, truncated prefixes, unreadable files and omissions caused by file/byte limits. Path samples are capped at 20 per scan. `project_text_files_scanned` counts successfully read project candidates, including readable empty files; `project_text_bytes_scanned` counts actual input bytes. Separate scans may read the same file; their metrics describe read operations, not unique repository coverage. These limits bound content reads, not the existing filename inventory.
+
+Incomplete inspection appears in `task.routing_uncertainties` and as warnings in non-JSON CLI output. The Head must assess whether a limitation affects the task's platform, entrypoints or governing instructions before treating missing evidence as absence. Inspect the specific missing region/source, provide confirmed structured context facts or explicit pack inclusion as appropriate, then re-route; retain unresolved limitations. Do not select WordPress merely because a PHP prefix is incomplete, or suppress a known platform because its marker was not reached. Routing uncertainty is separate from the risk-classifier floor; it does not automatically raise a tier or require a new execution plan. Invariant extraction is supplemental: applicable `AGENTS.md` instructions still require full reading.
+
 Custom sibling areas are inferred from package manifests and WordPress plugin headers. For layouts that cannot be inferred, set `project_area_roots` (for example `["components/api", "components/store"]`) or `project_area_containers` (for example `["components"]`) in the routing configuration. Each WordPress plugin under `wp-content/plugins/` is a distinct area. These are discovery hints, not proof of dependency isolation; confirm actual shared contracts during impact analysis.
 
 ### Structured context facts
