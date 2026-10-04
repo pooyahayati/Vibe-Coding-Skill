@@ -6,14 +6,16 @@ Last reviewed: 2026-10-04, Asia/Tehran. This is the canonical progress tracker; 
 
 ## Current position
 
-- **Current phase:** Closed hardening cycle: `R1`-`R4` implemented, verified, merged and delivered in `1.3.1`; no further implementation package is defined.
+- **Current phase:** `R1`-`R4` remain closed and delivered in `1.3.1`. A confirmed real-project routing correction is implemented and locally verified, pending review/merge. The separate native-security follow-up is tracked in [PR #83](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/83).
 - **Implementation progress:** 4 of 4 hardening packages complete in source. The closed original cycle remains 9 of 9, with feedback F1 tracked separately. Counts describe work packages, not quality or coverage.
-- **Next action:** No implementation or delivery action is pending. Collect meaningful real-project feedback through the existing feedback route; open another improvement only for a confirmed need. No fifth improvement package or model campaign is implied.
+- **Next action:** Review and merge the authorized post-release corrections. Release and local replacement are separate delivery actions; neither is claimed from source acceptance. No fifth hardening package or model campaign is implied.
 - **Completed order:** `R1` -> `R2` -> `R3` -> `R4`, prioritizing silent weakening of required controls. `R2`-`R4` did not technically depend on `R1`.
 - **Blockers:** none for this completed implementation and delivery cycle.
 - **Release delivery:** `1.3.1` is published and the maintainer's local installation was replaced and verified against its exact ZIP on 2026-10-04. [Published release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.3.1).
 
 ## Active hardening packages
+
+Real-project routing correction (2026-10-04): **Implemented and locally verified; pending review/merge**. The reported Markdown runtime false positive was reproduced in both `1.3.0` and `1.3.1`. Share typed marker gates across project/affected scans, ignore document path signals and metadata descriptions, distinguish `.json` from `.js`, and limit embedded browser markers to executable regions. Ignore clear excluded-domain text when selecting packs/specialists, while retaining positive signals, actual code, explicit facts, risk floors and retained commitments. Affected routing/specialist checks and the extracted-package router/planner route passed. This is an unreleased correction, separate from the completed `R1`-`R4` cycle and native-security work.
 
 | ID | Priority | Audit findings | Work | Status | Complexity | Implementation / acceptance evidence |
 |---|---|---|---|---|---|---|

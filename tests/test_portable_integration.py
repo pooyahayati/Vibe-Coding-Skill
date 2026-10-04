@@ -79,6 +79,24 @@ class PortableIntegrationTests(unittest.TestCase):
                     "result": receipt["result"], "required": True, "requirement_id": "check",
                     "receipt_ref": result["receipt_ref"], "receipt_sha256": result["receipt_sha256"]}]}
 
+    def test_installed_document_and_python_route_does_not_invent_runtime_or_specialists(self):
+        (self.product / "scripts").mkdir()
+        for name in ("README.md", "ROADMAP.md"):
+            (self.product / name).write_text(
+                "The output is a document.\n```js\ndocument.querySelector('button');\n```\n"
+                "WooCommerce example: <?php /* Plugin Name: Example */\n", encoding="utf-8")
+        (self.product / "scripts/validate_release.py").write_text("VALUE = 1\n", encoding="utf-8")
+        args = ["--root", self.product, "--task",
+                "Update repository guidance and Python validation; product UI changes are out of scope",
+                "--path", "README.md", "--path", "ROADMAP.md",
+                "--path", "scripts/validate_release.py", "--context-runtime", "python"]
+        route = self.cli("context_router.py", *args, "--json")
+        self.assertEqual(route["packs"], [])
+        self.assertEqual(route["required_specialists"], [])
+        self.assertEqual(route["integration_points"], [])
+        plan = self.cli("execution_plan.py", "draft", *args, "--json")
+        self.assertEqual(plan["specialist_assignments"], [])
+
     def test_bounded_routing_uses_installed_prefix_reader_and_surfaces_limitations(self):
         entry = self.product / "plugin.php"
         entry.write_text("<?php\n/* Plugin Name: Portable Prefix Fixture */\n" + " " * 70_000, encoding="utf-8")
