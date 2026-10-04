@@ -1,3 +1,5 @@
+![Vibe Coding Roadmap by Pooya Hayati](docs/images/vibe-coding-roadmap-by-pooya-hayati.png)
+
 # Vibe Coding Skill
 
 A risk-adaptive engineering Head for reliable AI-assisted development of small, medium and large software projects, including WordPress plugins. Works with OpenAI Codex, Claude Code and compatible skill-based agents.
