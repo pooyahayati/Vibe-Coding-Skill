@@ -247,6 +247,8 @@ A broad suite may still be required by project policy; do not confuse that polic
 
 ## Deployment verification
 
+For a selected product-installation or local container outcome, follow `references/product-installation-and-runtime.md` and retain its real startup/core-workflow evidence in the existing completion route. A local run proves only the verified local target; production deployment needs its own relevant evidence.
+
 `Deploy → Health Check → Smoke Test → Core Workflow → Accept`
 
 If verification fails and rollback is safer, stop and roll back rather than layering speculative fixes in production.

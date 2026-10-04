@@ -16,10 +16,10 @@ Vibe is the project manager and senior engineer. It owns scope, stack, architect
 |---|---|---|---|
 | **1 · Discover** | Inspect the project, rules, affected boundaries and risk; select relevant capabilities. | **Head**; **Supporting:** debugging for unclear failures, UI for a necessary interface assessment, Graphify for consequential impact. | Start of a new objective or when impact/scope evidence changes. |
 | **2 · Define** | State the user outcome, scope, protected behavior and observable acceptance criteria. | **Head**; **Supporting:** UI user flows, security assets/trust boundaries, API consumer obligations. | Requirements or material constraints are not yet clear; reuse settled decisions. |
-| **3 · Plan** | Choose the simplest adequate approach, ownership, sequence, dependencies and verification. | **Head**; **Supporting:** relevant specialist prerequisites and impact evidence. | Write a plan for high-risk/cross-boundary work; keep local low-risk work brief. |
+| **3 · Plan** | Choose the simplest adequate approach, installation target, ownership, sequence, dependencies and verification. | **Head**; **Supporting:** relevant specialist prerequisites and impact evidence. | New product/startup decisions; write a plan for high-risk/cross-boundary work and keep local low-risk work brief. |
 | **4 · Design** | Make implementable UI, interface-contract and security decisions; reconcile their boundaries. | **Both:** UI/API/security specialists own applicable domain detail; Head owns architecture and integration. | A changed interface or trust boundary needs design; reuse adequate existing designs. |
-| **5 · Build** | Implement and integrate small runnable slices within existing conventions. | **Head** implementation; **Both** for assigned specialist surfaces; debugging supports unclear failures. | The task is ready and necessary domain decisions are settled. |
-| **6 · Verify** | Prove acceptance behavior and relevant failure modes with the cheapest sufficient evidence. | **Head** selects checks; **Both** for UI/API/security/debugging evidence; Trivy is a supporting scanner. | After changed behavior; use affected checks and reuse sufficient evidence. |
+| **5 · Build** | Implement and integrate small runnable slices and the selected installation path within existing conventions. | **Head** implementation; **Both** for assigned specialist surfaces; debugging supports unclear failures. | The task is ready and necessary domain decisions are settled. |
+| **6 · Verify** | Prove acceptance behavior, selected installation/core workflow and relevant failure modes with the cheapest sufficient evidence. | **Head** selects checks; **Both** for UI/API/security/debugging evidence; Trivy is a supporting scanner. | After relevant behavior/startup changes; use affected checks and reuse sufficient evidence. |
 | **7 · Review** | Assess the actual diff, quality, scope, compatibility, findings and evidence sufficiency. | **Head** owns readiness; **Supporting:** applicable specialist domain review. | Before meaningful integration/merge; do not restart specialist workflows or repeat unrelated tests. |
 | **8 · Ship** | Deliver the authorized artifact/release/deployment and verify its actual state. | **Head**; **Supporting:** retained domain evidence, relevant artifact scans, debugging on delivery failure. | Delivery is requested/authorized and required gates pass; local handoff can be the delivery. |
 
@@ -92,6 +92,12 @@ Neither tool runs for every cosmetic change or replaces the application-security
 **What the user receives:** what works, how to start/use it, what was actually checked, unresolved limits and the next useful action. For example, a protected WordPress setting needs evidence that an unauthorized write is denied **and the stored value remains unchanged**; a successful build alone cannot establish that outcome.
 
 Structured tasks retain criteria through planning/handoff and validate local command/manual receipts against current scoped inputs. Existing legacy reports remain explicitly declared evidence; tiny/manual work needs no forced automated test. Specialist installation, instruction compatibility, stage-output acceptance and whole-task completion are separate decisions. See [completion and trust limits](references/execution-and-verification.md#receipt-backed-completion-e2).
+
+## Product installation and local use
+
+The Head chooses a reproducible startup path for the actual product and target. Suitable self-hosted apps can use Docker Compose and offer local installation on the user's computer, with clear start/access/stop instructions. A selected route is verified from clean state through a core user workflow, including required data persistence; container startup alone is insufficient.
+
+Simple sites/utilities keep adequate native or hosting paths. WordPress plugins still deliver an installable ZIP; containers may supply the local WordPress environment. Desktop/mobile clients retain native packages. Docker is conditional product infrastructure, not a new Skill requirement or specialist. See the [installation and runtime policy](references/product-installation-and-runtime.md).
 
 ## Skill updates and requirements
 

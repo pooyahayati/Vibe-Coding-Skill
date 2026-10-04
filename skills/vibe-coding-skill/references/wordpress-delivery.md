@@ -4,6 +4,8 @@ Use this reference only when the WordPress capability pack is active and the tas
 
 The goal is an installable plugin artifact with evidence from that exact artifact, not merely a source tree that appears correct.
 
+For a selected local Docker/Compose option, apply `references/product-installation-and-runtime.md`: provide or reuse a suitable WordPress/database environment, install the exact plugin ZIP and exercise its requested behavior. Containers supply the environment; the plugin deliverable and install/upgrade requirements remain unchanged.
+
 ## Stage contract
 
 | Stage | Required result |

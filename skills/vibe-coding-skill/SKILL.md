@@ -67,6 +67,8 @@ Do not ask the user for inferable implementation details. Prove one runnable ver
 
 Read `references/operating-model.md` for discovery, technology selection, architecture, and stage interaction decisions.
 
+For new products or changed installation/deployment paths, read `references/product-installation-and-runtime.md`. The Head selects the simplest reproducible startup path, offers local Docker/Compose execution where suitable, and requires evidence for a selected installation outcome.
+
 ## Risk and controls
 
 Use the deterministic classifier as a workflow floor:

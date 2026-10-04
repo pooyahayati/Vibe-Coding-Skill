@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a Head-owned, conditional product installation/runtime policy: prefer Compose for suitable self-hosted products, offer user-selected local Docker execution, retain native/WordPress delivery routes, and verify the documented clean-start/core-workflow and required data persistence. Route the policy through planning, build, verification and delivery; document safe local defaults, prerequisites and honest target-specific evidence. No new runtime tool, dependency, specialist, fixed test suite or version bump.
+
 ## 1.3.1 — Targeted reliability hardening
 
 - R4: Reconcile benchmark/scenario-output guidance with the implemented release gate: no model evaluation or provider key is required for ordinary use or publication, and former credentialed workflow/trigger claims are obsolete. Keep optional collection/aggregation tooling explicitly full-source and separately requested; remove unavailable runner commands from portable guidance, retain its included offline scorer, and distinguish declared policy scores from task contracts/receipts and product outcomes. Update related bootstrap/delivery references and portable documentation. No executable/schema/workflow changes, new tests, model runs, version bump or installation.

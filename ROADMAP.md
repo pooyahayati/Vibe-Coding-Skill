@@ -6,14 +6,22 @@ Last reviewed: 2026-10-04, Asia/Tehran. This is the canonical progress tracker; 
 
 ## Current position
 
-- **Current phase:** Closed hardening cycle: `R1`-`R4` implemented, verified, merged and delivered in `1.3.1`; no further implementation package is defined.
+- **Current phase:** The `R1`-`R4` cycle is closed and delivered in `1.3.1`. The separately approved conditional product-installation/local-runtime policy is implemented in source; delivery is pending.
 - **Implementation progress:** 4 of 4 hardening packages complete in source. The closed original cycle remains 9 of 9, with feedback F1 tracked separately. Counts describe work packages, not quality or coverage.
-- **Next action:** No implementation or delivery action is pending. Collect meaningful real-project feedback through the existing feedback route; open another improvement only for a confirmed need. No fifth improvement package or model campaign is implied.
+- **Next action:** Review and integrate the approved installation/local-runtime policy, then release/install it only when authorized. Continue collecting meaningful real-project feedback. No extra audit package or model campaign is implied.
 - **Completed order:** `R1` -> `R2` -> `R3` -> `R4`, prioritizing silent weakening of required controls. `R2`-`R4` did not technically depend on `R1`.
 - **Blockers:** none for this completed implementation and delivery cycle.
 - **Release delivery:** `1.3.1` is published and the maintainer's local installation was replaced and verified against its exact ZIP on 2026-10-04. [Published release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.3.1).
 
 ## Active hardening packages
+
+### Approved product installation and local runtime
+
+- **Scope:** Head-owned installation selection for new products or changed startup/delivery paths; suitable Docker/Compose self-hosting and a user-selected local execution option. Preserve native packages and the exact WordPress plugin ZIP.
+- **Acceptance:** The selected installation path has documented prerequisites and start/access/stop behavior; required clean-start/core-workflow and data-preservation outcomes use existing completion evidence. A running container is not completion. Ordinary unrelated changes do not trigger containerization or a new test suite.
+- **Source / delivery state:** Implemented on `feat/portable-local-runtime`; not merged, released or installed. Current released/local `1.3.1` does not include this policy. No additional specialist, runtime dependency or model evaluation.
+
+### Completed audit packages
 
 | ID | Priority | Audit findings | Work | Status | Complexity | Implementation / acceptance evidence |
 |---|---|---|---|---|---|---|
