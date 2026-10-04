@@ -4,6 +4,13 @@ A short, human-readable summary of what changed in each release.
 
 For full technical details, see [CHANGELOG.md](CHANGELOG.md).
 
+## 1.3.1 — Targeted reliability hardening
+- Fresh structured tasks use receipt-backed completion by default; retained legacy work remains supported. Required specialist commitments cannot disappear silently across planning, handoff and completion.
+- Large plugin files retain platform routing through bounded prefix reads. Incomplete, unreadable or budget-limited inspection is visible for Head assessment.
+- Project-root ownership and equivalent relative scopes are consistent across plans, retained contracts and drift checks; conflicting root/nested writers are blocked.
+- Release and portable evaluation guidance now match the implemented tooling. No model evaluation or provider API key is required for ordinary use or publication.
+- Closes the four-package R1–R4 hardening cycle. Includes the installation-checked portable ZIP and SHA-256 checksum; publication does not automatically update existing local installations.
+
 ## 1.3.0 — Skill feedback and portable workflow reliability
 - Adds a Head-owned route for confirmed/suspected defects in the skill itself: minimal English local reports, installed-version attribution and an optional user-reviewed email invitation. No automatic sending or telemetry.
 - Fixes valid literal bracket paths in project/evidence/specialist workflows and skill-resource validation/relocation, preserving wildcard, traversal and link protections.

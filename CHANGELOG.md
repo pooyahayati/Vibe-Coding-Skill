@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.3.1 — Targeted reliability hardening
+
 - R4: Reconcile benchmark/scenario-output guidance with the implemented release gate: no model evaluation or provider key is required for ordinary use or publication, and former credentialed workflow/trigger claims are obsolete. Keep optional collection/aggregation tooling explicitly full-source and separately requested; remove unavailable runner commands from portable guidance, retain its included offline scorer, and distinguish declared policy scores from task contracts/receipts and product outcomes. Update related bootstrap/delivery references and portable documentation. No executable/schema/workflow changes, new tests, model runs, version bump or installation.
 
 - R3: Treat `.` and equivalent project-relative forms consistently as project-root scope in execution-plan ownership, retained-contract containment and drift checks. Share scope normalization/coverage with the existing behavior-contract helper; block root/nested ownership across different writers while allowing disjoint scopes. Preserve literal bracket/hidden names, exact retained-contract fingerprints, legacy planner directory shorthand and material drift triggers; reject absolute/parent-escaping coverage. Add the confirmed bound-plan and drift regressions and an extracted-package CLI route. No version bump, new runtime module, dependency, model evaluation or broader path refactor.
