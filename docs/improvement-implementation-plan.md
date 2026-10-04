@@ -1,6 +1,6 @@
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: The original cycle and feedback F1 are complete and delivered in `1.3.0`. The active hardening cycle contains `R1`-`R4`; current package/phase/merge status is maintained only in [ROADMAP.md](../ROADMAP.md).
+Status: The original cycle and feedback F1 are complete and delivered in `1.3.0`. The hardening scope contains `R1`-`R4`; current package/phase/merge and separate delivery status are maintained only in [ROADMAP.md](../ROADMAP.md).
 Hardening baseline: `1.3.0`, audited main `156676d502fae98c5c0b3a9bafdf5497698a062e`. Original-cycle baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](../ROADMAP.md).
 

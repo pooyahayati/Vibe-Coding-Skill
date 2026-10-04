@@ -1,12 +1,12 @@
 # How to Install
 
-Current Skill version: `1.3.0`, the latest published release. Main-branch changes under [Unreleased](CHANGELOG.md#unreleased) are separate from this release. Choose the published package for a stable installation; a source checkout follows its selected ref, even if `VERSION` has not yet changed.
+Current Skill version: `1.3.1`, the release package. Main-branch changes under [Unreleased](CHANGELOG.md#unreleased) are separate from this release. Choose the published package for a stable installation; a source checkout follows its selected ref, even if `VERSION` has not yet changed.
 
 Keep the Skill installation outside the repositories you use it on. Vibe Coding operational state is intentionally local-only.
 
 ## Portable release ZIP
 
-Download `Vibe-Coding-Skill-1.3.0.zip` and its SHA-256 checksum file from the [1.3.0 release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.3.0).
+Download `Vibe-Coding-Skill-1.3.1.zip` and its SHA-256 checksum file from the [1.3.1 release](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.3.1).
 Extract the contained `vibe-coding-skill` directory into your agent's user-level skills directory. Preserve that directory name. The ZIP includes the complete runtime and does not include credentialed model-evaluation runners.
 Run the offline installation check below from the extracted directory. Optional tool warnings do not block installation.
 
@@ -17,7 +17,7 @@ Use the Skill installer with this repository:
 ```text
 Use $skill-installer to install this skill from:
 https://github.com/pooyahayati/Vibe-Coding-Skill
-Use ref v1.3.0 and path skills/vibe-coding-skill for the published version.
+Use ref v1.3.1 and path skills/vibe-coding-skill for the published version.
 ```
 
 Then invoke the Skill for a project:
@@ -33,7 +33,7 @@ If installing manually, keep the directory name as `vibe-coding-skill` so it mat
 Recommended global installation:
 
 ```bash
-git clone --depth 1 --branch v1.3.0 https://github.com/pooyahayati/Vibe-Coding-Skill.git \
+git clone --depth 1 --branch v1.3.1 https://github.com/pooyahayati/Vibe-Coding-Skill.git \
   "$HOME/.claude/skills/vibe-coding-skill"
 ```
 
