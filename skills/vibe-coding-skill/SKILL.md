@@ -51,6 +51,8 @@ MUST:
 
 The router separates **project complexity**, **task risk**, **change scope**, and **capability packs**. With known affected paths it scopes platform evidence and source scanning to the relevant project area while preserving repository-wide instructions. A large repository may still have a tiny local task. Re-run routing when impact analysis reveals different paths.
 
+If routing reports incomplete inspection, assess its relevance to affected entrypoints and instructions before relying on absent evidence; inspect the missing source/region or supply confirmed semantic facts and re-route. Partial discovery never proves that platform rules or project invariants are absent.
+
 Large-project context reduction means selective reading, not loss of project intelligence. Preserve relevant architecture/invariants even when the task follows the light path.
 
 ### New project

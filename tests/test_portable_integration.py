@@ -79,6 +79,26 @@ class PortableIntegrationTests(unittest.TestCase):
                     "result": receipt["result"], "required": True, "requirement_id": "check",
                     "receipt_ref": result["receipt_ref"], "receipt_sha256": result["receipt_sha256"]}]}
 
+    def test_bounded_routing_uses_installed_prefix_reader_and_surfaces_limitations(self):
+        entry = self.product / "plugin.php"
+        entry.write_text("<?php\n/* Plugin Name: Portable Prefix Fixture */\n" + " " * 70_000, encoding="utf-8")
+        args = ["--root", self.product, "--task", "Update settings behavior", "--path", "plugin.php"]
+        route = self.cli("context_router.py", *args, "--json")
+        self.assertIn("wordpress", {row["name"] for row in route["packs"]})
+        self.assertTrue(route["task"]["routing_uncertainties"])
+        self.assertEqual(route["context_plan"]["inspection"]["scans"]["affected"]["bytes_read"], 65_536)
+        plain = subprocess.run([sys.executable, "-X", "utf8", str(self.installed / "scripts/context_router.py"), *map(str, args)],
+                               cwd=self.product, env=self.env, capture_output=True, text=True, encoding="utf-8", timeout=60)
+        self.assertEqual(plain.returncode, 0, plain.stderr)
+        self.assertIn("WARNING: affected inspection incomplete", plain.stdout)
+        self.assertIn("Head must assess", plain.stdout)
+        entry.write_text("<?php function report() { return 1; }\n" + " " * 70_000, encoding="utf-8")
+        route = self.cli("context_router.py", *args, "--json")
+        self.assertNotIn("wordpress", {row["name"] for row in route["packs"]})
+        drafted = self.cli("execution_plan.py", "draft", *args, "--json")
+        self.assertFalse(drafted["execution_plan_required"])
+        self.assertTrue(drafted["context_plan"]["task"]["routing_uncertainties"])
+
     def test_light_route_preserves_legacy_claims_without_forcing_receipts_or_plans(self):
         (self.product / "settings.txt").write_text("accepted", encoding="utf-8")
         self.git("add", ".")

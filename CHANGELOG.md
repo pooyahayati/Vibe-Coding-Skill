@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- R2: Preserve platform markers in oversized sources using bounded prefix reads. Bound area-header discovery and invariant extraction as well as project/affected scans; prioritize affected headers and enforce actual byte budgets before reading. Expose truncated/unreadable/skipped inspection with bounded path samples, separate routing uncertainties, Head assessment guidance and plain-CLI warnings. Count real inspected input rather than silent empty placeholders; retain platform evidence gating and local routing. Add large-plugin, generic-PHP, unreadable and read-budget regressions plus an extracted-package routing check. No version bump, model evaluation or automatic risk escalation.
+
 - R1: Default fresh structured task state and `--new-task` to schema-3 receipt-backed completion; reserve schema 2 for retained in-flight legacy tasks, including older snapshots without a workflow field. Keep explicit legacy migration and prevent downgrade across capture/handoff/resume. Preserve required specialist assignment IDs against the retained contract before state replacement and plan validation; show commitments in handoffs and require recorded Head reconciliation for removal. Add focused regressions for both confirmed failures, positive compatibility/manual routes and the extracted portable runtime. No version bump, model evaluation or change to authorization.
 
 ## 1.3.0 — Local skill feedback and portable workflow reliability

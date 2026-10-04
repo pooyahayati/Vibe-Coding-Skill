@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +51,116 @@ function vibe_test_boot() {
 class ContextRouterTests(unittest.TestCase):
     def setUp(self):
         self.router = load_script("context_router.py")
+
+    def test_large_plugin_prefix_keeps_platform_and_reports_partial_inspection(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            entry = "custom/[store]/plugin.php"
+            for size in (2_048, 70_000):
+                with self.subTest(size=size):
+                    write(root, entry, WORDPRESS_WOO + " " * size)
+                    result = self.router.plan(root, "Update settings behavior", [entry])
+                    self.assertIn("wordpress", {row["name"] for row in result["packs"]})
+                    if size > 65_536:
+                        inspection = result["context_plan"]["inspection"]
+                        self.assertFalse(inspection["complete"])
+                        self.assertGreater(inspection["scans"]["affected"]["truncated_files"], 0)
+                        self.assertTrue(result["task"]["routing_uncertainties"])
+                        self.assertIn("Head", inspection["required_action"])
+
+    def test_large_generic_php_does_not_invent_wordpress_evidence(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "report.php", "<?php function report() { return 1; }\n" + " " * 70_000)
+            result = self.router.plan(root, "Update report behavior", ["report.php"])
+        names = {row["name"] for row in result["packs"]}
+        self.assertIn("php", names)
+        self.assertNotIn("wordpress", names)
+        self.assertTrue(result["task"]["routing_uncertainties"])
+
+    def test_unreadable_affected_file_is_not_counted_as_inspected(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "plugin.php", WORDPRESS_WOO)
+            original = Path.open
+            def guarded_open(path, *args, **kwargs):
+                if path == root / "plugin.php":
+                    raise PermissionError("fixture denies this file")
+                return original(path, *args, **kwargs)
+            with patch.object(Path, "open", guarded_open):
+                result = self.router.plan(root, "Update settings behavior", ["plugin.php"])
+        inspection = result["context_plan"]["inspection"]
+        self.assertEqual(inspection["scans"]["affected"]["unreadable_files"], 1)
+        self.assertEqual(result["context_plan"]["metrics"]["project_text_files_scanned"], 0)
+        self.assertTrue(result["task"]["routing_uncertainties"])
+        self.assertNotIn("wordpress", {row["name"] for row in result["packs"]})
+
+    def test_scan_limits_bound_actual_reads_and_expose_skipped_files(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            for name in ("a.php", "b.php", "c.php"):
+                write(root, name, "x" * 100)
+            files = ["a.php", "b.php", "c.php"]
+            report = self.router.new_scan_report()
+            reads = []
+            original = Path.open
+            def measured_open(path, *args, **kwargs):
+                stream = original(path, *args, **kwargs)
+                actual_read = stream.read
+                def read(size=-1):
+                    self.assertGreaterEqual(size, 0, "unbounded read")
+                    value = actual_read(size)
+                    reads.append(len(value))
+                    return value
+                stream.read = read
+                return stream
+            with patch.object(Path, "open", measured_open):
+                texts = self.router.candidate_texts(root, files, max_file_bytes=10,
+                                                    max_total_bytes=15, inspection=report)
+            self.assertEqual(sum(reads), 15)
+            self.assertEqual([len(text) for _, text in texts], [10, 5])
+            self.assertEqual(report["bytes_read"], 15)
+            self.assertEqual(report["truncated_files"], 2)
+            self.assertEqual(report["skipped_byte_limit"], 1)
+            count_report = self.router.new_scan_report()
+            self.router.touched_texts(root, files, files, limit=1, inspection=count_report)
+            self.assertEqual(count_report["attempted_files"], 1)
+            self.assertEqual(count_report["skipped_file_limit"], 2)
+
+    def test_area_discovery_prioritizes_affected_header_and_bounds_failures(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            entry = "custom/z-store/plugin.php"
+            write(root, entry, WORDPRESS_WOO + " " * 70_000)
+            # Stale/inaccessible inventory entries must not consume the header
+            # budget before the known affected entrypoint or grow diagnostics.
+            files = [f"custom/a-noise-{index}/missing.php" for index in range(605)] + [entry]
+            report = self.router.new_scan_report()
+            areas = self.router.discover_area_roots(root, files, self.router.load_config(), [entry], report)
+        self.assertIn("custom/z-store", areas)
+        self.assertEqual(report["attempted_files"], 600)
+        self.assertEqual(report["bytes_read"], 8192)
+        self.assertEqual(report["skipped_file_limit"], 6)
+        self.assertEqual(len(report["limitations"]), 20)
+
+    def test_unreadable_invariant_document_keeps_full_instruction_source(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "AGENTS.md", "# Invariants\n- Preserve private data.\n")
+            original = Path.open
+            def guarded_open(path, *args, **kwargs):
+                if path == root / "AGENTS.md":
+                    raise PermissionError("fixture denies instructions")
+                return original(path, *args, **kwargs)
+            with patch.object(Path, "open", guarded_open):
+                result = self.router.plan(root, "Change a typo", ["new.txt"])
+        self.assertIn("AGENTS.md", result["context_plan"]["load"])
+        self.assertEqual(result["context_plan"]["inspection"]["scans"]["invariants"]["unreadable_files"], 1)
+        self.assertFalse(result["context_plan"]["inspection"]["complete"])
 
     def test_tiny_woocommerce_ui_task_avoids_heavy_concern_packs(self):
         with tempfile.TemporaryDirectory() as td:

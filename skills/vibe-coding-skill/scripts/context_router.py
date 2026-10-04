@@ -184,7 +184,9 @@ def pack_context_fact_evidence(
     return evidence
 
 
-def discover_area_roots(root: Path, files: list[str], config: dict[str, Any]) -> tuple[str, ...]:
+def discover_area_roots(root: Path, files: list[str], config: dict[str, Any],
+                        paths: list[str] | None = None,
+                        inspection: dict[str, Any] | None = None) -> tuple[str, ...]:
     """Use entry manifests/plugin headers; infer their sibling container roots."""
     roots: set[str] = set(config.get("project_area_roots", []))
     manifests = {"package.json", "composer.json", "pyproject.toml", "Cargo.toml", "go.mod"}
@@ -195,8 +197,15 @@ def discover_area_roots(root: Path, files: list[str], config: dict[str, Any]) ->
             continue
         if path.name in manifests or path.suffix == ".csproj":
             roots.add(parent)
-        elif path.suffix == ".php" and "Plugin Name:" in safe_text(root / rel, 8192):
-            roots.add(parent)
+    headers = [rel for rel in files if Path(rel).suffix == ".php" and Path(rel).parent.as_posix() != "."]
+    affected = [normalize_rel(raw) for raw in paths or [] if normalize_rel(raw)]
+    headers.sort(key=lambda rel: (
+        0 if any(rel == item or rel.startswith(item + "/") for item in affected) else 1,
+        len(Path(rel).parts), rel,
+    ))
+    for rel, text in scan_texts(root, headers, 600, 8192, 4_194_304, inspection):
+        if "Plugin Name:" in text:
+            roots.add(Path(rel).parent.as_posix())
     containers = {str(value) for value in config.get("project_area_containers", [])}
     containers.update(str(Path(value).parent.as_posix()) for value in roots if len(Path(value).parts) >= 2)
     for rel in files:
@@ -253,13 +262,58 @@ def scan_candidate_files(
     return selected, "path-scoped"
 
 
-def safe_text(path: Path, max_bytes: int = 262_144) -> str:
+def new_scan_report() -> dict[str, Any]:
+    return {"attempted_files": 0, "inspected_files": 0, "bytes_read": 0,
+            "truncated_files": 0, "unreadable_files": 0,
+            "skipped_file_limit": 0, "skipped_byte_limit": 0, "limitations": []}
+
+
+def scan_limitation(inspection: dict[str, Any], reason: str, paths: list[str]) -> None:
+    """Count all omissions but retain only bounded path samples, never error output."""
+    inspection[reason] += len(paths)
+    for rel in paths[:max(0, 20 - len(inspection["limitations"]))]:
+        inspection["limitations"].append({"path": rel, "reason": reason})
+
+
+def read_text_prefix(path: Path, max_bytes: int, inspection: dict[str, Any], rel: str) -> str | None:
+    inspection["attempted_files"] += 1
     try:
-        if not path.is_file() or path.stat().st_size > max_bytes:
-            return ""
-        return path.read_text(encoding="utf-8", errors="ignore")
+        if not path.is_file():
+            raise OSError("not a regular file")
+        size = path.stat().st_size
+        with path.open("rb") as stream:
+            data = stream.read(max_bytes)
     except OSError:
-        return ""
+        scan_limitation(inspection, "unreadable_files", [rel])
+        return None
+    inspection["inspected_files"] += 1
+    inspection["bytes_read"] += len(data)
+    if size > len(data):
+        scan_limitation(inspection, "truncated_files", [rel])
+    return data.decode("utf-8", errors="ignore")
+
+
+def safe_text(path: Path, max_bytes: int = 262_144) -> str:
+    """Read at most the bounded prefix; an empty result is not inspection proof."""
+    return read_text_prefix(path, max_bytes, new_scan_report(), str(path)) or ""
+
+
+def scan_texts(root: Path, candidates: list[str], limit: int, max_file_bytes: int,
+               max_total_bytes: int, inspection: dict[str, Any] | None = None) -> list[tuple[str, str]]:
+    report = inspection if inspection is not None else new_scan_report()
+    result: list[tuple[str, str]] = []
+    for index, rel in enumerate(candidates):
+        if report["attempted_files"] >= limit:
+            scan_limitation(report, "skipped_file_limit", candidates[index:])
+            break
+        remaining = max_total_bytes - report["bytes_read"]
+        if remaining <= 0:
+            scan_limitation(report, "skipped_byte_limit", candidates[index:])
+            break
+        text = read_text_prefix(root / rel, min(max_file_bytes, remaining), report, rel)
+        if text is not None:
+            result.append((rel, text))
+    return result
 
 
 def candidate_texts(
@@ -268,6 +322,7 @@ def candidate_texts(
     limit: int = 600,
     max_file_bytes: int = 65_536,
     max_total_bytes: int = 8_388_608,
+    inspection: dict[str, Any] | None = None,
 ) -> list[tuple[str, str]]:
     candidates: list[str] = []
     for rel in files:
@@ -281,16 +336,7 @@ def candidate_texts(
             rel,
         )
     )
-    result: list[tuple[str, str]] = []
-    total = 0
-    for rel in candidates[:limit]:
-        text = safe_text(root / rel, max_file_bytes)
-        size = len(text.encode("utf-8", "ignore"))
-        if total + size > max_total_bytes:
-            break
-        result.append((rel, text))
-        total += size
-    return result
+    return scan_texts(root, candidates, limit, max_file_bytes, max_total_bytes, inspection)
 
 
 def touched_texts(
@@ -299,19 +345,27 @@ def touched_texts(
     files: list[str],
     limit: int = 120,
     max_total_bytes: int = 1_048_576,
+    inspection: dict[str, Any] | None = None,
 ) -> list[tuple[str, str]]:
-    result: list[tuple[str, str]] = []
+    candidates_all: list[str] = []
     seen: set[str] = set()
-    total = 0
+    known_files = set(files)
     for raw in paths:
         rel = normalize_rel(raw)
         if not rel:
             continue
         path = root / rel
         candidates: list[str] = []
-        if path.exists() and path.is_file():
+        try:
+            is_file = rel in known_files or path.is_file()
+            is_dir = not is_file and path.is_dir()
+        except OSError:
+            # Let the bounded reader report failed access instead of aborting
+            # routing before an affected-path limitation can be retained.
+            is_file, is_dir = True, False
+        if is_file:
             candidates = [rel]
-        elif path.exists() and path.is_dir():
+        elif is_dir:
             prefix = rel + "/"
             candidates = [
                 item
@@ -327,16 +381,11 @@ def touched_texts(
                 )
             )
         for item in candidates:
-            if item in seen or len(result) >= limit:
+            if item in seen:
                 continue
-            text = safe_text(root / item, 65_536)
-            size = len(text.encode("utf-8", "ignore"))
-            if total + size > max_total_bytes:
-                return result
-            result.append((item, text))
             seen.add(item)
-            total += size
-    return result
+            candidates_all.append(item)
+    return scan_texts(root, candidates_all, limit, 65_536, max_total_bytes, inspection)
 
 
 def contains_any(text: str, values: list[str]) -> list[str]:
@@ -795,15 +844,14 @@ def applicable_agent_docs(
 def detected_project_invariants(
     root: Path,
     agent_docs: list[str] | None = None,
+    inspection: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     sources = list(agent_docs or [])
     sources.extend(["PROJECT.md", "ARCHITECTURE.md", "STATUS.md"])
-    for name in dict.fromkeys(sources):
-        path = root / name
-        if not path.exists():
-            continue
-        for value in extract_invariants(safe_text(path)):
+    sources = [name for name in dict.fromkeys(sources) if (root / name).exists()]
+    for name, text in scan_texts(root, sources, 120, 262_144, 1_048_576, inspection):
+        for value in extract_invariants(text):
             rows.append({"source": name, "text": value})
     return rows
 
@@ -902,10 +950,11 @@ def plan(
             "unknown capability pack(s): " + ", ".join(unknown_includes)
         )
     files = project_files(root)
-    area_roots = discover_area_roots(root, files, config)
+    scans = {name: new_scan_report() for name in ("area_discovery", "project", "affected", "invariants")}
+    area_roots = discover_area_roots(root, files, config, paths, scans["area_discovery"])
     scan_files, scan_strategy = scan_candidate_files(files, paths, area_roots)
-    texts = candidate_texts(root, scan_files)
-    touched = touched_texts(root, paths, files)
+    texts = candidate_texts(root, scan_files, inspection=scans["project"])
+    touched = touched_texts(root, paths, files, inspection=scans["affected"])
 
     project_ev: dict[str, list[str]] = {}
     task_ev: dict[str, list[str]] = {}
@@ -959,7 +1008,13 @@ def plan(
         )
 
     agent_docs = applicable_agent_docs(root, files, paths)
-    detected_invariants = detected_project_invariants(root, agent_docs)
+    detected_invariants = detected_project_invariants(root, agent_docs, scans["invariants"])
+    routing_uncertainties = [
+        f"{name} inspection incomplete: " + ", ".join(f"{key}={report[key]}" for key in (
+            "truncated_files", "unreadable_files", "skipped_file_limit", "skipped_byte_limit") if report[key])
+        for name, report in scans.items()
+        if any(report[key] for key in ("truncated_files", "unreadable_files", "skipped_file_limit", "skipped_byte_limit"))
+    ]
     core_mode = selected_core_mode(int(risk["tier"]))
     core_refs = list(config["core_context"][core_mode])
     if (
@@ -1049,6 +1104,7 @@ def plan(
             "paths": paths,
             "explicit_pack_includes": sorted(set(include_packs)),
             "structured_context_facts": normalized_context_facts,
+            "routing_uncertainties": routing_uncertainties,
             "risk": risk,
             "scope": scope,
             "routing_note": (
@@ -1072,6 +1128,18 @@ def plan(
         "lifecycle": {"stage_owner": "vibe-coding-skill", "stages": load_specialist_manager().registry()["lifecycle"],
                       "rule": "Stage selects the assignment boundary, not all specialists. Reuse settled work; apply only relevant stage controls."},
         "context_plan": {
+            "inspection": {
+                "complete": not routing_uncertainties,
+                "scans": scans,
+                "required_action": (
+                    "Head must assess incomplete inspection against the affected entrypoints, "
+                    "platform and applicable instructions before relying on absent evidence. "
+                    "Inspect the specific missing region/source or supply confirmed semantic facts "
+                    "and re-route; retain unresolved limitations. Do not infer absence of a platform "
+                    "or all invariants from a partial scan."
+                    if routing_uncertainties else "No bounded-inspection limitation detected."
+                ),
+            },
             "load": load_paths,
             "skip_packs": skipped,
             "guidance": (
@@ -1107,10 +1175,7 @@ def plan(
                 "integration_points": len(set(integrations)),
                 "project_files_considered": len(files),
                 "project_text_files_scanned": len(texts),
-                "project_text_bytes_scanned": sum(
-                    len(text.encode("utf-8", "ignore"))
-                    for _, text in texts
-                ),
+                "project_text_bytes_scanned": scans["project"]["bytes_read"],
             },
             "coverage": {
                 "project_invariants_preserved": bool(
@@ -1192,6 +1257,10 @@ def main() -> int:
         )
         for path in result["context_plan"]["load"]:
             print(f"LOAD: {path}")
+        for uncertainty in result["task"]["routing_uncertainties"]:
+            print(f"WARNING: {uncertainty}")
+        if result["task"]["routing_uncertainties"]:
+            print(result["context_plan"]["inspection"]["required_action"])
     return 0
 
 
