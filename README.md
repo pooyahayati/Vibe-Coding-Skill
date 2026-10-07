@@ -4,7 +4,7 @@
 
 A risk-adaptive engineering Head for AI-assisted development of small, medium and large software projects, including WordPress plugins. Works with OpenAI Codex, Claude Code and compatible skill-based agents.
 
-Current version: `1.4.0` — [stable release and portable ZIP](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.4.0). Source changes under [Unreleased](CHANGELOG.md#unreleased) do not automatically update a published package or local installation.
+Current version: `1.5.0` — [stable release and portable ZIP](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.5.0). Source changes under [Unreleased](CHANGELOG.md#unreleased) do not automatically update a published package or local installation.
 
 ## One engineering Head, focused specialists
 
