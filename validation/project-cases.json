@@ -43,7 +43,7 @@
       "approval_required": true,
       "bootstrap_profile": "critical",
       "objective": "Migrate production data without unplanned data loss.",
-      "expected_integration_status": "FAIL"
+      "expected_integration_status": "WARN"
     },
     {
       "id": "payment-webhook-integration",

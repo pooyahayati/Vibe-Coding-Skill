@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import os
 import re
@@ -11,6 +12,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from contextlib import redirect_stdout
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -1612,6 +1615,98 @@ class BootstrapTests(unittest.TestCase):
 
 
 class IntegrationGuardTests(unittest.TestCase):
+    def setUp(self):
+        with mock.patch.object(sys, "path", [str(ROOT / "scripts"), *sys.path]):
+            self.guard = load_script("integration_guard.py")
+        self.graph = {"available": True, "graph_exists": True, "fresh": True, "stale": False}
+        self.ready = {"gate": "BLOCK", "release_scan_verified": False, "failures": ["missing native Trivy"]}
+
+    def fixture_check(self, **kwargs):
+        with mock.patch.object(self.guard, "run", return_value=(0, "fixture-head")), \
+             mock.patch.object(self.guard.github_traceability, "detect", return_value={}), \
+             mock.patch.object(self.guard.graph_provider, "status", return_value=self.graph), \
+             mock.patch.object(self.guard.shutil, "which", side_effect=lambda name: "git" if name == "git" else None), \
+             mock.patch.object(self.guard.trivy_compat, "local_readiness", return_value=self.ready):
+            return self.guard.check(ROOT, kwargs.pop("tier", 3), **kwargs)
+
+    def test_development_and_legacy_health_do_not_grant_security_completion(self):
+        for operation in ("health", "development"):
+            result = self.fixture_check(operation=operation, graph_use="source")
+            self.assertEqual(result["status"], "WARN")
+            self.assertEqual(result["problems"], [])
+            self.assertFalse(result["release_scan_verified"])
+            self.assertFalse(result["task_evidence_checked"])
+            self.assertEqual(result["publication_security_gate"], "NOT_CHECKED")
+        completion = load_script("completion_gate.py").evaluate({
+            "schema_version": 2, "status": "Done", "risk_tier": 0,
+            "acceptance_criteria": [{"id": "security", "description": "Required authorization check",
+                                     "required": True, "met": False, "evidence_ids": ["security"]}],
+            "evidence": [{"id": "health", "kind": "test", "result": "pass", "required": False},
+                         {"id": "security", "kind": "security", "result": "unavailable", "required": True}],
+        })
+        self.assertEqual(completion["gate"], "BLOCK")
+        self.assertTrue(any("required evidence security did not pass" in x for x in completion["failures"]))
+
+    def test_stale_or_absent_graph_blocks_only_authoritative_reliance(self):
+        for state in ({"fresh": False, "stale": True, "graph_exists": True},
+                      {"fresh": False, "stale": False, "graph_exists": False}):
+            self.graph.update(state)
+            for tier in (0, 3):
+                with self.subTest(state=state, tier=tier):
+                    self.assertEqual(self.fixture_check(tier=tier, graph_use="authoritative")["status"], "FAIL")
+                    self.assertNotEqual(self.fixture_check(tier=tier, graph_use="source")["status"], "FAIL")
+                    self.assertNotEqual(self.fixture_check(tier=tier)["status"], "FAIL")
+        self.graph.update(fresh=True, stale=False, graph_exists=True)
+        self.assertEqual(self.fixture_check(tier=0, graph_use="authoritative")["status"], "PASS")
+
+    def test_publication_context_and_final_inputs_are_required(self):
+        with mock.patch.object(self.guard.trivy_compat, "release_scan") as scan:
+            for options in ({"operation": "publication"}, {"operation": "unknown"},
+                            {"operation": "development", "release_target": "dist"},
+                            {"operation": "publication", "release_target": "dist", "release_report": ROOT / "scan.json"}):
+                with self.subTest(options=options):
+                    result = self.fixture_check(**options)
+                    self.assertEqual(result["status"], "FAIL")
+                    self.assertFalse(result["release_scan_verified"])
+            scan.assert_not_called()
+
+    def test_publication_uses_native_gate_and_never_accepts_presence_or_warning(self):
+        self.ready = {"gate": "PASS", "runtime": "native", "version": "1.2.3", "release_scan_verified": False}
+        report = ROOT.parent / "fixture-private" / "scan.json"
+        for gate, verified, expected in [("PASS", True, "PASS"), ("PASS", False, "FAIL"),
+                                         ("BLOCK", False, "FAIL"), ("BLOCK", True, "FAIL"), ("WARN", True, "FAIL")]:
+            with self.subTest(gate=gate, verified=verified), mock.patch.object(
+                self.guard.trivy_compat, "release_scan", return_value={"gate": gate, "release_scan_verified": verified},
+            ) as scan:
+                result = self.fixture_check(operation="publication", release_target="dist", release_report=report)
+                self.assertEqual(result["status"], expected)
+                self.assertEqual(result["publication_security_gate"], gate)
+                scan.assert_called_once_with(str((ROOT / "dist").resolve()), report,
+                                             target_type="fs", scanners="vuln,secret")
+        with mock.patch.object(self.guard.trivy_compat, "release_scan") as scan:
+            self.assertEqual(self.fixture_check(operation="publication")["status"], "FAIL")
+            scan.assert_not_called()
+
+    def test_missing_native_publication_never_uses_container_or_development_fallback(self):
+        with mock.patch.object(self.guard.trivy_compat.subprocess, "run") as process:
+            result = self.fixture_check(operation="publication", release_target="dist",
+                                        release_report=ROOT.parent / "fixture-private" / "scan.json")
+            self.assertEqual(result["status"], "FAIL")
+            self.assertEqual(result["publication_security_gate"], "BLOCK")
+            self.assertFalse(result["release_scan_verified"])
+            process.assert_not_called()
+
+    def test_legacy_cli_and_strict_exit_codes_remain_explicit(self):
+        for arguments, result, expected in [([], {"status": "PASS", "problems": [], "warnings": []}, 0),
+                                           ([], {"status": "WARN", "problems": [], "warnings": ["diagnostic"]}, 0),
+                                           (["--strict"], {"status": "WARN", "problems": [], "warnings": ["diagnostic"]}, 1),
+                                           ([], {"status": "FAIL", "problems": ["blocked"], "warnings": []}, 2)]:
+            with self.subTest(arguments=arguments, result=result), mock.patch.object(
+                sys, "argv", ["integration_guard.py", "--json", *arguments]), \
+                 mock.patch.object(self.guard, "check", return_value=result) as check, redirect_stdout(io.StringIO()):
+                self.assertEqual(self.guard.main(), expected)
+                self.assertEqual(check.call_args.kwargs["operation"], "health")
+
     def _fake_exe(self, root: Path, name: str, body: str) -> None:
         path = root / name
         path.write_text("#!/bin/sh\n" + body + "\n", encoding="utf-8")

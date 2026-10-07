@@ -4,6 +4,8 @@ Technical release history. Entries describe their release; current operating and
 
 ## Unreleased
 
+- A5: Separate read-only integration health/development from explicit publication scanning. Missing native Trivy no longer blocks safe development solely by tier; authoritative graph reliance requires freshness while source analysis remains available. Delegate publication to the existing native Trivy gate with a final target and private report, preserve unresolved security evidence in the completion gate, and document legacy/strict exits. Update callers and focused/portable regressions; no second scanner, release or installation change.
+
 - A4: Parse full WP-CLI stdout separately from bounded stderr/combined diagnostics. Explicitly reject oversized stdout, malformed plugin lists and empty/multiline version output; report command timeouts as structured CLI failures. Preserve exact-artifact install/upgrade and uninstall/data safeguards, with focused runtime and extracted-package regressions. No version or installation change.
 
 - A3: Bind npm license/repository evidence to the selected version and require matching version evidence for normalized-provider supplements. Replace license token matching with a bounded evaluator for explicit AND/OR/WITH policies; unresolved expressions require review, deny-list vetoes remain, and projects without a policy gain no default restrictions. Add deterministic registry, policy and extracted-package CLI regressions; no dependency, version or installation change.

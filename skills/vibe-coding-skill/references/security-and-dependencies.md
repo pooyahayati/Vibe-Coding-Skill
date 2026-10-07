@@ -32,6 +32,8 @@ Planning preflight (presence/version only; never scan evidence):
 python scripts/trivy_compat.py --check-local --json
 ```
 
+`integration_guard.py` health/development results are also preflight only and cannot satisfy required security evidence or publication. Its explicit publication route delegates to this same native gate; choose one scan entrypoint and retain its evidence rather than running duplicate scans. See [operation and graph-use controls](risk-classifier-and-integrations.md#integration-guard).
+
 Before publication, run the real check against the final prepared delivery tree and store the report outside product source:
 
 ```bash

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only integration health gate for GitHub, Graphify, Trivy, and graph freshness."""
+"""Integration health checks with explicit delegation to the native publication scanner."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from pathlib import Path
 
 import graph_provider
 import github_traceability
+import trivy_compat
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLCHAIN = ROOT / "config" / "toolchain.json"
@@ -30,20 +31,25 @@ def first_version(text: str) -> str | None:
     return m.group(1) if m else None
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--root", default=".")
-    ap.add_argument("--tier", type=int, choices=[0,1,2,3], default=1)
-    ap.add_argument("--json", action="store_true")
-    ap.add_argument("--strict", action="store_true")
-    ns = ap.parse_args()
-    root = Path(ns.root).resolve()
+def check(root: Path, tier: int, *, operation: str = "health", graph_use: str = "auto",
+          release_target: str | None = None, release_report: Path | None = None,
+          target_type: str = "fs", scanners: str = "vuln,secret") -> dict:
+    root = root.resolve()
     cfg = json.loads(TOOLCHAIN.read_text(encoding="utf-8"))
 
-    result: dict[str, object] = {"root": str(root), "tier": ns.tier, "checks": {}, "problems": [], "warnings": []}
+    result: dict[str, object] = {
+        "root": str(root), "tier": tier, "operation": operation, "graph_use": graph_use,
+        "checks": {}, "problems": [], "warnings": [], "task_evidence_checked": False,
+        "release_scan_verified": False, "publication_security_gate": "NOT_CHECKED",
+    }
     checks: dict[str, object] = result["checks"]  # type: ignore[assignment]
     problems: list[str] = result["problems"]  # type: ignore[assignment]
     warnings: list[str] = result["warnings"]  # type: ignore[assignment]
+
+    if operation not in {"health", "development", "publication"} or graph_use not in {"auto", "source", "authoritative"}:
+        return dict(result, status="FAIL", problems=["unsupported operation or graph-use context"])
+    if operation != "publication" and (release_target is not None or release_report is not None):
+        return dict(result, status="FAIL", problems=["release inputs require explicit publication operation"])
 
     if not shutil.which("git"):
         problems.append("Git is required")
@@ -61,7 +67,10 @@ def main() -> int:
         elif gh_status.get("detected") and not gh_status.get("authenticated"):
             warnings.append("GitHub remote detected but gh authentication is unavailable")
 
-    graph = graph_provider.status(root)
+    try:
+        graph = graph_provider.status(root)
+    except (OSError, ValueError, RuntimeError) as exc:
+        graph = {"available": False, "fresh": False, "error": str(exc)}
     resolution = cfg.get("graphify", {}).get("resolution")
     installed = first_version(str(graph.get("provider_version") or ""))
     graph["resolution"] = resolution
@@ -75,42 +84,67 @@ def main() -> int:
     }
     if installed:
         checks["graph_provider"]["runtime_version_detected"] = installed
-    if ns.tier >= 2:
+    if graph_use == "authoritative" and not graph.get("fresh"):
+        problems.append("authoritative graph use requires a present, fresh graph; refresh it or select source analysis")
+    if tier >= 2:
         if not graph.get("available"):
             warnings.append("Graphify unavailable for a Tier 2+ change; use repository/source fallback impact analysis")
         elif not graph.get("graph_exists"):
             warnings.append("No local project graph exists; refresh it or use explicit fallback impact analysis")
         elif graph.get("stale"):
-            warnings.append("project graph is stale relative to the current working tree")
+            warnings.append("project graph is stale; source analysis must supply impact evidence without relying on this graph")
 
-    trivy = shutil.which("trivy")
-    if trivy:
-        rc, out = run([trivy, "--version"], root)
-        checks["trivy"] = {"installed": True, "version": first_version(out), "command_ok": rc == 0}
-    else:
-        checks["trivy"] = {"installed": False}
-        if ns.tier >= 2:
-            warnings.append("Trivy unavailable for Tier 2+ baseline security scanning")
+    ready = trivy_compat.local_readiness()
+    checks["trivy"] = {"installed": bool(shutil.which("trivy")), "version": ready.get("version"),
+                       "command_ok": ready.get("gate") == "PASS", "preflight": ready}
+    if ready.get("gate") != "PASS" and tier >= 2:
+        warnings.append("native Trivy unavailable; safe development may continue with task-required native security checks")
 
-    if ns.tier == 3:
-        # For critical work, missing key evidence providers are blockers unless a documented equivalent exists.
-        if not trivy:
-            problems.append("Tier 3 requires a security scanner or documented equivalent")
-        if graph.get("stale"):
-            problems.append("Tier 3 cannot rely on a stale graph")
+    if operation == "publication":
+        result["publication_security_gate"] = "BLOCK"
+        if not release_target or release_report is None:
+            problems.append("publication requires the final release target and a private release report path; tool presence is not scan evidence")
+        elif release_report.expanduser().resolve().is_relative_to(root):
+            problems.append("release report/cache must stay outside the project source")
+        elif not problems:
+            target = str((root / release_target).expanduser().resolve()) if target_type == "fs" else release_target
+            scan = trivy_compat.release_scan(target, release_report, target_type=target_type, scanners=scanners)
+            checks["publication_security"] = scan
+            result["publication_security_gate"] = scan["gate"]
+            result["release_scan_verified"] = scan.get("release_scan_verified") is True
+            if scan["gate"] != "PASS" or not result["release_scan_verified"]:
+                problems.append("native publication scan did not qualify; resolve its failures or required Head assessment")
 
-    status = "FAIL" if problems else ("WARN" if warnings else "PASS")
-    result["status"] = status
+    result["status"] = "FAIL" if problems else ("WARN" if warnings else "PASS")
+    return result
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--root", default=".")
+    ap.add_argument("--tier", type=int, choices=[0,1,2,3], default=1)
+    ap.add_argument("--operation", choices=["health", "development", "publication"], default="health")
+    ap.add_argument("--graph-use", choices=["auto", "source", "authoritative"], default="auto")
+    ap.add_argument("--release-target", help="final delivery directory or immutable image; publication only")
+    ap.add_argument("--release-report", type=Path, help="private Trivy report outside source; publication only")
+    ap.add_argument("--target-type", choices=["fs", "image"], default="fs")
+    ap.add_argument("--scanners", default="vuln,secret")
+    ap.add_argument("--json", action="store_true")
+    ap.add_argument("--strict", action="store_true")
+    ns = ap.parse_args()
+    result = check(Path(ns.root), ns.tier, operation=ns.operation, graph_use=ns.graph_use,
+                   release_target=ns.release_target, release_report=ns.release_report,
+                   target_type=ns.target_type, scanners=ns.scanners)
     if ns.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
-        print(f"Integration Gate: {status}")
-        for item in problems:
+        print(f"Integration {ns.operation}: {result['status']} (task evidence checked: false)")
+        for item in result["problems"]:
             print(f"ERROR: {item}")
-        for item in warnings:
+        for item in result["warnings"]:
             print(f"WARN: {item}")
 
-    return 2 if problems else (1 if ns.strict and warnings else 0)
+    return 2 if result["problems"] else (1 if ns.strict and result["warnings"] else 0)
 
 
 if __name__ == "__main__":

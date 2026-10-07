@@ -75,6 +75,7 @@ def main() -> int:
                 sys.executable, str(ROOT / "scripts" / "integration_guard.py"),
                 "--root", str(root),
                 "--tier", str(case["expected_tier"]),
+                "--operation", "development", "--graph-use", "source",
                 "--json",
             ]
             gate_rc, gate = run_json(gate_cmd, root)
