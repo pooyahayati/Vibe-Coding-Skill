@@ -75,7 +75,9 @@ Query/path/explain refuse stale graphs by default. `--allow-stale` is explicit d
 
 ## Freshness
 
-Freshness binds graph evidence to current Git HEAD plus a working-tree fingerprint containing tracked modifications and untracked non-ignored source files.
+Freshness binds graph evidence to the Git HEAD and working-tree fingerprint captured before generation, the exact source-file snapshot processed, and the stored graph bytes. Check the live inputs and copied inputs before and after provider execution; reject a changed or incompletely copied snapshot without publishing it or replacing the previous graph. Provider failure also keeps prior evidence. Retry only after the source stabilizes; no automatic retry loop or synthetic freshness follows.
+
+Local graph-state schema 3 retains `source_snapshot_sha256` and `graph_sha256`. Older cache metadata lacks proof of the processed snapshot and is reported stale until refreshed; it is not silently promoted. This is a disposable graph-cache migration, not a task-contract/receipt migration. A successful refresh still reports current freshness independently; later source/output changes invalidate authoritative graph use. Links escaping the snapshot, directory/dangling links and links the host cannot copy fail explicitly instead of being silently omitted.
 
 Graph state is local:
 

@@ -11,7 +11,7 @@ import re
 import subprocess
 import sys
 from html.parser import HTMLParser
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -107,7 +107,17 @@ def project_files(root: Path) -> list[str]:
 
 
 def normalize_rel(raw: str) -> str:
-    return raw.replace("\\", "/").lstrip("./").rstrip("/")
+    """Normalize separators/dot components without changing literal names."""
+    value = raw.replace("\\", "/")
+    if value.startswith("/") or PureWindowsPath(value).drive or "\0" in value:
+        raise ValueError("affected paths must be project-relative")
+    parts = value.split("/")
+    if ".." in parts:
+        raise ValueError("affected paths cannot traverse parent directories")
+    normalized = "/".join(part for part in parts if part and part != ".") or ("." if value else "")
+    if PureWindowsPath(normalized).drive:
+        raise ValueError("affected paths must be project-relative")
+    return normalized
 
 
 def normalize_context_fact_value(value: Any) -> str:
@@ -255,7 +265,7 @@ def scan_candidate_files(
     paths: list[str],
     area_roots: tuple[str, ...] = (),
 ) -> tuple[list[str], str]:
-    if not paths:
+    if not paths or any(normalize_rel(raw) == "." for raw in paths):
         return files, "fallback-project-scan"
 
     areas = {scan_area(raw, area_roots) for raw in paths if normalize_rel(raw)}
@@ -315,6 +325,9 @@ def scan_texts(root: Path, candidates: list[str], limit: int, max_file_bytes: in
         if remaining <= 0:
             scan_limitation(report, "skipped_byte_limit", candidates[index:])
             break
+        if not (root / rel).resolve().is_relative_to(root.resolve()):
+            scan_limitation(report, "unreadable_files", [rel])
+            continue
         text = read_text_prefix(root / rel, min(max_file_bytes, remaining), report, rel)
         if text is not None:
             result.append((rel, text))
@@ -352,6 +365,7 @@ def touched_texts(
     max_total_bytes: int = 1_048_576,
     inspection: dict[str, Any] | None = None,
 ) -> list[tuple[str, str]]:
+    report = inspection if inspection is not None else new_scan_report()
     candidates_all: list[str] = []
     seen: set[str] = set()
     known_files = set(files)
@@ -371,7 +385,7 @@ def touched_texts(
         if is_file:
             candidates = [rel]
         elif is_dir:
-            prefix = rel + "/"
+            prefix = "" if rel == "." else rel + "/"
             candidates = [
                 item
                 for item in files
@@ -385,12 +399,14 @@ def touched_texts(
                     item,
                 )
             )
+        else:
+            scan_limitation(report, "unreadable_files", [rel])
         for item in candidates:
             if item in seen:
                 continue
             seen.add(item)
             candidates_all.append(item)
-    return scan_texts(root, candidates_all, limit, 65_536, max_total_bytes, inspection)
+    return scan_texts(root, candidates_all, limit, 65_536, max_total_bytes, report)
 
 
 def contains_any(text: str, values: list[str]) -> list[str]:
@@ -610,7 +626,7 @@ def evidence_location_areas(evidence: list[str], area_roots: tuple[str, ...] = (
 def task_path_roots(paths: list[str]) -> set[str]:
     roots: set[str] = set()
     for raw in paths:
-        rel = raw.replace("\\", "/").lstrip("./")
+        rel = normalize_rel(raw)
         if not rel:
             continue
         parts = Path(rel).parts
@@ -637,7 +653,7 @@ def task_capability_areas(paths: list[str], area_roots: tuple[str, ...] = ()) ->
 def change_scope(paths: list[str], risk: dict[str, Any], area_roots: tuple[str, ...] = ()) -> dict[str, Any]:
     normalized_paths = list(
         dict.fromkeys(
-            raw.replace("\\", "/").lstrip("./")
+            normalize_rel(raw)
             for raw in paths
             if raw.strip()
         )
@@ -896,7 +912,7 @@ def applicable_agent_docs(
             continue
         parent = Path(rel).parent.as_posix()
         if any(
-            path == parent or path.startswith(parent + "/")
+            path == "." or path == parent or path.startswith(parent + "/") or parent.startswith(path + "/")
             for path in normalized_paths
         ):
             selected.append(rel)
@@ -1002,7 +1018,9 @@ def plan(
     stage: str = "discover",
 ) -> dict[str, Any]:
     root = root.resolve()
-    paths = paths or []
+    paths = list(dict.fromkeys(normalize_rel(raw) for raw in paths or [] if raw))
+    if any(not (root / rel).resolve().is_relative_to(root) for rel in paths):
+        raise ValueError("affected path resolves outside the project root")
     invariants = invariants or []
     include_packs = include_packs or []
     config = load_config()
