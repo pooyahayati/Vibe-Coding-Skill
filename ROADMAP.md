@@ -6,11 +6,11 @@ Canonical current status; closed specifications and historical verification live
 
 | State | Position |
 |---|---|
-| Published runtime | Stable `1.4.0`, release commit `9aa2c9db69ab14cb6530f7b1e84dd8effeb56ccb`. |
-| Completed improvement work | Original nine packages + F1 shipped in `1.3.0`; R1-R4 shipped in `1.3.1`; three approved follow-ups shipped in `1.4.0`. |
-| Current phase | **1.5.0 delivery in progress**; A1-A5 complete and merged in PRs #90-94. |
-| Scope | Authorized stable 1.5.0 publication and verified local installation; no new implementation package. |
-| Next action | Merge the release version, pass same-commit publication gates, verify the published ZIP/checksum, then update and verify the local installation. |
+| Published runtime | Stable `1.5.0`, release commit `0509f53d274e63ae47077dfd4656310281f9bd05`; verified local installation is also `1.5.0`. |
+| Completed improvement work | Original nine packages + F1 shipped in `1.3.0`; R1-R4 shipped in `1.3.1`; three approved follow-ups shipped in `1.4.0`; A1-A5 shipped in `1.5.0`. |
+| Current phase | **1.5.0 delivered**; A1-A5 complete and merged in PRs #90-94, published through [PR #96](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/96). |
+| Scope | Approved remediation, stable publication and local installation are complete. |
+| Next action | No pending action in this cycle; new work requires a separately selected scope. |
 | Remaining work | **5/5 packages merged; 0/7 confirmed findings open.** F1-F7 closed by verified A1-A5 integration. Package status is maintained only in this roadmap. |
 
 ## Deep-audit remediation cycle A1-A5
@@ -21,11 +21,11 @@ Finding IDs **F1-F7** refer to the latest deep audit; they are separate from the
 
 | Order | Package | Intended correction | Audit findings / severity | Status |
 |---|---|---|---|---|
-| 1 | [A1: Retained-state and contract continuity](docs/improvement-implementation-plan.md#a1-retained-state-and-contract-continuity) | Preserve obligations through remote changes, recovery and authorized contract revisions; reconcile specialist assignments without losing findings. | F1, F2 / High | **Complete**; [PR #90](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/90), merge `50144bf0c8d3532a11ffec21167ac71b613a721b`. All 12 PR checks passed; local 297 tests: 294 passed, 3 environment skips. Not released/installed. |
-| 2 | [A2: Reliable routing and graph inputs](docs/improvement-implementation-plan.md#a2-reliable-routing-and-graph-inputs) | Preserve literal hidden paths and governing instructions; bind graph freshness to the source actually analyzed. | F3 / High; F4 / Medium | **Complete**; [PR #91](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/91), merge `43f1ad2e5f36b65839981d863f26f8b7d84796bd`. All 12 PR checks passed; focused routing/graph and extracted-package checks passed. Not released/installed. |
-| 3 | [A3: Version-bound dependency decisions](docs/improvement-implementation-plan.md#a3-version-bound-dependency-decisions) | Use selected-version metadata and apply compound license policy without false acceptance. | F5 / Medium | **Complete**; [PR #92](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/92), merge `941e22cd8f106871e0478dd2b930215d41474231`. All 14 PR checks passed; 17 focused local tests and package/structure checks passed. Not released/installed. |
-| 4 | [A4: WordPress command output integrity](docs/improvement-implementation-plan.md#a4-wordpress-command-output-integrity) | Parse complete structured stdout separately from diagnostic output. | F6 / Medium | **Complete**; [PR #93](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/93), merge `1f9f95ea2a7b849b73b59bc412dced1d2e7b9af4`. All 12 PR checks passed, including real WordPress Artifact Contract. Local: 12 tests passed, 1 Windows symlink skip. Not released/installed. |
-| 5 | [A5: Stage-aware integration controls](docs/improvement-implementation-plan.md#a5-stage-aware-integration-controls) | Align development health checks with the native publication gate and conditional graph requirements. | F7 / Medium | **Complete**; [PR #94](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/94), merge `54574b2dea8faaf5ce34c0b2b88ed3e9c604652a`. All 14 PR checks passed; 16 focused tests, 5 project scenarios and 9 failure injections passed locally, including portable CLI/install validation. Not released/installed. |
+| 1 | [A1: Retained-state and contract continuity](docs/improvement-implementation-plan.md#a1-retained-state-and-contract-continuity) | Preserve obligations through remote changes, recovery and authorized contract revisions; reconcile specialist assignments without losing findings. | F1, F2 / High | **Complete**; [PR #90](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/90), merge `50144bf0c8d3532a11ffec21167ac71b613a721b`. All 12 PR checks passed; local 297 tests: 294 passed, 3 environment skips. Delivered in `1.5.0`; see delivery evidence below. |
+| 2 | [A2: Reliable routing and graph inputs](docs/improvement-implementation-plan.md#a2-reliable-routing-and-graph-inputs) | Preserve literal hidden paths and governing instructions; bind graph freshness to the source actually analyzed. | F3 / High; F4 / Medium | **Complete**; [PR #91](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/91), merge `43f1ad2e5f36b65839981d863f26f8b7d84796bd`. All 12 PR checks passed; focused routing/graph and extracted-package checks passed. Delivered in `1.5.0`; see delivery evidence below. |
+| 3 | [A3: Version-bound dependency decisions](docs/improvement-implementation-plan.md#a3-version-bound-dependency-decisions) | Use selected-version metadata and apply compound license policy without false acceptance. | F5 / Medium | **Complete**; [PR #92](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/92), merge `941e22cd8f106871e0478dd2b930215d41474231`. All 14 PR checks passed; 17 focused local tests and package/structure checks passed. Delivered in `1.5.0`; see delivery evidence below. |
+| 4 | [A4: WordPress command output integrity](docs/improvement-implementation-plan.md#a4-wordpress-command-output-integrity) | Parse complete structured stdout separately from diagnostic output. | F6 / Medium | **Complete**; [PR #93](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/93), merge `1f9f95ea2a7b849b73b59bc412dced1d2e7b9af4`. All 12 PR checks passed, including real WordPress Artifact Contract. Local: 12 tests passed, 1 Windows symlink skip. Delivered in `1.5.0`; see delivery evidence below. |
+| 5 | [A5: Stage-aware integration controls](docs/improvement-implementation-plan.md#a5-stage-aware-integration-controls) | Align development health checks with the native publication gate and conditional graph requirements. | F7 / Medium | **Complete**; [PR #94](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/94), merge `54574b2dea8faaf5ce34c0b2b88ed3e9c604652a`. All 14 PR checks passed; 16 focused tests, 5 project scenarios and 9 failure injections passed locally, including portable CLI/install validation. Delivered in `1.5.0`; see delivery evidence below. |
 
 Default execution order is A1 -> A2 -> A3 -> A4 -> A5, with focused review at each package. A1 establishes the state/migration decisions first. A2-A5 have no mutual implementation dependency; keep one active package unless a different order is explicitly selected. If A1 changes workspace identity, verify A2's graph storage against that accepted identity.
 
@@ -49,6 +49,15 @@ A5 local evidence (Windows, 2026-10-07): reproduced unconditional Tier 3 failure
 - Release version, publication and local installation are separate delivery decisions after implementation; local validation is not a published or installed update.
 
 The pre-existing-tag/partial-release retry concern remains **needs verification**, outside these seven confirmed findings and five packages. Live external-tool compatibility and full WordPress environment execution were not re-established by the local audit; temporary fixtures are not substitutes for that evidence. Do not expand the cycle on an unconfirmed concern.
+
+## 1.5.0 delivery evidence
+
+| Delivery | Verified snapshot |
+|---|---|
+| Release | [Stable v1.5.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.5.0), latest stable, published 2026-10-07 at 08:10:18 UTC; tag resolves to `0509f53d274e63ae47077dfd4656310281f9bd05`. |
+| Required checks | All six baseline workflows passed on that exact commit. [Publication run](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37591957444) passed readiness enforcement, native Trivy setup and the final extracted-package scan/build. |
+| Published ZIP | 79 files, 244,377 bytes; SHA-256 `eb3692a27427c77ac3c8aa2abee231a595d63d3cf3b2a7ce54e404b8e01696c6`. Downloaded ZIP, official checksum, validated candidate and exact-tag installer staging matched. |
+| Local host, 2026-10-07 | `C:\Users\Pooya\.codex\skills\vibe-coding-skill`: `1.5.0`, all 79 installed files match the published archive byte-for-byte with no extra files. Active installation check: PASS, zero failures/warnings. The prior installation was moved outside active skills for rollback. This is a verified host snapshot, not a claim that already-running agents reloaded their context. |
 
 ## Approved delivery follow-ups — 1.4.0
 
