@@ -53,31 +53,41 @@ Registry checks verify package/version existence. OSV checks use ecosystem-nativ
 
 Metadata availability differs by ecosystem. Missing license/provenance evidence returns `REVIEW REQUIRED`.
 
-PyPI and crates.io license evidence belongs to the selected release. Latest-release dates are separate maintenance signals. crates.io repository metadata is project-wide and is labeled accordingly; do not interpret it as proof of the selected artifact's source commit.
+PyPI, npm and crates.io license evidence belongs to the selected release. Latest-release dates are separate maintenance signals. crates.io repository metadata is project-wide and is labeled accordingly; do not interpret it as proof of the selected artifact's source commit.
 
 ## Integration guard
 
 Use:
 
 ```bash
-python scripts/integration_guard.py --root . --tier 2 --json
+python scripts/integration_guard.py --root . --tier 2 --operation development --graph-use source --json
 ```
 
-The integration guard is read-only. It checks:
+Health and development modes are read-only. They check:
 
 - Git repository state;
 - GitHub remote and optional `gh` authentication;
 - Graphify availability and the configured resolution policy;
 - graph-state freshness from the local Vibe Coding workspace;
-- Trivy availability.
+- native Trivy executability/version preflight, without treating presence as a scan.
 
-It does not automatically run destructive commands, push, create PRs, refresh a graph, or scan/send project content.
+Omitting `--operation` preserves the legacy health-only route. Neither health nor development runs a scanner, refreshes graphs, installs tools, pushes or creates PRs. `PASS` means integration health only: `task_evidence_checked` remains false, `release_scan_verified` remains false and `publication_security_gate` is `NOT_CHECKED`. Required task security checks still belong to the retained contract and completion gate; a health result cannot replace them or authorize a sensitive action.
 
-Operational state is read from the local workspace outside the repository. Integration checks must not create `.vibe/` or tool report files in the project tree.
+Operational state is read from the local workspace outside the repository. Missing Trivy is at most a development/health warning, including Tier 3; safe work can continue while task-required native security evidence and authorization remain mandatory.
 
-For Tier 2, missing Graphify/Trivy is a warning when a safe fallback exists.
+Use `--graph-use authoritative` when relying on graph evidence: a missing or non-fresh graph blocks that reliance at every tier. Use `--graph-use source` for direct repository analysis, retaining actual impact evidence in the task contract. The default `auto` reports health only and does not certify either analysis route. A stale graph does not block a declared source-analysis fallback. Graph freshness uses the shared provider's current source/output checks.
 
-For Tier 3, missing required security verification or a stale graph used as evidence is a blocker unless an explicit equivalent has been established.
+For authorized publication only, the optional publication route delegates to the existing [native release gate](security-and-dependencies.md#native-release-gate):
+
+```bash
+python scripts/integration_guard.py --root . --tier 2 --operation publication \
+  --graph-use source --release-target <prepared-release-dir> \
+  --release-report <private-workspace>/security/trivy.json --scanners vuln,secret --json
+```
+
+This explicitly runs a local native scan and may update scanner data; it writes reports/cache only outside project source. Relative filesystem targets resolve against `--root`; report paths resolve against the calling directory. For images use `--target-type image` and an immutable digest. Use this route **or** `trivy_compat.py --release-target`, not both for the same evidence. No cached report input, presence-only result, Docker fallback or development equivalent can satisfy publication. Missing final target/report, an unqualified scan or a native gate warning requiring Head assessment blocks this route. It preserves the helper's target binding, scanner checks and finding policy; the Head still confirms scope, required receipts, other release gates and authorization.
+
+Existing exit codes remain: `2` for blockers, `1` only when `--strict` promotes warnings, otherwise `0`. Strict warnings are diagnostics, not proof of missing task evidence. Unknown operation/graph-use values and release inputs without an explicit publication operation are rejected. Legacy Tier 3 health callers now receive warnings instead of an unconditional scanner/stale-graph failure; callers needing authority must declare graph reliance or publication explicitly.
 
 ## GitHub
 
@@ -93,9 +103,9 @@ A matching native Graphify executable can satisfy the contract directly; otherwi
 
 ## Trivy
 
-Trivy remains the broad baseline scanner. The integration guard checks availability; actual scanning is run only when justified by risk and scope.
+Development uses native project security controls and risk-relevant audits. Trivy is the only additional scanner in the Head workflow. Publication requires the [native release gate](security-and-dependencies.md#native-release-gate), including a working verified stable executable and scans of the final target.
 
-A matching native Trivy executable can satisfy the exact-version contract; otherwise the official versioned container is used. Containerized filesystem scans bind-mount the requested host target read-only and scan its mapped container path.
+The generic tool compatibility adapter can exercise an official versioned container, with read-only filesystem mounts. That compatibility result is not publication evidence and cannot replace the mandatory native scanner. The integration guard's publication route delegates directly to the native helper without container fallback.
 
 A passing Trivy scan does not replace application-level security review or SAST where needed.
 

@@ -228,13 +228,14 @@ def main() -> int:
             [
                 sys.executable, str(ROOT / "scripts" / "integration_guard.py"),
                 "--root", str(project), "--tier", "2", "--json",
+                "--operation", "development", "--graph-use", "authoritative",
             ],
             text=True, capture_output=True, env=env,
         )
         gate = json.loads(p.stdout)
         checks.append({
             "id": "stale-graph",
-            "passed": gate["status"] == "WARN"
+            "passed": p.returncode == 2 and gate["status"] == "FAIL"
             and gate["checks"]["graph_state"]["stale"] is True
             and not (project / ".vibe").exists(),
             "detail": gate,

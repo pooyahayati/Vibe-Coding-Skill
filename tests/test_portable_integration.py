@@ -96,6 +96,42 @@ class PortableIntegrationTests(unittest.TestCase):
     def git(self, *args):
         return subprocess.run(["git", *args], cwd=self.product, check=True, capture_output=True)
 
+    def test_installed_integration_stage_routes_do_not_invent_publication_evidence(self):
+        code = textwrap.dedent('''
+            import sys
+            from unittest import mock
+            sys.path.insert(0, sys.argv[1])
+            import integration_guard as guard
+            sys.argv = [guard.__file__, *sys.argv[2:]]
+            with mock.patch.object(guard, "run", return_value=(0, "fixture-head")), \\
+                 mock.patch.object(guard.github_traceability, "detect", return_value={}), \\
+                 mock.patch.object(guard.graph_provider, "status", return_value={
+                     "available": True, "graph_exists": True, "stale": True, "fresh": False}), \\
+                 mock.patch.object(guard.shutil, "which", side_effect=lambda name: "git" if name == "git" else None):
+                raise SystemExit(guard.main())
+        ''')
+        cases = [([], 0, "WARN", "NOT_CHECKED"),
+                 (["--operation", "development", "--graph-use", "source"], 0, "WARN", "NOT_CHECKED"),
+                 (["--operation", "development", "--graph-use", "authoritative"], 2, "FAIL", "NOT_CHECKED"),
+                 (["--operation", "publication", "--graph-use", "source"], 2, "FAIL", "BLOCK"),
+                 (["--operation", "publication", "--graph-use", "source", "--release-target", str(self.product),
+                   "--release-report", str(self.home / "private/scan.json")], 2, "FAIL", "BLOCK")]
+        for args, expected, status, security_gate in cases:
+            with self.subTest(args=args):
+                process = subprocess.run(
+                    [sys.executable, "-X", "utf8", "-c", code, str(self.installed / "scripts"),
+                     "--root", str(self.product), "--tier", "3", "--json", *args],
+                    cwd=self.product, env=self.env, capture_output=True, text=True, encoding="utf-8", timeout=60,
+                )
+                self.assertEqual(process.returncode, expected, process.stdout + process.stderr)
+                result = json.loads(process.stdout)
+                self.assertEqual(result["status"], status)
+                self.assertEqual(result["publication_security_gate"], security_gate)
+                self.assertFalse(result["release_scan_verified"])
+                self.assertFalse(result["task_evidence_checked"])
+        self.assertFalse((self.product / ".vibe").exists())
+        self.assertFalse((self.home / "private/scan.json").exists())
+
     def test_installed_wordpress_cli_preserves_long_state_with_stderr_warnings(self):
         source = self.product / "plugin-source"
         source.mkdir()
