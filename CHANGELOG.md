@@ -4,7 +4,9 @@ Technical release history. Entries describe their release; current operating and
 
 ## Unreleased
 
-- Prepare the A1-A5 remediation roadmap and implementation criteria for seven confirmed deep-audit findings: retained-state/contract continuity, routing/graph input integrity, dependency decisions, WordPress command parsing and stage-aware integration controls. Planning only; fixes are not implemented and runtime/release/installation state is unchanged.
+- A1: Keep checkout/receipt identity stable across remote changes, atomically retain task snapshots, and restore obligations or require explicit reconstruction after corruption. Add Head-controlled specialist reopening/retirement after retained contract revisions, preserving required findings and requiring renewed evidence/acceptance. Keep existing external formats and legacy workflows; no release or installation change.
+
+- Prepare the A1-A5 remediation roadmap and implementation criteria for seven confirmed deep-audit findings: retained-state/contract continuity, routing/graph input integrity, dependency decisions, WordPress command parsing and stage-aware integration controls. Implementation progress is tracked in `ROADMAP.md`; release/installation state is unchanged.
 - Streamline the README and current status/implementation pages; archive closed specifications and delivery evidence without removing history, restore documentation links and align public security guidance with the existing native Trivy publication gate. No runtime, specialist, release or installation change.
 
 ## 1.4.0 — Reliable routing, native release security and local runtime

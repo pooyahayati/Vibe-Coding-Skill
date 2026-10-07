@@ -75,7 +75,7 @@ class CrossPlatformRecoveryTests(unittest.TestCase):
             self.assertTrue(Path(data["written"]["markdown"]).exists())
             self.assertFalse((root / "resume-context.json").exists())
 
-    def test_corrupt_local_state_is_quarantined_and_regenerated(self):
+    def test_corrupt_local_state_without_baseline_requires_reconstruction(self):
         with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as hd:
             root = Path(td)
             init_repo(root)
@@ -150,10 +150,12 @@ class CrossPlatformRecoveryTests(unittest.TestCase):
                 capture_output=True,
                 env=env,
             )
-            self.assertEqual(applied.returncode, 0, applied.stdout + applied.stderr)
+            self.assertEqual(applied.returncode, 2, applied.stdout + applied.stderr)
             result = json.loads(applied.stdout)
             self.assertTrue(result["applied"])
-            self.assertTrue(Path(result["regenerated_project_state"]).exists())
+            self.assertTrue(result["recovery_required"])
+            self.assertIsNone(result["restored_project_state"])
+            self.assertTrue((workspace / "state/project-state-recovery.json").exists())
             self.assertTrue(result["backup_dir"])
             self.assertFalse((root / ".vibe").exists())
 

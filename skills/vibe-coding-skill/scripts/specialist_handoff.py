@@ -143,6 +143,7 @@ def assign(root, contract, specification, skills_dir, state):
     require(preflight["gate"] in ("PASS", "WARN"), "current Head and accepted specialist compatibility required before assignment")
     installed = next(s for s in preflight["skills"] if s["id"] == entry["id"])
     require(installed.get("compatibility", {}).get("status") == "accepted", "assigned specialist lacks Head instruction compatibility")
+    capture.local_workspace.project_workspace(root, create=True)
     base = directory(root, contract["task_id"], assignment["assignment_id"])
     require(not (base / "operation.json").exists(), "assignment ID already retained; create a new stage assignment")
     rc, commit = capture.local_workspace.run_git(root, "rev-parse", "HEAD")
@@ -359,6 +360,81 @@ def review(root, contract, assignment_id, returned, evidence, decision=None, con
     return {k: v for k, v in result.items() if k not in ("observation", "inputs")}
 
 
+def accepted_record(base, operation):
+    record = manager.read_local_json(base / "review.json")
+    returned = manager.read_local_json(base / "returns" / (record["return_sha256"][:16] + ".json"))
+    require(behavior.digest(returned) == record["return_sha256"] == operation.get("latest_return"), "retained specialist return digest mismatch")
+    return record, returned
+
+
+def reconcile(root, contract, previous_contract, assignment_id, reason, specification=None, retire=False):
+    """Explicitly reopen or retire work after a retained, authorized revision.
+
+    This records the Head's decision; it cannot grant user authorization.
+    Reopening preserves the original observation baseline and finding ledger.
+    """
+    import project_state
+    root = root.resolve()
+    contract, previous_contract = behavior.validate(contract), behavior.validate(previous_contract)
+    require(behavior.text(reason), "contract reconciliation requires a concrete Head reason")
+    retained = project_state.load_previous(root) or {}
+    require(retained.get("task_contract") == contract, "capture the revised task contract before reconciling assignments")
+    require(contract["task_id"] == previous_contract["task_id"], "contract revision cannot change task identity")
+    sha, target = behavior.digest(previous_contract), behavior.digest(contract)
+    require(sha != target, "reconciliation requires a changed retained contract")
+    for revision in retained.get("contract_revisions", []):
+        if revision["previous_sha256"] == sha:
+            require(behavior.digest(behavior.validate(revision["previous_contract"])) == sha, "invalid retained revision history")
+            sha = revision["next_sha256"]
+    require(sha == target, "missing retained contract revision chain")
+    base, old = load_operation(root, previous_contract, assignment_id)
+    archive = {"operation": old, "reason": reason, "target_contract_sha256": target}
+    if (base / "review.json").exists():
+        archive["review"] = manager.read_local_json(base / "review.json")
+    if retire:
+        require(specification is None and assignment_id not in contract.get("specialist_assignment_ids", []), "required assignments must be reopened, not retired")
+        record, returned = accepted_record(base, old)
+        require(old["closed"] and record["result"].get("accepted"), "unresolved assignments cannot be retired; reopen and resolve required findings first")
+        result = evaluate(root, previous_contract, old, returned, record["evidence"], record["decision"], record["context"],
+                          current=old["assignment"]["completion_binding"] == "current-delivery")
+        require(result["accepted"], "retirement requires valid prior acceptance; reopen stale or unresolved work")
+        replacement = copy.deepcopy(old)
+        replacement["retirement"] = {"contract_sha256": target, "reason": reason, "review_sha256": behavior.digest(record)}
+    else:
+        require(specification is not None, "reopening requires a revised Head assignment")
+        assignment = copy.deepcopy(specification)
+        assignment.setdefault("completion_binding", old["assignment"]["completion_binding"])
+        entry = validate_assignment(assignment, contract)
+        require(all(assignment[k] == old["assignment"][k] for k in ("assignment_id", "specialist_id", "stage")), "reopening must preserve assignment identity")
+        require(set(old["assignment"]["protected_invariants"]) <= set(assignment["protected_invariants"]), "reopening cannot drop protected invariants")
+        require(all(row in assignment.get("shared_contracts", []) for row in old["assignment"].get("shared_contracts", [])), "reopening cannot drop shared contracts")
+        require(not (old["assignment"]["completion_binding"] == "current-delivery" and assignment["completion_binding"] != "current-delivery"), "reopening cannot weaken evidence freshness")
+        skills, state = Path(old["skills_dir"]), Path(old["specialist_state"])
+        preflight = manager.run("prepare", skills, state, [{**entry, "active_in_stage": True}], False)
+        require(preflight["gate"] in ("PASS", "WARN"), "current compatible specialist required for reopening")
+        installed = next(s for s in preflight["skills"] if s["id"] == entry["id"])
+        require(installed.get("compatibility", {}).get("status") == "accepted", "specialist compatibility requires Head acceptance")
+        packet = manager.compatibility_packet(entry, skills, state, installed)
+        require(packet["binding_sha256"] == installed["compatibility"]["binding_sha256"], "specialist changed during reconciliation")
+        replacement = {k: v for k, v in old.items() if not k.startswith("accepted_") and k not in ("latest_return", "retirement", "abandoned_reason")}
+        replacement.update(assignment=assignment, contract=contract, closed=False, source=installed["source"],
+                           specialist_files=packet["binding"]["files"], control_sha256=control_fingerprint(entry),
+                           compatibility_binding_sha256=packet["binding_sha256"])
+    with manager.installation_lock(Path(old["skills_dir"])):
+        if not retire:
+            require(manager.installed_hashes(Path(old["skills_dir"]) / entry["skill_name"]) == replacement["specialist_files"], "specialist changed before reconciliation")
+        manager.write_record(base / "revisions" / (behavior.digest(archive)[:16] + ".json"), archive)
+        # New update guard first: an interruption must not permit updating the
+        # instructions of an operation already reopened in the ledger.
+        if not retire:
+            markers(replacement)
+        manager.write_record(base / "operation.json", replacement)
+        markers(old, remove=True)
+    return {"gate": "PASS", "accepted": False, "action": "retired" if retire else "reopened",
+            "assignment": replacement["assignment"], "upstream_revision": replacement["source"]["commit"],
+            "head_contract_sha256": replacement["source"]["package_policy"], "record_path": str(base / "operation.json")}
+
+
 def completion_failures(root, contract, context=None):
     """A declared Done cannot bypass retained required specialist decisions."""
     base = directory(root, contract["task_id"])
@@ -371,10 +447,16 @@ def completion_failures(root, contract, context=None):
         operation = manager.read_local_json(path)
         assignment_id = operation["assignment"]["assignment_id"]
         seen.add(assignment_id)
+        if "retirement" in operation:
+            retirement = operation["retirement"]
+            require(assignment_id not in expected and retirement["contract_sha256"] == behavior.digest(contract) and behavior.text(retirement["reason"]), "stale or required retired assignment needs reconciliation")
+            folder, operation = load_operation(root, operation["contract"], assignment_id)
+            record, returned = accepted_record(folder, operation)
+            require(operation["closed"] and record["result"].get("accepted") and behavior.digest(record) == retirement["review_sha256"], "retired acceptance changed")
+            require(evaluate(root, operation["contract"], operation, returned, record["evidence"], record["decision"], record["context"], current=False)["accepted"], "retired assignment has invalid acceptance")
+            continue
         folder, operation = load_operation(root, contract, assignment_id)
-        record = manager.read_local_json(folder / "review.json")
-        returned = manager.read_local_json(folder / "returns" / (record["return_sha256"][:16] + ".json"))
-        require(behavior.digest(returned) == record["return_sha256"] == operation.get("latest_return"), "retained specialist return digest mismatch")
+        record, returned = accepted_record(folder, operation)
         if not record["result"].get("accepted") or not operation["closed"]:
             failures.append("specialist assignment lacks Head acceptance: " + assignment_id)
             continue
@@ -389,7 +471,7 @@ def completion_failures(root, contract, context=None):
 def main():
     behavior.configure_output()
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("mode", choices=("assign", "review", "close"))
+    ap.add_argument("mode", choices=("assign", "review", "close", "reconcile"))
     ap.add_argument("--root", required=True, type=Path)
     ap.add_argument("--task-contract", required=True)
     ap.add_argument("--assignment", help="Head-owned assignment JSON for assign")
@@ -398,7 +480,9 @@ def main():
     ap.add_argument("--evidence", help="independent Head receipt catalog JSON array")
     ap.add_argument("--decision", help="separate Head acceptance JSON")
     ap.add_argument("--context", help="independent delivery runtime/dataset JSON object")
-    ap.add_argument("--reason", help="Head reason for abandoning an operation; never completion")
+    ap.add_argument("--reason", help="Head reason for closing or reconciling an operation; never completion")
+    ap.add_argument("--previous-task-contract", help="prior retained contract JSON for reconciliation")
+    ap.add_argument("--retire", action="store_true", help="retire an accepted assignment removed from the revised contract")
     ap.add_argument("--skills-dir", type=Path, default=Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))) / "skills")
     ap.add_argument("--state-dir", type=Path, default=capture.local_workspace.workspace_home() / "specialists")
     ns = ap.parse_args()
@@ -408,6 +492,10 @@ def main():
         if ns.mode == "assign":
             require(ns.assignment is not None, "assign requires a Head assignment")
             result = assign(root, contract, read(ns.assignment), ns.skills_dir, ns.state_dir)
+        elif ns.mode == "reconcile":
+            require(behavior.text(ns.assignment_id) and ns.previous_task_contract is not None, "reconcile requires assignment ID and previous task contract")
+            result = reconcile(root, contract, behavior.read(ns.previous_task_contract), ns.assignment_id, ns.reason,
+                               read(ns.assignment) if ns.assignment else None, ns.retire)
         elif ns.mode == "review":
             require(behavior.text(ns.assignment_id) and ns.returned is not None and ns.evidence is not None, "review requires retained assignment, return and evidence")
             result = review(root, contract, ns.assignment_id, read(ns.returned), read(ns.evidence), read(ns.decision) if ns.decision else None, read(ns.context) if ns.context else None)

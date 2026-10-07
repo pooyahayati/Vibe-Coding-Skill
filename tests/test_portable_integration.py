@@ -171,6 +171,7 @@ class PortableIntegrationTests(unittest.TestCase):
         self.assertEqual(saved["completion_schema"], 3)
         saved.pop("completion_schema")
         Path(saved["state_path"]).write_text(json.dumps(saved), encoding="utf-8")
+        Path(saved["state_path"]).with_name("project-state-retained.json").unlink()
         handoff = self.cli("project_state.py", "handoff", "--root", self.product, "--task-contract", contract_path,
                            "--completion-report", self.json_file("legacy", legacy), "--write-local", "--json")
         self.assertEqual(handoff["state"]["acceptance"]["outcomes"][0]["status"], "reported-met")
@@ -206,6 +207,13 @@ class PortableIntegrationTests(unittest.TestCase):
                          "--completion-report", report_path, "--json")
         self.assertEqual(state["completion_schema"], 3)
         self.assertTrue(state["acceptance"]["receipt_verified"])
+        self.git("remote", "add", "origin", "https://example.invalid/owner/product.git")
+        Path(state["state_path"]).write_text("{broken", encoding="utf-8")
+        restored = self.cli("state_recovery.py", "repair", "--root", self.product, "--apply", "--json")
+        self.assertEqual(restored["status"], "PASS")
+        resumed = self.cli("resume_context.py", "--root", self.product, "--json")
+        self.assertEqual(resumed["local_state"]["project_state"]["task_contract"], contract)
+        self.assertTrue(resumed["local_state"]["project_state"]["acceptance"]["receipt_verified"])
         (self.product / "README.md").write_text("unrelated fixture note", encoding="utf-8")
         self.assertTrue(self.cli("completion_gate.py", *complete_args)["receipt_verified"])
         legacy = self.report(contract, passed)
@@ -227,7 +235,7 @@ class PortableIntegrationTests(unittest.TestCase):
             installed, tests = map(Path, sys.argv[1:])
             sys.path.insert(0, str(installed / "scripts"))
             names = ("behavior_contract", "completion_gate", "evidence_capture", "receipt_validation",
-                     "specialist_manager", "specialist_handoff", "execution_plan", "local_workspace")
+                     "specialist_manager", "specialist_handoff", "execution_plan", "local_workspace", "project_state")
             modules = [importlib.import_module(name) for name in names]
             assert all(Path(module.__file__).resolve().is_relative_to(installed) for module in modules)
             sys.path.append(str(tests))
@@ -278,6 +286,12 @@ class PortableIntegrationTests(unittest.TestCase):
                 assert cli("completion_gate.py", gate_args, 0)["receipt_verified"]
                 (case.root / "src/value.txt").write_text("stale", encoding="utf-8")
                 assert cli("completion_gate.py", gate_args, 2)["gate"] == "BLOCK"
+                revision_case = fixtures.HandoffTests()
+                try:
+                    revision_case.setUp()
+                    revision_case.test_accepted_specialist_reopens_after_revision_with_new_receipts_and_acceptance()
+                finally:
+                    revision_case.doCleanups()
                 print(json.dumps({"installed_runtime": True, "head_acceptance": True, "stale_blocked": True}))
             finally:
                 case.doCleanups()

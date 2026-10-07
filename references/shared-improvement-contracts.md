@@ -132,6 +132,10 @@ The caller chooses the expected workflow from the retained task contract/context
 
 Additive optional descriptive fields can remain compatible within a format version. Changes to required fields, meanings, qualification or trust policy require a new format version and explicit migration. Implementation must reject unsupported safety-relevant fields/versions rather than ignore them. P0 changes no runtime schema, release version, installation or host configuration. Review release-version compatibility after the actual implementation; do not promise a release number here.
 
+### Retained-state compatibility (A1)
+
+External contract, receipt and handoff formats keep their existing versions. The local snapshot adds revision history and a retained recovery copy; legacy snapshots without those additions are readable and acquire the copy on the next successful capture. New workspace IDs exclude mutable remotes; a unique metadata-bound legacy ID is kept unchanged, including receipt bindings. Ambiguous identity or unrecoverable obligations require explicit reconciliation. Never rewrite receipt hashes or downgrade completion schemas to make migration pass. See [recovery](recovery-and-resume.md) and [specialist revision transitions](specialist-composition.md#contract-revisions).
+
 ## P0 exit and next packages
 
 P0 settles shared contracts and migration; B1/B2 preserve behavior. E1 collects locally and E2 resolves collected/manual receipts at completion; S1 assesses instruction compatibility; S2 validates scoped returns and separately bound Head acceptance. Acceptance cases remain in the [implementation plan](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/main/docs/improvement-implementation-plan.md). A qualifying receipt proves the recorded binding/result, not adequate assertions, a tamper-resistant host or specialist integration acceptance.

@@ -162,6 +162,7 @@ def receipt_directory(root: Path, task_id: str) -> Path:
 
 
 def storage(root: Path, task_id: str) -> Path:
+    local_workspace.project_workspace(root, create=True)
     destination = receipt_directory(root, task_id)
     destination.mkdir(parents=True, exist_ok=True)
     return destination

@@ -15,6 +15,7 @@ import graph_provider
 import github_traceability
 import local_workspace
 import behavior_contract
+import project_state as retained_state
 
 DOC_ORDER = [
     "STATUS.md",
@@ -107,7 +108,9 @@ def build_context(root: Path, max_bytes_per_doc: int = 16000) -> dict[str, Any]:
     if status:
         warnings.append("working tree has uncommitted changes; preserve and inspect them before modifying")
 
-    project_state, project_state_error = load_local_json(root, "project-state.json")
+    # Required context cannot silently disappear into the optional-cache route.
+    project_state = retained_state.load_previous(root)
+    project_state_error = None
     project_meta, project_meta_error = load_local_json(root, "project.json")
     for error in (project_state_error, project_meta_error):
         if error:

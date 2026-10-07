@@ -40,7 +40,8 @@ def file_hash(path: Path) -> str | None:
 
 def current_state(root: Path, task_contract=None, completion_report=None, delivery_notes=None,
                   new_task: bool = False, accept_contract_change: str | None = None,
-                  receipt_completion: bool = False, delivery_context=None) -> dict[str, Any]:
+                  receipt_completion: bool = False, delivery_context=None,
+                  reconcile_recovery: str | None = None) -> dict[str, Any]:
     root = root.resolve()
     local_workspace.ensure_git_repo(root)
     _, head = run_git(root, "rev-parse", "HEAD")
@@ -76,7 +77,11 @@ def current_state(root: Path, task_contract=None, completion_report=None, delive
             for name in DOCS
         },
     }
-    previous = load_previous(root) or {}
+    if reconcile_recovery is not None:
+        if not behavior_contract.text(reconcile_recovery) or task_contract is None or not recovery_path(root).exists():
+            raise ValueError("recovery reconciliation needs an explicit verified contract, reason and pending recovery")
+        current["recovery_reconciliation"] = {"reason": reconcile_recovery, "authorization_verified": False}
+    previous = load_previous(root, allow_reconstruction=reconcile_recovery is not None) or {}
     retained = previous.get("task_contract")
     if retained is not None:
         retained = behavior_contract.validate(retained)
@@ -105,6 +110,16 @@ def current_state(root: Path, task_contract=None, completion_report=None, delive
             "authorization_verified": False}
     elif previous.get("contract_reconciliation"):
         current["contract_reconciliation"] = previous["contract_reconciliation"]
+    if previous.get("recovery_reconciliation"):
+        current["recovery_reconciliation"] = previous["recovery_reconciliation"]
+    history = list(previous.get("contract_revisions", []))
+    if retained and contract and not new_task and behavior_contract.digest(retained) != behavior_contract.digest(contract):
+        history.append({"previous_contract": retained, "previous_sha256": behavior_contract.digest(retained),
+                        "next_sha256": behavior_contract.digest(contract),
+                        "reason": accept_contract_change or "Compatible extension of retained obligations",
+                        "authorization_verified": False})
+    if history and not new_task:
+        current["contract_revisions"] = history
     notes = dict(previous.get("delivery") or {})
     if delivery_notes:
         notes.update(delivery_notes)
@@ -145,14 +160,63 @@ def state_path(root: Path, create: bool = False) -> Path:
     return local_workspace.state_path(root, "project-state.json", create=create)
 
 
-def load_previous(root: Path) -> dict[str, Any] | None:
+def backup_path(root: Path) -> Path:
+    return local_workspace.state_path(root, "project-state-retained.json")
+
+
+def recovery_path(root: Path) -> Path:
+    return local_workspace.state_path(root, "project-state-recovery.json")
+
+
+def read_snapshot(path: Path, root: Path) -> dict[str, Any]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict) or value.get("recovery_required"):
+        raise ValueError("state requires obligation reconstruction")
+    if value.get("root") != str(root.resolve()):
+        raise ValueError("state belongs to another root")
+    if type(value.get("schema_version")) is not int or value["schema_version"] != 1:
+        raise ValueError("unsupported project state version")
+    if not isinstance(value.get("git"), dict) or not all(behavior_contract.text(value.get(k)) for k in ("project_id", "captured_at")):
+        raise ValueError("incomplete retained project snapshot")
+    if not isinstance(value.get("contract_revisions", []), list):
+        raise ValueError("invalid contract revision history")
+    for revision in value.get("contract_revisions", []):
+        if not isinstance(revision, dict) or not behavior_contract.text(revision.get("reason")) or not behavior_contract.text(revision.get("next_sha256")):
+            raise ValueError("invalid contract revision record")
+        if behavior_contract.digest(behavior_contract.validate(revision.get("previous_contract"))) != revision.get("previous_sha256"):
+            raise ValueError("invalid prior contract fingerprint")
+    if value.get("task_contract") is not None:
+        contract = behavior_contract.validate(value["task_contract"])
+        if behavior_contract.digest(contract) != value.get("task_contract_sha256"):
+            raise ValueError("retained task contract fingerprint mismatch")
+        if type(value.get("completion_schema", 2)) is not int or value.get("completion_schema", 2) not in (2, 3):
+            raise ValueError("unsupported retained completion workflow")
+    elif any(key in value for key in ("task_contract_sha256", "completion_report", "contract_revisions")):
+        raise ValueError("retained task context is missing its contract")
+    value.pop("state_path", None)  # CLI presentation, never a retained binding.
+    return value
+
+
+def load_previous(root: Path, *, allow_reconstruction: bool = False) -> dict[str, Any] | None:
     path = state_path(root, create=False)
-    if not path.exists():
+    backup = backup_path(root)
+    if recovery_path(root).exists():
+        if allow_reconstruction:
+            # A recovery interruption must not let explicit reconstruction
+            # erase a still-readable accepted risk/obligation baseline.
+            for candidate in (backup, path):
+                try:
+                    return read_snapshot(candidate, root)
+                except (ValueError, OSError):
+                    continue
+            return None
+        raise RuntimeError("retained obligations need explicit recovery reconciliation before continuing")
+    if not path.exists() and not backup.exists():
         return None
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(value, dict):
-            raise ValueError("state must be an object")
+        value = read_snapshot(path, root)
+        if backup.exists() and value != read_snapshot(backup, root):
+            raise ValueError("interrupted state capture; retained copy differs")
         return value
     except (ValueError, OSError) as exc:
         raise RuntimeError("local project state is unreadable; repair before replacing it") from exc
@@ -183,12 +247,16 @@ def compare(previous: dict[str, Any] | None, current: dict[str, Any]) -> dict[st
 
 
 def capture(root: Path, **task_options) -> dict[str, Any]:
-    previous = load_previous(root)
+    previous = load_previous(root, allow_reconstruction=task_options.get("reconcile_recovery") is not None)
     current = current_state(root, **task_options)
     local_workspace.initialize(root)
     current["drift_from_previous"] = compare(previous, current)
     path = state_path(root, create=True)
-    path.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
+    # Write the recoverable accepted snapshot first. A crash between replacements
+    # is detected by load_previous and repair uses this validated pending copy.
+    local_workspace.atomic_json(backup_path(root), current)
+    local_workspace.atomic_json(path, current)
+    recovery_path(root).unlink(missing_ok=True)
     current["state_path"] = str(path)
     return current
 
@@ -256,6 +324,7 @@ def main() -> int:
         p.add_argument("--delivery-context", help="independent relevant runtime/dataset JSON for receipt freshness")
         p.add_argument("--new-task", action="store_true", help="begin a different explicitly supplied task, within existing authorization")
         p.add_argument("--accept-contract-change", metavar="REASON", help="record a Head-reconciled material change; does not grant authorization")
+        p.add_argument("--reconcile-recovery", metavar="REASON", help="reconstruct lost obligations from an independently verified explicit task contract")
         for field in ("how-to-use", "how-to-check", "next-action"):
             p.add_argument("--" + field)
         p.add_argument("--limitation", action="append", default=None)
@@ -270,6 +339,7 @@ def main() -> int:
             "completion_report": json.loads(Path(ns.completion_report).read_text(encoding="utf-8")) if ns.completion_report else None,
             "new_task": ns.new_task,
             "accept_contract_change": ns.accept_contract_change,
+            "reconcile_recovery": ns.reconcile_recovery,
             "receipt_completion": ns.receipt_completion,
             "delivery_context": json.loads(ns.delivery_context) if ns.delivery_context else None,
             "delivery_notes": {k: v for k, v in {
