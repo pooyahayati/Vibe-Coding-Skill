@@ -54,6 +54,45 @@ class PortableIntegrationTests(unittest.TestCase):
         self.assertEqual(result["gate"], "BLOCK")
         self.assertFalse(result["release_scan_verified"])
 
+    def test_installed_dependency_cli_enforces_selected_version_and_license_policy(self):
+        # Execute the installed entrypoint with deterministic providers, without network or source imports.
+        code = textwrap.dedent('''
+            import json, sys
+            from unittest import mock
+            from pathlib import Path
+            sys.path.insert(0, sys.argv[1])
+            import dependency_guard as guard
+            metadata = json.loads(sys.argv[2])
+            package = {"license": "MIT", "repository": "https://example.test/latest",
+                       "dist-tags": {"latest": "2.0.0"}, "versions": {"1.0.0": metadata}}
+            sys.argv = [str(Path(guard.__file__)), "npm", "fixture", "--version", "1.0.0",
+                        "--necessity", "required", "--purpose", "Protocol parser",
+                        "--allow-license", "MIT", "--skip-deps-dev", "--skip-repo-health", "--json"]
+            with mock.patch.object(guard, "http_json", return_value=package) as registry, \\
+                 mock.patch.object(guard, "osv_lookup", return_value={"checked": True, "vulnerabilities": []}):
+                result = guard.main()
+                registry.assert_called_once_with("https://registry.npmjs.org/fixture")
+            raise SystemExit(result)
+        ''')
+        for metadata, decision, exit_code in [
+            ({}, "REVIEW REQUIRED", 1),
+            ({"license": "MIT AND GPL-3.0-only", "repository": "https://example.test/v1"}, "REVIEW REQUIRED", 1),
+            ({"license": "GPL-3.0-only", "repository": "https://example.test/v1"}, "REVIEW REQUIRED", 1),
+            ({"license": "MIT OR GPL-3.0-only", "repository": "https://example.test/v1"}, "ACCEPT", 0),
+        ]:
+            with self.subTest(metadata=metadata):
+                process = subprocess.run(
+                    [sys.executable, "-X", "utf8", "-c", code, str(self.installed / "scripts"), json.dumps(metadata)],
+                    cwd=self.product, env=self.env, capture_output=True, text=True, encoding="utf-8", timeout=60,
+                )
+                self.assertEqual(process.returncode, exit_code, process.stdout + process.stderr)
+                report = json.loads(process.stdout)
+                self.assertEqual(report["decision"], decision)
+                self.assertEqual(report["evidence"]["registry"]["metadata_version"], "1.0.0")
+                if not metadata:
+                    self.assertTrue({"license.missing", "provenance.repository_missing"}
+                                    <= {s["code"] for s in report["signals"]})
+
     def git(self, *args):
         return subprocess.run(["git", *args], cwd=self.product, check=True, capture_output=True)
 

@@ -4,6 +4,8 @@ Technical release history. Entries describe their release; current operating and
 
 ## Unreleased
 
+- A3: Bind npm license/repository evidence to the selected version and require matching version evidence for normalized-provider supplements. Replace license token matching with a bounded evaluator for explicit AND/OR/WITH policies; unresolved expressions require review, deny-list vetoes remain, and projects without a policy gain no default restrictions. Add deterministic registry, policy and extracted-package CLI regressions; no dependency, version or installation change.
+
 - A2: Preserve literal hidden/bracketed affected paths and governing instructions; reject unsafe paths and expose missing-input inspection gaps. Bind graph freshness to the actual source snapshot and output bytes, reject copy/generation drift, and keep previous graph evidence on provider/input failure. Legacy graph caches require refresh; task/receipt formats and release/installation state are unchanged.
 
 - A1: Keep checkout/receipt identity stable across remote changes, atomically retain task snapshots, and restore obligations or require explicit reconstruction after corruption. Add Head-controlled specialist reopening/retirement after retained contract revisions, preserving required findings and requiring renewed evidence/acceptance. Keep existing external formats and legacy workflows; no release or installation change.

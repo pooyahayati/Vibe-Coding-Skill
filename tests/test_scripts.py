@@ -101,6 +101,69 @@ class InstallCheckTests(unittest.TestCase):
 
 
 class DependencyGuardTests(unittest.TestCase):
+    def test_compound_license_policy_decisions(self):
+        mod = load_script("dependency_guard.py")
+        cases = [
+            (["MIT"], ["MIT"], [], "ACCEPT"),
+            (["mit"], ["MIT"], [], "ACCEPT"),
+            (["MIT AND GPL-3.0-only"], ["MIT"], [], "REVIEW REQUIRED"),
+            (["MIT", "GPL-3.0-only"], ["MIT"], [], "REVIEW REQUIRED"),
+            (["MIT AND Apache-2.0"], ["MIT", "Apache-2.0"], [], "ACCEPT"),
+            (["MIT OR GPL-3.0-only"], ["MIT"], [], "ACCEPT"),
+            (["MIT OR Apache-2.0 AND GPL-3.0-only"], ["MIT"], [], "ACCEPT"),
+            (["(MIT OR Apache-2.0) AND GPL-3.0-only"], ["MIT"], [], "REVIEW REQUIRED"),
+            (["MIT OR GPL-3.0-only"], ["MIT"], ["GPL-3.0-only"], "REJECT"),
+            (["GPL-2.0-only WITH Classpath-exception-2.0"], ["GPL-2.0-only"], [], "REVIEW REQUIRED"),
+            (["GPL-2.0-only WITH Classpath-exception-2.0"], ["GPL-2.0-only WITH Classpath-exception-2.0"], [], "ACCEPT"),
+            (["GPL-2.0-only WITH Classpath-exception-2.0"], [], ["GPL-2.0-only"], "REJECT"),
+            (["MIT WITH Custom-exception"], [], ["GPL-3.0-only"], "REVIEW REQUIRED"),
+            (["GPL-2.0+"], ["GPL-2.0"], [], "REVIEW REQUIRED"),
+            (["GPL-2.0+"], ["GPL-2.0+"], [], "ACCEPT"),
+            (["GPL-2.0+"], [], ["GPL-2.0"], "REJECT"),
+            (["MIT-0"], ["MIT"], [], "REVIEW REQUIRED"),
+            (["MIT-0"], [], ["MIT"], "ACCEPT"),
+            (["MIT AND GPL-3.0-only"], [], [], "ACCEPT"),
+            (["Custom license (see LICENSE)"], [], [], "ACCEPT"),
+            (["MIT"], ["MIT OR Apache-2.0"], [], "REVIEW REQUIRED"),
+            ([], ["MIT"], [], "REVIEW REQUIRED"),
+        ]
+        for licenses, allow, deny, expected in cases:
+            with self.subTest(licenses=licenses, allow=allow, deny=deny):
+                signal = mod.license_policy_signal(licenses, allow, deny)
+                decision, _ = mod.evaluate_dependency(
+                    {"exists": True, "version_exists": True, "repository": "https://example.test/repo"},
+                    {"checked": True}, {}, {}, {}, {}, signal, "1.0.0", 1, "required", "Protocol parser",
+                )
+                self.assertEqual(decision, expected)
+
+    def test_unsupported_license_syntax_requires_review_even_after_permitted_branch(self):
+        mod = load_script("dependency_guard.py")
+        expressions = [
+            "MIT OR", "MIT AND", "MIT OR (Apache-2.0", "MIT OR Apache-2.0)",
+            "MIT/GPL-3.0-only", "MIT or Apache-2.0", "MIT AND(GPL-3.0-only)",
+            "MIT OR SEE LICENSE IN LICENSE", "MIT OR NOASSERTION", "MIT OR NONE", "MIT\n",
+            "MIT WITH", "(MIT OR Apache-2.0) WITH Exception", "MIT WITH Exception+",
+            "MIT OR " + "(" * 18 + "MIT" + ")" * 18,
+            " OR ".join(["MIT"] * 70), "MIT OR " + "X" * 2048,
+        ]
+        for expression in expressions:
+            with self.subTest(expression=expression[:80]):
+                result = mod.license_policy_signal([expression], ["MIT"], [])
+                self.assertEqual(result["status"], "review")
+                self.assertTrue(result["issues"])
+
+    def test_legacy_match_summary_cannot_bypass_expression_policy(self):
+        mod = load_script("dependency_guard.py")
+        decision, signals = mod.evaluate_dependency(
+            {"exists": True, "version_exists": True, "repository": "https://example.test/repo"},
+            {"checked": True}, {}, {}, {}, {},
+            {"licenses": ["MIT AND GPL-3.0-only"], "allowed_policy": ["MIT"],
+             "denied_policy": [], "allowed_matches": ["MIT"], "status": "pass"},
+            "1.0.0", 1, "required", "Protocol parser",
+        )
+        self.assertEqual(decision, "REVIEW REQUIRED")
+        self.assertIn("license.policy_unresolved", {s["code"] for s in signals})
+
     def test_reject_missing_package(self):
         mod = load_script("dependency_guard.py")
         decision, _ = mod.decide(

@@ -119,6 +119,58 @@ class ProjectBoundaryRegressions(unittest.TestCase):
 
 
 class ArtifactEvidenceRegressions(unittest.TestCase):
+    def test_npm_evidence_is_selected_version_only(self):
+        guard = load("dependency_guard")
+        package = {"dist-tags": {"latest": "2.0.0"}, "license": "MIT",
+                   "repository": "https://example.test/latest", "versions": {
+                       "1.0.0": {"license": {"type": "GPL-3.0-only"},
+                                 "repository": {"url": "git+https://example.test/old.git"}},
+                       "1.5.0": {}, "2.0.0": {"license": "Apache-2.0",
+                                                "repository": "https://example.test/v2"},
+                   }}
+        for requested, license_value, repository, exists in [
+            ("1.0.0", "GPL-3.0-only", "git+https://example.test/old.git", True),
+            ("1.5.0", None, None, True), ("9.0.0", None, None, False),
+            (None, "Apache-2.0", "https://example.test/v2", None),
+        ]:
+            with self.subTest(version=requested), mock.patch.object(guard, "http_json", return_value=package):
+                result = guard.lookup_npm("sample", requested)
+                self.assertEqual(result["metadata_version"], requested or "2.0.0")
+                self.assertEqual(result["license"], license_value)
+                self.assertEqual(result["repository"], repository)
+                self.assertEqual(result["version_exists"], exists)
+
+    def test_missing_npm_metadata_requires_same_version_independent_evidence(self):
+        guard = load("dependency_guard")
+        with mock.patch.object(guard, "http_json", return_value={
+            "license": "MIT", "repository": "https://example.test/latest",
+            "dist-tags": {"latest": "2.0.0"}, "versions": {"1.0.0": {}},
+        }):
+            registry = guard.lookup_npm("sample", "1.0.0")
+        for selected, checked, expected in [
+            ("1.0.0", True, "ACCEPT"), ("2.0.0", True, "REVIEW REQUIRED"),
+            (None, True, "REVIEW REQUIRED"), ("1.0.0", False, "REVIEW REQUIRED"),
+        ]:
+            with self.subTest(selected=selected, checked=checked):
+                independent = {"checked": checked, "selected_version": selected, "licenses": ["MIT"],
+                               "links": [{"label": "SOURCE_REPO", "url": "https://example.test/v1"}]}
+                licenses = guard.effective_licenses(registry, independent)
+                repository = guard.source_repository(registry, independent)
+                signal = guard.license_policy_signal(licenses, ["MIT"], [])
+                decision, signals = guard.evaluate_dependency(
+                    registry, {"checked": True}, independent, {}, {}, {}, signal,
+                    "1.0.0", 1, "required", "Protocol parser",
+                )
+                self.assertEqual(decision, expected)
+                if expected == "ACCEPT":
+                    self.assertEqual(repository, "https://example.test/v1")
+                    self.assertEqual(licenses, ["MIT"])
+                else:
+                    self.assertIsNone(repository)
+                    self.assertEqual(licenses, [])
+                    self.assertTrue({"license.missing", "provenance.repository_missing"}
+                                    <= {s["code"] for s in signals})
+
     def test_dependency_metadata_belongs_to_selected_release(self):
         guard = load("dependency_guard")
         project = {"info": {"name": "sample", "version": "2.0.0", "license": "MIT"},

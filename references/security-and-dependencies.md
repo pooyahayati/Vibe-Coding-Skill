@@ -127,6 +127,15 @@ Useful controls:
 - `--skip-deps-dev` or `--skip-repo-health` are degraded modes; at Tier 2/3 they normally force review.
 - `--necessity unknown` intentionally prevents `ACCEPT`.
 
+### Explicit license policy
+
+Without allow/deny flags, the guard requires license evidence but imposes no default license policy. With either flag, it evaluates a bounded subset of [SPDX license expressions](https://spdx.github.io/spdx-spec/v3.0.1/annexes/spdx-license-expressions/): identifiers, the attached `+` suffix, parentheses, uppercase `AND`/`OR`, and `license WITH exception`. `WITH` binds first, then `AND`, then `OR`; operators require spaces. Identifier matching is case-insensitive and exact, not a substring or an inferred equivalence between license versions.
+
+- An allow-list must satisfy every operand of `AND`, or one complete alternative of `OR`. Separate metadata entries must each satisfy policy; they are not automatically alternatives.
+- A `WITH` expression needs explicit permission for the full license/exception pair; allowing only the base license does not approve its exceptions. Policy flags accept single identifiers or full pairs, not compound policies. Quote a pair when passing it to the shell.
+- An explicit deny-list is a conservative veto, including denied licenses inside an `OR`, a `WITH` pair, or an attached `+` range containing the denied base identifier. Exceptions do not override a project prohibition.
+- Unsupported/malformed expressions, `NONE`/`NOASSERTION`, unresolved permissions or invalid policy entries yield `REVIEW REQUIRED`. Limits are 2,048 characters, 128 tokens and 16 nested parentheses. The evaluator does not validate the SPDX catalog or infer legal compatibility; inspect `evidence.license.status` and `issues` in JSON output.
+
 ## Evidence providers
 
 Primary:
@@ -139,6 +148,8 @@ Additional normalized evidence:
 - GitHub repository metadata when the source repository is hosted on GitHub.
 
 No provider proves trustworthiness on its own.
+
+For npm, license and repository evidence comes only from the selected version record, recorded as `metadata_version`; unrelated package-level/latest metadata cannot fill a gap. Missing evidence may be supplemented by checked deps.dev evidence only when its `selected_version` matches the registry's `metadata_version`. This same-version check also applies to other adapters that expose `metadata_version`; project-scoped fields remain labeled by their adapter. Missing required license/provenance evidence produces `REVIEW REQUIRED`.
 
 deps.dev license metadata is evidence, not legal advice. License compatibility must follow the project's actual policy and legal requirements.
 

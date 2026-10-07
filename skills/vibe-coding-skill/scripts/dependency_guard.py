@@ -118,13 +118,13 @@ def lookup_pypi(name: str, version: str | None) -> dict[str, Any]:
 def lookup_npm(name: str, version: str | None) -> dict[str, Any]:
     quoted = urllib.parse.quote(name, safe="@")
     data = http_json(f"https://registry.npmjs.org/{quoted}")
-    repo = data.get("repository")
-    if isinstance(repo, dict):
-        repo = repo.get("url")
     versions = data.get("versions", {})
     latest = (data.get("dist-tags") or {}).get("latest")
     selected = versions.get(version or latest, {}) if versions else {}
-    license_value = selected.get("license") or data.get("license")
+    repo = selected.get("repository")
+    if isinstance(repo, dict):
+        repo = repo.get("url")
+    license_value = selected.get("license")
     if isinstance(license_value, dict):
         license_value = license_value.get("type")
     return {
@@ -134,8 +134,9 @@ def lookup_npm(name: str, version: str | None) -> dict[str, Any]:
         "version_exists": version in versions if version else None,
         "latest_version": latest,
         "latest_published_at": (data.get("time") or {}).get(latest) if latest else None,
-        "repository": repo,
-        "license": license_value or None,
+        "metadata_version": version or latest,
+        "repository": repo.strip() if isinstance(repo, str) and repo.strip() else None,
+        "license": license_value.strip() if isinstance(license_value, str) and license_value.strip() else None,
     }
 
 
@@ -474,10 +475,21 @@ def github_slug(repository: str | None) -> str | None:
     return f"{match.group(1)}/{match.group(2)}"
 
 
+def matching_version_evidence(registry: dict[str, Any], depsdev: dict[str, Any]) -> bool:
+    """Only supplement version-bound registry metadata with the same selected version."""
+    return bool(depsdev.get("checked")) and (
+        "metadata_version" not in registry
+        or (bool(registry.get("metadata_version"))
+            and registry["metadata_version"] == depsdev.get("selected_version"))
+    )
+
+
 def source_repository(registry: dict[str, Any], depsdev: dict[str, Any]) -> str | None:
     registry_repo = normalize_repo_url(registry.get("repository"))
     if registry_repo:
         return registry_repo
+    if not matching_version_evidence(registry, depsdev):
+        return None
     for project in depsdev.get("related_projects", []) or []:
         key = (project.get("projectKey") or {}).get("id")
         if key and project.get("relationType") == "SOURCE_REPO":
@@ -615,10 +627,83 @@ def effective_licenses(registry: dict[str, Any], depsdev: dict[str, Any]) -> lis
     raw = registry.get("license")
     if raw:
         values.append(str(raw))
+    if not matching_version_evidence(registry, depsdev):
+        return values
     for item in depsdev.get("licenses", []) or []:
         if item and item not in values:
             values.append(str(item))
     return values
+
+
+def license_expression_allowed(expression: str, allowed: set[str]) -> tuple[bool, set[str]]:
+    """Evaluate a bounded SPDX expression subset; never guess at unsupported syntax."""
+    if not expression or len(expression) > 2048 or "\n" in expression or "\r" in expression:
+        raise ValueError("empty, multiline or oversized license expression")
+    matches = list(re.finditer(r"[A-Za-z0-9][A-Za-z0-9.-]*\+?|[()]", expression))
+    if not matches or len(matches) > 128 or "".join(m.group() for m in matches) != expression.replace(" ", ""):
+        raise ValueError("unsupported license syntax or token limit exceeded")
+    tokens = [m.group() for m in matches]
+    for match in matches:
+        if match.group() in {"AND", "OR", "WITH"} and (
+            match.start() == 0 or match.end() == len(expression)
+            or expression[match.start() - 1] != " " or expression[match.end()] != " "
+        ):
+            raise ValueError("license operators require surrounding spaces")
+    position = 0
+    atoms: set[str] = set()
+
+    def take(value: str) -> bool:
+        nonlocal position
+        if position < len(tokens) and tokens[position] == value:
+            position += 1
+            return True
+        return False
+
+    def identifier() -> str:
+        nonlocal position
+        if position >= len(tokens) or tokens[position].upper() in {
+            "(", ")", "AND", "OR", "WITH", "NONE", "NOASSERTION",
+        }:
+            raise ValueError("missing or unresolved license identifier")
+        value = tokens[position].upper()
+        position += 1
+        return value
+
+    def term(depth: int) -> bool:
+        if depth > 16:
+            raise ValueError("license nesting limit exceeded")
+        if take("("):
+            value = disjunction(depth + 1)
+            if not take(")"):
+                raise ValueError("unbalanced license parentheses")
+            return value
+        atom = identifier()
+        if take("WITH"):
+            exception = identifier()
+            if exception.endswith("+"):
+                raise ValueError("unsupported license exception")
+            atom += " WITH " + exception
+        atoms.add(atom)
+        return atom in allowed or (not allowed and " WITH " not in atom)
+
+    def conjunction(depth: int) -> bool:
+        value = term(depth)
+        while take("AND"):
+            right = term(depth)  # Parse every operand even if the result is already false.
+            value = value and right
+        return value
+
+    def disjunction(depth: int) -> bool:
+        value = conjunction(depth)
+        while take("OR"):
+            right = conjunction(depth)
+            value = value or right
+        return value
+
+    permitted = disjunction(0)
+    if position != len(tokens):
+        raise ValueError("unsupported or incomplete license expression")
+    return permitted, atoms
 
 
 def license_policy_signal(
@@ -626,23 +711,46 @@ def license_policy_signal(
     allow: list[str],
     deny: list[str],
 ) -> dict[str, Any]:
-    upper = [x.upper() for x in licenses]
-    denied = [
-        policy for policy in deny
-        if any(re.search(rf"(^|[^A-Z0-9.-]){re.escape(policy.upper())}([^A-Z0-9.-]|$)", item) for item in upper)
-    ]
-    allowed_match = [
-        policy for policy in allow
-        if any(re.search(rf"(^|[^A-Z0-9.-]){re.escape(policy.upper())}([^A-Z0-9.-]|$)", item) for item in upper)
-    ]
-    return {
+    result: dict[str, Any] = {
         "checked": bool(allow or deny),
         "licenses": licenses,
         "allowed_policy": allow,
         "denied_policy": deny,
-        "denied_matches": denied,
-        "allowed_matches": allowed_match,
+        "denied_matches": [],
+        "allowed_matches": [],
+        "status": "not_checked",
+        "issues": [],
     }
+    if not result["checked"]:
+        return result  # No implicit project license policy.
+    policies: dict[str, str] = {}
+    for policy in allow + deny:
+        try:
+            _, atoms = license_expression_allowed(policy, set())
+            if len(atoms) != 1 or re.search(r"\b(?:AND|OR)\b", policy):
+                raise ValueError("policy entries must be single identifiers or license WITH exception")
+            policies[policy] = next(iter(atoms))
+        except ValueError as exc:
+            result["issues"].append(f"policy {policy!r}: {exc}")
+    allowed = {policies[x] for x in allow if x in policies}
+    observed: set[str] = set()
+    for expression in licenses:
+        try:
+            permitted, atoms = license_expression_allowed(expression, allowed)
+            observed.update(atoms)
+            if not permitted:
+                result["issues"].append(f"license expression needs explicit permission: {expression}")
+        except ValueError as exc:
+            result["issues"].append(f"license {expression!r}: {exc}")
+    # Preserve conservative deny-list veto, including inside OR alternatives or exceptions.
+    denied_atoms = observed | {atom.split(" WITH ", 1)[0] for atom in observed}
+    denied_atoms |= {atom.removesuffix("+") for atom in denied_atoms}
+    result["denied_matches"] = [x for x in deny if policies.get(x) in denied_atoms]
+    result["allowed_matches"] = [x for x in allow if policies.get(x) in observed]
+    result["status"] = "reject" if result["denied_matches"] else (
+        "review" if result["issues"] or not licenses else "pass"
+    )
+    return result
 
 
 def maintenance_signal(registry: dict[str, Any], depsdev: dict[str, Any]) -> dict[str, Any]:
@@ -727,13 +835,18 @@ def evaluate_dependency(
     if not repository:
         add("review", "provenance.repository_missing", "source repository/provenance URL is unavailable")
 
-    licenses = license_signal.get("licenses", [])
+    # Evaluate expressions, not legacy token-match summaries supplied by callers.
+    license_signal = license_policy_signal(
+        license_signal.get("licenses", []), license_signal.get("allowed_policy", []),
+        license_signal.get("denied_policy", []),
+    )
+    licenses = license_signal["licenses"]
     if not licenses:
         add("review", "license.missing", "license metadata is unavailable")
     if license_signal.get("denied_matches"):
         add("reject", "license.denied", "package license matches an explicitly denied project policy")
-    if license_signal.get("allowed_policy") and not license_signal.get("allowed_matches"):
-        add("review", "license.not_allowlisted", "package license does not match the project's explicit allow-list")
+    if license_signal["status"] == "review":
+        add("review", "license.policy_unresolved", "license expressions do not fully satisfy the explicit project policy; inspect license evidence issues")
 
     if similarity.get("suspicious"):
         nearest = similarity["suspicious"][0]
