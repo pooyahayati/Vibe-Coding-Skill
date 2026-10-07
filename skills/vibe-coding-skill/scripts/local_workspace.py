@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import subprocess
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -67,11 +68,51 @@ def workspace_home() -> Path:
 
 def project_id(root: Path) -> str:
     root = root.resolve()
-    origin = git_origin(root) or ""
-    material = f"{origin}\n{root}".encode("utf-8")
-    digest = hashlib.sha256(material).hexdigest()[:16]
     safe_name = "".join(ch.lower() if ch.isalnum() else "-" for ch in root.name).strip("-") or "project"
-    return f"{safe_name}-{digest}"
+    # Adopt a unique existing checkout workspace in place. Keeping its ID also
+    # keeps legacy receipt/source bindings valid; remote URLs are only metadata.
+    preferred = f"{safe_name}-{hashlib.sha256(str(root).encode('utf-8')).hexdigest()[:16]}"
+    matches = []
+    for candidate in (workspace_home() / "projects").glob(safe_name + "-*"):
+        if not candidate.is_dir():
+            continue
+        try:
+            metadata = candidate / "metadata.json"
+            # Collectors may create a task directory before workspace init.
+            # The new path-derived ID already identifies this exact checkout.
+            if candidate.name == preferred and not metadata.exists() and not candidate.is_symlink():
+                matches.append(candidate.name)
+                continue
+            if candidate.is_symlink() or metadata.is_symlink() or metadata.stat().st_size > 65536:
+                raise ValueError("unsafe workspace metadata")
+            value = json.loads(metadata.read_text(encoding="utf-8"))
+            if not isinstance(value, dict) or value.get("project_id") != candidate.name or not isinstance(value.get("project_root"), str):
+                raise ValueError("invalid workspace metadata")
+            if Path(value["project_root"]).resolve() == root:
+                matches.append(candidate.name)
+            elif candidate.name == preferred:
+                raise ValueError("workspace identity belongs to another project")
+        except (OSError, ValueError) as exc:
+            raise RuntimeError(f"workspace identity needs reconciliation: {candidate}: {exc}") from exc
+    if len(matches) > 1:
+        raise RuntimeError("ambiguous legacy workspaces for this checkout; reconcile before continuing")
+    return matches[0] if matches else preferred
+
+
+def atomic_json(path: Path, value: dict) -> None:
+    """Replace one local record without exposing a partially written JSON file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
+            json.dump(value, stream, indent=2, allow_nan=False)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def project_workspace(root: Path, create: bool = False) -> Path:
@@ -83,12 +124,12 @@ def project_workspace(root: Path, create: bool = False) -> Path:
             (path / name).mkdir(parents=True, exist_ok=True)
         metadata = {
             "schema_version": 1,
-            "project_id": project_id(root),
+            "project_id": path.name,
             "project_root": str(root.resolve()),
             "origin": git_origin(root),
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
-        (path / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+        atomic_json(path / "metadata.json", metadata)
     return path
 
 

@@ -53,7 +53,9 @@ State/handoff retains the task ID, full acceptance/behavior fields, evidence obl
 
 Supplying a changed required outcome or protected behavior, or removing a retained `specialist_assignment_ids` entry, fails before overwriting the snapshot. This includes unstarted assignments; reordering IDs or adding a commitment does not remove an existing one. For an already authorized, Head-reconciled material change, `--task-contract <replacement.json> --accept-contract-change "<reason>"` retains the previous contract/digest in the reconciliation record and invalidates old result binding. It cannot lower the known risk floor. For a different current task, use an explicit contract with a different `task_id` and `--new-task`; it clears prior task results/operating notes and does not inherit legacy completion. These options record a caller decision, not permission or authenticated user approval. Protect independent baselines using host/writer controls.
 
-Unreadable state or altered contract fingerprints require repair before replacement. Product requirements remain legitimate Git documents; operational snapshots stay in the existing local workspace. See [shared formats and trust limits](shared-improvement-contracts.md).
+Each contract revision retains its previous contract/digest, next digest and Head reason in `contract_revisions`. Existing specialist assignments do not automatically inherit that revision: use the explicit [assignment reconciliation route](specialist-composition.md#contract-revisions) before renewed acceptance.
+
+Snapshots are atomically replaced with a retained recovery copy. Unreadable state, mismatched copies or altered contract fingerprints require [repair or explicit obligation reconstruction](recovery-and-resume.md#corrupt-local-state) before replacement. Product requirements remain legitimate Git documents; operational snapshots stay in the existing local workspace. See [shared formats and trust limits](shared-improvement-contracts.md).
 
 ## Repository updates
 

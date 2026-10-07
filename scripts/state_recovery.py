@@ -31,6 +31,13 @@ def inspect(root: Path) -> dict[str, Any]:
 
     for name in JSON_STATE_FILES:
         path = state_dir / name
+        if name == "project-state.json":
+            try:
+                value = project_state.load_previous(root)
+                items.append({"name": name, "status": "OK" if value is not None else "MISSING", "path": str(path)})
+            except RuntimeError as exc:
+                items.append({"name": name, "status": "CORRUPT", "path": str(path), "error": str(exc)})
+            continue
         if not path.exists():
             items.append({"name": name, "status": "MISSING", "path": str(path)})
             continue
@@ -66,7 +73,7 @@ def recovery_plan(root: Path) -> dict[str, Any]:
         name = item["name"]
         action = "quarantine"
         if name == "project-state.json":
-            action = "quarantine_then_regenerate"
+            action = "restore_retained_state_or_require_reconciliation"
         elif name in {"project.json", "traceability.json"}:
             action = "quarantine_manual_rebuild"
         elif name == "graph-state.json":
@@ -90,9 +97,26 @@ def repair(root: Path, apply: bool) -> dict[str, Any]:
     local_workspace.initialize(root)
     workspace = local_workspace.project_workspace(root, create=True)
     state_dir = workspace / "state"
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     backup_dir = state_dir / "recovery-backups" / timestamp
     moved: list[dict[str, str]] = []
+    restore = None
+    recover_project = any(item["file"] == "project-state.json" for item in plan["actions"])
+    if recover_project:
+        # The backup is written first: after an interrupted capture it contains
+        # the newly accepted obligations, not the older primary snapshot.
+        for candidate in (project_state.backup_path(root), state_dir / "project-state.json"):
+            try:
+                restore = project_state.read_snapshot(candidate, root)
+                break
+            except (OSError, ValueError):
+                continue
+        # Persist the guard BEFORE quarantine, so interruption cannot look like
+        # a new project with no retained obligations.
+        local_workspace.atomic_json(project_state.recovery_path(root), {
+            "recovery_required": True,
+            "reason": "Restore retained obligations or explicitly reconstruct the approved task contract",
+        })
 
     for action in plan["actions"]:
         name = action["file"]
@@ -104,17 +128,21 @@ def repair(root: Path, apply: bool) -> dict[str, Any]:
         shutil.move(str(source), str(destination))
         moved.append({"file": name, "backup": str(destination)})
 
-    regenerated = None
-    if any(item["file"] == "project-state.json" for item in plan["actions"]):
-        regenerated_state = project_state.capture(root)
-        regenerated = regenerated_state.get("state_path")
+    restored = None
+    if recover_project and restore is not None:
+        local_workspace.atomic_json(project_state.backup_path(root), restore)
+        restored = str(state_dir / "project-state.json")
+        local_workspace.atomic_json(Path(restored), restore)
+        project_state.recovery_path(root).unlink(missing_ok=True)
 
     return {
         "applied": True,
+        "status": "BLOCK" if recover_project and restore is None else "PASS",
         "plan": plan,
         "backup_dir": str(backup_dir) if moved else None,
         "moved": moved,
-        "regenerated_project_state": regenerated,
+        "restored_project_state": restored,
+        "recovery_required": recover_project and restore is None,
         "notes": [
             "project.json is not fabricated from chat or guesses; rebuild it from verified project facts",
             "traceability.json is not fabricated; re-index GitHub objects when available",
@@ -145,7 +173,7 @@ def main() -> int:
         return 2
 
     print(json.dumps(result, indent=2, ensure_ascii=False))
-    return 0
+    return 2 if result.get("status") == "BLOCK" else 0
 
 
 if __name__ == "__main__":

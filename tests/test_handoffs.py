@@ -95,6 +95,73 @@ class HandoffTests(unittest.TestCase):
         return {"schema_version": 3, "task_id": self.contract["task_id"], "contract_sha256": behavior.digest(self.contract), "status": "Done", "risk_tier": 1, "blockers": [],
                 "acceptance_criteria": [dict(self.contract["acceptance_criteria"][0], met=True, evidence_ids=[self.evidence[0]["id"]])], "evidence": self.evidence}
 
+    def revise(self, remove=False):
+        import project_state
+        previous = copy.deepcopy(self.contract)
+        project_state.capture(self.root, task_contract=previous)
+        self.contract["scope"].append("extra")
+        if remove:
+            self.contract["specialist_assignment_ids"] = []
+        project_state.capture(self.root, task_contract=self.contract, accept_contract_change="User-approved scope revision")
+        self.spec["contract_sha256"] = behavior.digest(self.contract)
+        return previous
+
+    def test_accepted_specialist_reopens_after_revision_with_new_receipts_and_acceptance(self):
+        returned = self.output(self.start())
+        self.assertTrue(self.inspect(returned, self.decision(returned, self.inspect(returned)))["accepted"])
+        previous = self.revise()
+        self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "BLOCK")
+        start = handoff.reconcile(self.root, self.contract, previous, "ui-build", "Reassess against approved scope", self.spec)
+        self.assertFalse(start["accepted"])
+        stale = dict(returned, contract_sha256=behavior.digest(self.contract))
+        self.assertEqual(self.inspect(stale)["gate"], "BLOCK")
+        returned = self.output(start)
+        result = self.inspect(returned)
+        self.assertEqual(result["gate"], "UNVERIFIED")
+        self.assertTrue(self.inspect(returned, self.decision(returned, result))["accepted"])
+        self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "PASS")
+        base = handoff.directory(self.root, self.contract["task_id"], "ui-build")
+        self.assertTrue(list((base / "revisions").glob("*.json")))
+
+    def test_active_revision_cannot_drop_required_findings_or_retire_unresolved_work(self):
+        returned = self.output(self.start())
+        finding = {"id": "denial", "required": True, "description": "Permission denial needs resolution", "status": "open"}
+        returned["findings"] = [finding]
+        self.assertEqual(self.inspect(returned)["gate"], "BLOCK")
+        previous = self.revise(remove=True)
+        with self.assertRaisesRegex(ValueError, "unresolved"):
+            handoff.reconcile(self.root, self.contract, previous, "ui-build", "Remove specialist", retire=True)
+        start = handoff.reconcile(self.root, self.contract, previous, "ui-build", "Resolve retained finding under revised scope", self.spec)
+        returned = self.output(start)
+        with self.assertRaisesRegex(ValueError, "required finding"):
+            self.inspect(returned)
+        returned["findings"] = [dict(finding, status="resolved", resolution_evidence_ids=returned["evidence_ids"])]
+        self.assertTrue(self.inspect(returned, self.decision(returned, self.inspect(returned)))["accepted"])
+        self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "PASS")
+
+    def test_removed_accepted_assignment_retires_without_auto_accepting_new_task_evidence(self):
+        returned = self.output(self.start())
+        self.assertTrue(self.inspect(returned, self.decision(returned, self.inspect(returned)))["accepted"])
+        previous = self.revise(remove=True)
+        result = handoff.reconcile(self.root, self.contract, previous, "ui-build", "Accepted UI work superseded by revised scope", retire=True)
+        self.assertEqual(result["action"], "retired")
+        self.assertEqual(handoff.completion_failures(self.root, self.contract), [])
+        self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "BLOCK")
+        self.output(result)  # collect new task-bound evidence; historical return is not resubmitted
+        self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "PASS")
+
+    def test_unrecorded_revision_and_weakened_freshness_cannot_reopen(self):
+        self.start()
+        previous = copy.deepcopy(self.contract)
+        self.contract["scope"].append("extra")
+        with self.assertRaisesRegex(ValueError, "capture"):
+            handoff.reconcile(self.root, self.contract, previous, "ui-build", "Unrecorded revision", self.spec)
+        self.contract = previous
+        previous = self.revise()
+        self.spec["completion_binding"] = "stage-handoff"
+        with self.assertRaisesRegex(ValueError, "freshness"):
+            handoff.reconcile(self.root, self.contract, previous, "ui-build", "Reassess", self.spec)
+
     def test_valid_form_is_not_acceptance_then_real_head_decision_allows_done(self):
         start = self.start()
         returned = self.output(start)

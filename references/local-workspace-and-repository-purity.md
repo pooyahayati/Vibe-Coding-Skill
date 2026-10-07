@@ -57,7 +57,7 @@ Initialize:
 python scripts/local_workspace.py init --root /path/to/project --json
 ```
 
-The project ID is derived from the Git remote plus the resolved local project path so same-named repositories do not collide accidentally.
+New project IDs use the resolved checkout path; `origin` is mutable metadata. Adding or changing the remote preserves task state and receipt identity. A unique existing workspace whose metadata identifies the same checkout is reused under its original ID, so legacy receipt bindings remain valid. Different checkout paths stay isolated; ambiguous or unreadable legacy identity requires explicit reconciliation instead of guessing. Moving/cloning a checkout is not automatic evidence migration.
 
 ## Local Git excludes
 

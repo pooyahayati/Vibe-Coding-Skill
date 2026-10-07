@@ -45,6 +45,116 @@ class ReceiptCompletionTests(unittest.TestCase):
     def evaluate(self, report=None, contract=None, **options):
         return gate.evaluate(report or self.report, task_contract=contract or self.c, root=self.root, **options)
 
+    def test_workspace_and_receipts_survive_remote_changes_and_legacy_adoption(self):
+        import local_workspace as workspace
+        import resume_context
+        from test_cross_platform import git
+        saved = project_state.capture(self.root, task_contract=self.c, completion_report=self.report)
+        identity = workspace.project_id(self.root)
+        for url in ("https://example.invalid/owner/product.git", "git@example.invalid:owner/product.git"):
+            git(self.root, "remote", "remove", "origin") if workspace.git_origin(self.root) else None
+            git(self.root, "remote", "add", "origin", url)
+            self.assertEqual(workspace.project_id(self.root), identity)
+            self.assertEqual(project_state.load_previous(self.root)["task_contract"], self.c)
+            self.assertTrue(resume_context.build_context(self.root)["local_state"]["project_state"]["acceptance"]["receipt_verified"])
+        # Simulate the legacy origin-derived folder before collecting new evidence.
+        path = workspace.project_workspace(self.root)
+        legacy = path.with_name("product-0123456789abcdef")
+        path.rename(legacy)
+        metadata = json.loads((legacy / "metadata.json").read_text())
+        metadata["project_id"] = legacy.name
+        (legacy / "metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
+        self.assertEqual(workspace.project_id(self.root), legacy.name)
+        receipt = capture.capture(self.root, self.c, "check", [sys.executable, "check.py"])
+        git(self.root, "remote", "set-url", "origin", "https://example.invalid/renamed/product.git")
+        row = dict(self.report["evidence"][0], id=receipt["receipt"]["id"], receipt_ref=receipt["receipt_ref"], receipt_sha256=receipt["receipt_sha256"])
+        self.assertTrue(receipts.validate(receipt["receipt"], row, self.c, self.c["evidence_requirements"][0], self.root, {})["qualified"])
+        self.assertEqual(project_state.load_previous(self.root)["task_contract"], saved["task_contract"])
+
+    def test_same_name_projects_are_isolated_and_ambiguous_legacy_state_blocks(self):
+        import local_workspace as workspace
+        other = self.root.parent / "other/product"
+        other.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", str(other)], check=True)
+        self.assertNotEqual(workspace.project_workspace(other, create=True), workspace.project_workspace(self.root))
+        duplicate = workspace.project_workspace(self.root).with_name("product-duplicate")
+        duplicate.mkdir()
+        (duplicate / "metadata.json").write_text(json.dumps({"project_root": str(self.root), "project_id": duplicate.name}), encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "ambiguous"):
+            project_state.load_previous(self.root)
+
+    def test_recovery_restores_contract_and_rechecks_current_receipts(self):
+        import state_recovery
+        import resume_context
+        saved = project_state.capture(self.root, task_contract=self.c, completion_report=self.report)
+        project_state.state_path(self.root).write_text("{broken", encoding="utf-8")
+        with self.assertRaises(RuntimeError):
+            resume_context.build_context(self.root)
+        restored = state_recovery.repair(self.root, True)
+        self.assertEqual(restored["status"], "PASS")
+        state = project_state.load_previous(self.root)
+        self.assertEqual(state["task_contract"], saved["task_contract"])
+        self.assertEqual(state["completion_schema"], 3)
+        (self.root / "src/value.txt").write_text("stale", encoding="utf-8")
+        self.assertFalse(resume_context.build_context(self.root)["local_state"]["project_state"]["acceptance"]["receipt_verified"])
+
+    def test_interrupted_capture_keeps_new_obligations_and_unknown_loss_blocks(self):
+        import local_workspace as workspace
+        import state_recovery
+        import resume_context
+        project_state.capture(self.root, task_contract=self.c)
+        revised = dict(copy.deepcopy(self.c), specialist_assignment_ids=["mandatory-review"])
+        original = workspace.atomic_json
+        def interrupted(path, value):
+            if path.name == "project-state.json":
+                raise OSError("injected interruption")
+            return original(path, value)
+        with patch.object(workspace, "atomic_json", side_effect=interrupted):
+            with self.assertRaises(OSError):
+                project_state.capture(self.root, task_contract=revised)
+        with self.assertRaises(RuntimeError):
+            project_state.load_previous(self.root)
+        self.assertEqual(state_recovery.repair(self.root, True)["status"], "PASS")
+        self.assertEqual(project_state.load_previous(self.root)["task_contract"], revised)
+        project_state.backup_path(self.root).unlink()
+        project_state.state_path(self.root).write_text("{broken", encoding="utf-8")
+        self.assertEqual(state_recovery.repair(self.root, True)["status"], "BLOCK")
+        for action in (lambda: resume_context.build_context(self.root), lambda: project_state.capture(self.root, task_contract=self.c)):
+            with self.assertRaises(RuntimeError):
+                action()
+        restored = project_state.capture(self.root, task_contract=revised, reconcile_recovery="Reconstructed from independently verified approved scope")
+        self.assertEqual(restored["task_contract"]["specialist_assignment_ids"], ["mandatory-review"])
+        self.assertEqual(restored["completion_schema"], 3)
+        self.assertFalse(restored["acceptance"].get("receipt_verified", False))
+
+    def test_atomic_replacement_failure_does_not_truncate_valid_state(self):
+        import local_workspace as workspace
+        path = self.root.parent / "atomic.json"
+        workspace.atomic_json(path, {"required": "original"})
+        with patch.object(workspace.os, "replace", side_effect=OSError("interrupted replace")):
+            with self.assertRaises(OSError):
+                workspace.atomic_json(path, {"required": "replacement"})
+        self.assertEqual(json.loads(path.read_text()), {"required": "original"})
+        self.assertEqual(list(path.parent.glob("atomic.json.*.tmp")), [])
+
+    def test_missing_primary_and_partial_json_restore_without_dropping_risk_floor(self):
+        import state_recovery
+        import local_workspace as workspace
+        project_state.capture(self.root, task_contract=self.c)
+        project_state.state_path(self.root).unlink()
+        with self.assertRaises(RuntimeError):
+            project_state.load_previous(self.root)
+        self.assertEqual(state_recovery.repair(self.root, True)["status"], "PASS")
+        # Syntactically valid but incomplete JSON is not an accepted baseline.
+        project_state.state_path(self.root).write_text("{}", encoding="utf-8")
+        self.assertEqual(state_recovery.repair(self.root, True)["status"], "PASS")
+        self.assertEqual(project_state.load_previous(self.root)["task_contract"], self.c)
+        workspace.atomic_json(project_state.recovery_path(self.root), {"recovery_required": True})
+        weaker = dict(copy.deepcopy(self.c), risk_tier=0)
+        with self.assertRaises(ValueError):
+            project_state.capture(self.root, task_contract=weaker, reconcile_recovery="Cannot bypass a recoverable baseline")
+        self.assertTrue(project_state.recovery_path(self.root).exists())
+
     def test_actual_receipt_pass_reuse_excluded_output_and_source_staleness(self):
         result = self.evaluate()
         self.assertEqual(result["gate"], "PASS", result)
@@ -185,6 +295,7 @@ class ReceiptCompletionTests(unittest.TestCase):
                 if legacy_schema is not None:
                     legacy["completion_schema"] = legacy_schema
                 project_state.state_path(self.root).write_text(json.dumps(legacy), encoding="utf-8")
+                project_state.backup_path(self.root).unlink(missing_ok=True)  # pre-A1 state had no retained copy
                 old = copy.deepcopy(self.report)
                 old["schema_version"] = 2
                 old["evidence"][0]["provenance"] = {"source": "local fixture observation", "reference": self.r["receipt_path"]}
@@ -199,12 +310,16 @@ class ReceiptCompletionTests(unittest.TestCase):
                 self.assertTrue(migrated["acceptance"]["execution_verified"])
                 self.assertEqual(project_state.capture(self.root, completion_report=old)["acceptance"]["gate"], "BLOCK")
                 project_state.state_path(self.root).write_text(json.dumps(legacy), encoding="utf-8")
+                project_state.backup_path(self.root).unlink(missing_ok=True)
                 replacement = dict(copy.deepcopy(self.c), task_id="next-task")
                 next_state = project_state.capture(self.root, task_contract=replacement, new_task=True, completion_report=old)
                 self.assertEqual(next_state["completion_schema"], 3)
                 self.assertEqual(next_state["acceptance"]["gate"], "BLOCK")
         # A project-only snapshot is not evidence of an in-flight legacy task.
-        project_state.state_path(self.root).write_text(json.dumps({"completion_schema": 2}), encoding="utf-8")
+        project_only = {k: v for k, v in saved.items() if k not in ("task_contract", "task_contract_sha256", "acceptance")}
+        project_only["completion_schema"] = 2
+        project_state.state_path(self.root).write_text(json.dumps(project_only), encoding="utf-8")
+        project_state.backup_path(self.root).unlink(missing_ok=True)
         self.assertEqual(project_state.capture(self.root, task_contract=self.c)["completion_schema"], 3)
 
     def test_unstarted_required_specialist_survives_state_and_explicit_reconciliation(self):

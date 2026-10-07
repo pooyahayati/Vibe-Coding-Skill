@@ -131,6 +131,22 @@ Changes are observed against the starting commit plus preexisting dirty files, s
 
 Ignored changes outside observed scope, concurrent writers, insufficient assertions and actors able to edit both source and records remain limits. Use existing writer boundaries or an isolated worktree when necessary. Records/hashes are consistency controls, not an OS sandbox, installation permission or automatic semantic proof. No blanket model evaluation, additional user approval or full-suite requirement is introduced.
 
+## Contract revisions
+
+After an authorized task-contract change, first capture the replacement with `project_state.py capture --accept-contract-change "<reason>"`. Retained operations remain bound to the previous contract and block completion until explicitly reconciled. Preserve both contracts for the transition:
+
+```bash
+python scripts/specialist_handoff.py reconcile --root <project> \
+  --task-contract <current-contract.json> --previous-task-contract <previous-contract.json> \
+  --assignment-id <id> --assignment <revised-assignment.json> --reason "<Head reassessment reason>"
+```
+
+Reopening requires a recorded contract-revision chain and current specialist compatibility. It preserves assignment identity, original observed-change baseline, protected invariants, shared contracts and every required finding in prior returns. It archives the prior operation/review, clears acceptance, and requires a new contract-bound return, qualifying evidence and separate Head decision. Never copy old receipts or acceptance to the revised scope. Reconciliation success means the transition succeeded, not that the task is complete.
+
+For an assignment removed or superseded in the new contract, use `--retire` instead of `--assignment` only when its existing acceptance is still valid and required findings are resolved. The historical operation/returns remain checked; retirement does not qualify new task evidence. Active, abandoned, stale or unresolved work must be reopened and resolved, even if its ID was removed from the replacement contract. A later contract revision requires reconciliation again. To change specialist identity/stage, retire resolved work and create a separately scoped assignment; do not discard unresolved obligations.
+
+The transition records existing Head authority; it does not grant additional user permissions. Local ledger integrity still depends on trusted host/writer controls.
+
 ## Nested specialist requests
 
 A specialist's links are dependency requests, not unrestricted installation authority. Propagate Head scope/risk/freshness controls to narrower specialists. Before using one, reconcile its canonical source with an explicitly approved registration or an already authorized skill in the host's trusted catalog; apply the same latest-source and scoped-handoff contract. Do not download an entire collection or blindly follow arbitrary transitive links. Report an unregistered, untrusted required dependency as a gap for the Head to resolve. Recommended dependencies must not block unrelated work.
