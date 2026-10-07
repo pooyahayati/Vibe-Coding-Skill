@@ -1,6 +1,10 @@
 # Changelog
 
+Technical release history. Entries describe their release; current operating and publication rules are in `SKILL.md` and the linked references. [UPDATES.md](UPDATES.md) is the shorter user-facing catalog.
+
 ## Unreleased
+
+- Streamline the README and current status/implementation pages; archive closed specifications and delivery evidence without removing history, restore documentation links and align public security guidance with the existing native Trivy publication gate. No runtime, specialist, release or installation change.
 
 ## 1.4.0 — Reliable routing, native release security and local runtime
 

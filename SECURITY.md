@@ -1,27 +1,20 @@
 # Security
 
-Do not report security-sensitive findings in a public issue if disclosure could create risk.
-
 ## Private reporting
 
-Preferred: use GitHub's private vulnerability-reporting / security-advisory flow for this repository when the **Report a vulnerability** option is available.
+Use GitHub's private vulnerability-reporting/security-advisory flow when **Report a vulnerability** is available. Otherwise contact the maintainer through [Pooyahayati.com](https://Pooyahayati.com) and establish a private channel before sharing exploit details, credentials or sensitive proof of concept. Public issues are only for non-sensitive hardening requests.
 
-If that option is unavailable, contact the maintainer through https://Pooyahayati.com without posting exploit details, credentials, tokens, or proof-of-concept secrets publicly. Establish a private channel before sharing sensitive technical details.
+## Security scope
 
-Public issues are appropriate only for non-sensitive security hardening requests that do not disclose an exploitable condition.
+The Skill does not guarantee secure generated code. The Head retains security decisions; the selected security specialist supplies scoped methods and findings.
 
-## Scope
+- During development, use native application controls, relevant allow/deny and integrity checks, and the applicable package manager's audit.
+- Before authorized software publication/release/deployment, require installed native Trivy and actual scans bound to the final delivery target. Missing, failed or unverified required scans block publication. Trivy is the only additional scanner in the Head workflow.
+- Assess scan coverage/findings and retain behavioral security evidence; clean output does not prove application authorization, business logic or data safety. Graphify supports impact analysis, not security approval; registries/OSV supply dependency evidence.
+- Keep raw scan reports private outside product source and redact shared summaries. Installation warnings do not waive publication controls.
 
-The skill does not guarantee that generated code is secure. Security claims require evidence from appropriate tests, scanners, review, and runtime validation.
-
-Graphify is used for project intelligence, not as a security authority.
-
-Trivy may be used for baseline vulnerability, secret, container, IaC, and license scanning.
-
-OSV and package registries may be used as dependency evidence providers.
-
-High-risk application code may require additional SAST or language-specific security tooling.
+Commands, finding handling and evidence requirements are canonical in the [native release gate](references/security-and-dependencies.md#native-release-gate). Tooling does not grant host permissions or authorization.
 
 ## Supported line
 
-Security fixes are applied to the current maintained release line. Older pre-release versions should be upgraded before relying on a fix unless a specific backport is published.
+Security fixes target the current maintained release line. Upgrade older versions unless a specific backport is published.
