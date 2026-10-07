@@ -4,11 +4,13 @@
 
 A risk-adaptive engineering Head for AI-assisted development of small, medium and large software projects, including WordPress plugins. Works with OpenAI Codex, Claude Code and compatible skill-based agents.
 
-Current version: `1.5.0` — [stable release and portable ZIP](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.5.0). Source changes under [Unreleased](CHANGELOG.md#unreleased) do not automatically update a published package or local installation.
+Current version: `1.5.0` — [stable release and portable ZIP](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.5.0).
 
 ## One engineering Head, focused specialists
 
-Vibe is the project manager and senior engineer: it owns scope, stack, architecture, risk, approvals, test selection, integration and final acceptance. Selected specialists supply domain methods and evidence under that authority; their rules are not duplicated in the Head.
+Vibe is the project manager and senior engineer: it owns scope, stack, architecture, risk, approvals, test selection, integration and final acceptance. Specialists supply domain methods and evidence; the Head retains shared engineering controls and accepts their results.
+
+Prefer existing platform capabilities and suitable extensions before custom code. Keep a working stack unless requirements justify changing it; choose technology from product needs, not project size alone.
 
 ## Development workflow
 
@@ -50,12 +52,12 @@ WordPress work additionally preserves public APIs, authorization, lifecycle/data
 
 | Specialist | Purpose and trigger | Main stages |
 |---|---|---|
-| [UI-UX-Skill](https://github.com/pooyahayati/UI-UX-Skill) | **Sole design specialist:** supported product UI, responsive/RTL, accessibility and rendered validation. | Design · Build · Verify · Review |
+| [UI-UX-Skill](https://github.com/pooyahayati/UI-UX-Skill) | **Sole UI/UX specialist:** websites, apps, dashboards and WordPress interfaces, including responsive/RTL, accessibility and rendered validation. | Design · Build · Verify · Review |
 | [Security and hardening](https://github.com/addyosmani/agent-skills/tree/main/skills/security-and-hardening) | Auth/access, sensitive data, uploads, payments and external trust boundaries. | Design · Build · Verify · Review |
 | [API and interface design](https://github.com/addyosmani/agent-skills/tree/main/skills/api-and-interface-design) | Producer/consumer contracts, errors, compatibility, retries and idempotency. | Design · Build · Verify · Review |
 | [Debugging and error recovery](https://github.com/addyosmani/agent-skills/tree/main/skills/debugging-and-error-recovery) | Unclear/intermittent failures, repeated failed fixes and delivery failures. | Discover · Build · Verify · Ship on failure |
 
-Select matching domains only; never install the entire external collection. Current installation, instruction compatibility, scoped return and Head acceptance are separate checks. [Composition and freshness](references/specialist-composition.md).
+Use specialists only for matching work; never install the entire external collection. Check their installed version and instruction compatibility, assign a bounded task, then assess the returned work and evidence before accepting it. [Composition and freshness](references/specialist-composition.md).
 
 | Role | Responsibility | Boundary |
 |---|---|---|
@@ -70,23 +72,23 @@ Head precedence cannot dismiss a real vulnerability or contradictory evidence. T
 | Tool | Purpose | When used | Limits |
 |---|---|---|---|
 | [Graphify](https://github.com/Graphify-Labs/graphify) | Code relationships and consequential impact analysis. | Discover/Plan and targeted Review for unfamiliar or cross-module work. | Confirm relationships in source/runtime; use source analysis if unavailable. Semantic processing needs its own authorization. |
-| [Trivy](https://github.com/aquasecurity/trivy) | Local secret and relevant dependency/configuration scans. | Plan: native availability. Verify/Review: findings. Ship: final-artifact scans required before publication. | Missing/failed/incomplete scans block publication; a clean scan does not prove application logic or authorization. |
+| [Trivy](https://github.com/aquasecurity/trivy) | Local secret and relevant dependency/configuration scans. | Publication planning: check native availability. Verify/Review: assess findings. Ship: scan the final artifact before publication. | Missing/failed/incomplete scans block publication; a clean scan does not prove application logic or authorization. |
 
 Keep generated reports outside product source. Development uses native project controls; Trivy is the only additional scanner in the Head workflow. [Native release gate](references/security-and-dependencies.md#native-release-gate).
 
 ## Verification and delivery
 
 - Define an observable user/system outcome and preserve approved scope, business rules and platform invariants. Select checks from changed behavior and meaningful failures, without fixed test counts, coverage quotas or unrelated reruns. Required project checks still apply.
-- Structured tasks retain criteria and validate local receipts against scoped inputs/artifacts. Legacy reports remain declared evidence; tiny/manual work needs no forced automated test. The Head still assesses whether a check proves the outcome. [Completion and trust limits](references/execution-and-verification.md#receipt-backed-completion-e2).
+- Preserve acceptance criteria, required checks and unresolved findings across handoffs and resumes. For structured tasks, validate recorded results against the relevant code and artifacts. A successful command alone does not prove the intended outcome. [Completion and trust limits](references/execution-and-verification.md#receipt-backed-completion-e2).
 - Deliver what works, how to start/use it, actual checks, unresolved limits and the next action. Merge, release, deployment and local installation are distinct outcomes.
 
-The Head chooses the simplest reproducible product startup path. Suitable self-hosted apps can offer local Docker Compose execution, verified from clean startup through a core workflow and required data persistence. Containers do not replace WordPress ZIPs or native desktop/mobile packages, establish offline operation, or prove production readiness. [Product installation policy](references/product-installation-and-runtime.md).
+Choose the simplest reproducible startup path. When useful or requested, suitable self-hosted apps can offer local Docker Compose installation, checked through clean startup, a core workflow and required data persistence. WordPress plugins still need an installable ZIP; desktop/mobile products need their appropriate native packages. [Product installation and runtime checks](references/product-installation-and-runtime.md).
 
 ## Requirements, updates and feedback
 
-Python 3.10+ and Git are required; network access supports current upstream/dependency evidence. Graphify is conditional. Missing Trivy can warn during Skill installation but blocks software publication until the native gate passes.
+Python 3.10+ and Git are required for the Skill's helper scripts; network access is needed to check current upstream versions and dependency information. Tool requirements depend on the task, as described above. [Installation and prerequisites](HOW_TO_INSTALL.md).
 
-Resolve the Head and selected specialists to the latest stable release, using the default branch only when no stable release exists. Preserve local edits, record provenance and keep instructions stable during an assignment. Reconcile installed specialists daily during active preflights; idle checks need a host scheduler. Install/update only within existing authorization. This does not upgrade the product stack.
+Check the Head and selected specialists against the latest stable release, using the default branch only when no stable release exists. Preserve local edits and keep instructions stable during an assignment. Install/update only within existing authorization. Daily specialist checks run during active preflights; idle checks require a host scheduler. [Update and freshness policy](references/specialist-composition.md).
 
 For a suspected defect in Vibe itself, prepare a minimal English local report with attribution and evidence. After removing sensitive details, the user may email it to **hayatipooya@gmail.com**; nothing is sent automatically. [Feedback route](references/skill-feedback.md).
 
