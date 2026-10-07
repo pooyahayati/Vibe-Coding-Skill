@@ -96,6 +96,50 @@ class PortableIntegrationTests(unittest.TestCase):
     def git(self, *args):
         return subprocess.run(["git", *args], cwd=self.product, check=True, capture_output=True)
 
+    def test_installed_wordpress_cli_preserves_long_state_with_stderr_warnings(self):
+        source = self.product / "plugin-source"
+        source.mkdir()
+        (source / "demo.php").write_text("<?php\n/* Plugin Name: Demo\nVersion: 1.0.0\n*/\n", encoding="utf-8")
+        artifact = self.home / "demo.zip"
+        packaged = self.cli("wordpress_artifact.py", "package", "--source-root", source,
+                            "--output", artifact, "--slug", "demo", "--json")
+        code = textwrap.dedent('''
+            import json, subprocess, sys
+            from unittest import mock
+            sys.path.insert(0, sys.argv[1])
+            import wordpress_artifact as wp
+            plugins = [{"name": "demo", "status": "inactive"}] + [
+                {"name": "other-" + str(i), "status": "active"} for i in range(150)]
+            def run(command, **kwargs):
+                if "list" in command:
+                    stdout = json.dumps(plugins)
+                elif "get" in command:
+                    stdout = "1.0.0\\n"
+                else:
+                    stdout = "Success"
+                return subprocess.CompletedProcess(command, 0, stdout, "PHP Warning: fixture diagnostic")
+            sys.argv = ["wordpress_artifact.py", "runtime-check", "--artifact", sys.argv[2],
+                        "--wordpress-root", sys.argv[3], "--wp-bin", "fixture-wp", "--json"]
+            with mock.patch.object(wp.shutil, "which", return_value="fixture-wp"), \\
+                 mock.patch.object(wp.subprocess, "run", side_effect=run):
+                raise SystemExit(wp.main())
+        ''')
+        process = subprocess.run(
+            [sys.executable, "-X", "utf8", "-c", code, str(self.installed / "scripts"), str(artifact), str(self.product)],
+            cwd=self.product, env=self.env, capture_output=True, text=True, encoding="utf-8", timeout=60,
+        )
+        self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
+        result = json.loads(process.stdout)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["artifact_sha256"], packaged["artifact_sha256"])
+        self.assertEqual(result["installed_version"], "1.0.0")
+        self.assertTrue(result["plugin_present_before"])
+        self.assertFalse(result["fresh_plugin_install_checked"])
+        self.assertFalse(result["data_freshness_verified"])
+        self.assertGreater(len(result["steps"][0]["stdout"]), 4000)
+        self.assertEqual(len(json.loads(result["steps"][0]["stdout"])), 151)
+        self.assertIn("PHP Warning", result["steps"][0]["stderr"])
+
     def json_file(self, name, value):
         path = self.home / (name + ".json")
         path.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")

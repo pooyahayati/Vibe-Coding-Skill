@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import importlib.util
+import io
+import json
+import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
 from unittest import mock
+from contextlib import redirect_stdout
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +52,79 @@ def plugin_source(root: Path, version: str) -> None:
 class WordPressArtifactTests(unittest.TestCase):
     def setUp(self):
         self.mod = load_script()
+
+    def test_command_preserves_stdout_and_marks_bounded_diagnostics(self):
+        stdout = json.dumps([{"name": f"plugin-{i}", "status": "active"} for i in range(150)])
+        stderr = "warning\n" * 600
+        with mock.patch.object(self.mod.shutil, "which", return_value="fixture-wp"), mock.patch.object(
+            self.mod.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, stdout, stderr),
+        ):
+            step = self.mod.run_wp("fixture-wp", ROOT, ["plugin", "list", "--format=json"])
+        self.assertGreater(len(stdout), 4000)
+        self.assertEqual(step["stdout"], stdout)
+        self.assertEqual(len(json.loads(step["stdout"])), 150)
+        self.assertEqual(step["stderr"], stderr[-4000:])
+        self.assertTrue(step["stderr_truncated"])
+        self.assertTrue(step["output_truncated"])
+        self.assertLessEqual(len(step["output"]), 4000)
+
+    def test_invalid_initial_output_and_command_failures_are_structured_cli_errors(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            plugin_source(base / "source", "1.0.0")
+            artifact = base / "demo.zip"
+            self.mod.package_artifact(base / "source", artifact, slug="demo-plugin")
+            cases = [
+                (subprocess.CompletedProcess([], 0, "[broken", ""), "not valid JSON"),
+                (subprocess.CompletedProcess([], 0, '{}', ""), "must be a plugin array"),
+                (subprocess.CompletedProcess([], 0, '["demo-plugin"]', ""), "must be a plugin array"),
+                (subprocess.CompletedProcess([], 0, "Warning: stdout noise\n[]", ""), "not valid JSON"),
+                (subprocess.CompletedProcess([], 1, "[]", "permission denied"), "initial plugin state failed: []\npermission denied"),
+                (subprocess.CompletedProcess([], 0, " " * self.mod.MAX_WP_STDOUT_CHARS + "[]", ""), "stdout exceeds the supported limit"),
+                (subprocess.TimeoutExpired(["fixture-wp"], 180), "timed out after 180 seconds"),
+            ]
+            for outcome, error in cases:
+                with self.subTest(error=error):
+                    captured = io.StringIO()
+                    argv = ["wordpress_artifact.py", "runtime-check", "--artifact", str(artifact),
+                            "--wordpress-root", str(base), "--wp-bin", "fixture-wp", "--json"]
+                    with mock.patch.object(sys, "argv", argv), redirect_stdout(captured), \
+                         mock.patch.object(self.mod.shutil, "which", return_value="fixture-wp"), \
+                         mock.patch.object(self.mod.subprocess, "run", side_effect=[outcome]) as command:
+                        code = self.mod.main()
+                    self.assertEqual(code, 2)
+                    result = json.loads(captured.getvalue())
+                    self.assertFalse(result["ok"])
+                    self.assertIn(error, result["error"])
+                    command.assert_called_once()  # No install may follow a failed initial-state check.
+
+    def test_stdout_limit_accepts_complete_json_at_boundary(self):
+        stdout = " " * (self.mod.MAX_WP_STDOUT_CHARS - 2) + "[]"
+        with mock.patch.object(self.mod.shutil, "which", return_value="fixture-wp"), mock.patch.object(
+            self.mod.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, stdout, ""),
+        ):
+            step = self.mod.run_wp("fixture-wp", ROOT, ["plugin", "list", "--format=json"])
+        self.assertEqual(json.loads(step["stdout"]), [])
+        self.assertEqual(len(step["stdout"]), self.mod.MAX_WP_STDOUT_CHARS)
+
+    def test_invalid_or_wrong_version_stops_lifecycle_after_install(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            plugin_source(base / "source", "1.0.0")
+            artifact = base / "demo.zip"
+            self.mod.package_artifact(base / "source", artifact, slug="demo-plugin")
+            for version, error in [("", "one nonempty stdout line"),
+                                   ("1.0.0\nunexpected", "one nonempty stdout line"),
+                                   ("9.9.9", "version differs from ZIP")]:
+                with self.subTest(version=version), mock.patch.object(self.mod.shutil, "which", return_value="fixture-wp"), \
+                     mock.patch.object(self.mod.subprocess, "run", side_effect=[
+                         subprocess.CompletedProcess([], 0, "[]", ""),
+                         subprocess.CompletedProcess([], 0, "installed", ""),
+                         subprocess.CompletedProcess([], 0, version, "Warning: diagnostic"),
+                     ]) as command:
+                    with self.assertRaisesRegex(RuntimeError, error):
+                        self.mod.runtime_check(artifact, base, "fixture-wp")
+                    self.assertEqual(command.call_count, 3)
 
     def test_package_is_deterministic_and_verifies_embedded_version(self):
         with tempfile.TemporaryDirectory() as td:
@@ -186,6 +264,11 @@ class WordPressArtifactTests(unittest.TestCase):
             fake_wp.write_text("fake", encoding="utf-8")
 
             state = {"version": ""}
+            initial_plugins = [{"name": "demo-plugin", "status": "inactive"}] + [
+                {"name": f"other-plugin-{i}", "status": "active", "version": "1.0.0"} for i in range(100)
+            ]
+            initial_stdout = json.dumps(initial_plugins)
+            self.assertGreater(len(initial_stdout), 4000)
 
             class Result:
                 def __init__(self, returncode=0, stdout="", stderr=""):
@@ -196,7 +279,7 @@ class WordPressArtifactTests(unittest.TestCase):
             def fake_run(command, **kwargs):
                 args = list(command)
                 if "list" in args and "--format=json" in args:
-                    return Result(0, stdout="[]")
+                    return Result(0, stdout=initial_stdout, stderr="PHP Warning: fixture diagnostic")
                 if "install" in args:
                     artifact_arg = Path(args[args.index("install") + 1])
                     if artifact_arg == old_zip.resolve():
@@ -207,7 +290,7 @@ class WordPressArtifactTests(unittest.TestCase):
                         return Result(1, stderr="unexpected artifact")
                     return Result(0, stdout="installed")
                 if "get" in args and "--field=version" in args:
-                    return Result(0, stdout=state["version"] + "\n")
+                    return Result(0, stdout=state["version"] + "\n", stderr="PHP Warning: fixture diagnostic")
                 if "deactivate" in args or "activate" in args:
                     return Result(0, stdout="ok")
                 return Result(1, stderr="unexpected command")
@@ -225,6 +308,9 @@ class WordPressArtifactTests(unittest.TestCase):
                 )
 
             self.assertTrue(result["upgrade_checked"])
+            self.assertTrue(result["plugin_present_before"])
+            self.assertEqual(json.loads(result["steps"][0]["stdout"]), initial_plugins)
+            self.assertIn("PHP Warning", result["steps"][0]["stderr"])
             self.assertFalse(result["fresh_install_checked"])
             self.assertEqual(result["previous_version"], "1.0.0")
             self.assertEqual(result["installed_version"], "1.1.0")

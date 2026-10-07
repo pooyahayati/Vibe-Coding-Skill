@@ -4,6 +4,8 @@ Technical release history. Entries describe their release; current operating and
 
 ## Unreleased
 
+- A4: Parse full WP-CLI stdout separately from bounded stderr/combined diagnostics. Explicitly reject oversized stdout, malformed plugin lists and empty/multiline version output; report command timeouts as structured CLI failures. Preserve exact-artifact install/upgrade and uninstall/data safeguards, with focused runtime and extracted-package regressions. No version or installation change.
+
 - A3: Bind npm license/repository evidence to the selected version and require matching version evidence for normalized-provider supplements. Replace license token matching with a bounded evaluator for explicit AND/OR/WITH policies; unresolved expressions require review, deny-list vetoes remain, and projects without a policy gain no default restrictions. Add deterministic registry, policy and extracted-package CLI regressions; no dependency, version or installation change.
 
 - A2: Preserve literal hidden/bracketed affected paths and governing instructions; reject unsafe paths and expose missing-input inspection gaps. Bind graph freshness to the actual source snapshot and output bytes, reject copy/generation drift, and keep previous graph evidence on provider/input failure. Legacy graph caches require refresh; task/receipt formats and release/installation state are unchanged.
