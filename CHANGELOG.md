@@ -4,6 +4,8 @@ Technical release history. Entries describe their release; current operating and
 
 ## Unreleased
 
+- A2: Preserve literal hidden/bracketed affected paths and governing instructions; reject unsafe paths and expose missing-input inspection gaps. Bind graph freshness to the actual source snapshot and output bytes, reject copy/generation drift, and keep previous graph evidence on provider/input failure. Legacy graph caches require refresh; task/receipt formats and release/installation state are unchanged.
+
 - A1: Keep checkout/receipt identity stable across remote changes, atomically retain task snapshots, and restore obligations or require explicit reconstruction after corruption. Add Head-controlled specialist reopening/retirement after retained contract revisions, preserving required findings and requiring renewed evidence/acceptance. Keep existing external formats and legacy workflows; no release or installation change.
 
 - Prepare the A1-A5 remediation roadmap and implementation criteria for seven confirmed deep-audit findings: retained-state/contract continuity, routing/graph input integrity, dependency decisions, WordPress command parsing and stage-aware integration controls. Implementation progress is tracked in `ROADMAP.md`; release/installation state is unchanged.

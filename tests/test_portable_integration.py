@@ -124,6 +124,20 @@ class PortableIntegrationTests(unittest.TestCase):
         self.assertFalse(drafted["execution_plan_required"])
         self.assertTrue(drafted["context_plan"]["task"]["routing_uncertainties"])
 
+    def test_installed_hidden_route_preserves_scoped_instructions_and_reports_missing_input(self):
+        (self.product / ".github/workflows").mkdir(parents=True)
+        for relative in ("AGENTS.md", ".github/AGENTS.md"):
+            (self.product / relative).write_text("# Invariants\n- Keep required checks.\n", encoding="utf-8")
+        (self.product / ".github/workflows/[check].yml").write_text("name: verify\non: push\n", encoding="utf-8")
+        args = ["--root", self.product, "--task", "Update the workflow", "--path", "./.github/workflows/[check].yml", "--json"]
+        route = self.cli("context_router.py", *args)
+        self.assertIn(".github/AGENTS.md", route["context_plan"]["load"])
+        self.assertGreater(route["context_plan"]["inspection"]["scans"]["affected"]["inspected_files"], 0)
+        draft = self.cli("execution_plan.py", "draft", *args)
+        self.assertIn(".github/AGENTS.md", draft["context_plan"]["context_plan"]["load"])
+        missing = self.cli("context_router.py", "--root", self.product, "--task", "Inspect workflow", "--path", ".github/missing.yml", "--json")
+        self.assertTrue(missing["task"]["routing_uncertainties"])
+
     def test_installed_root_ownership_blocks_conflicts_and_preserves_covered_drift(self):
         contract = self.contract()
         contract["scope"] = ["./"]

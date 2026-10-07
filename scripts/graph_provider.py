@@ -117,11 +117,19 @@ def status(root: Path) -> dict[str, Any]:
     graph_path = graph_json(root)
     state_head = state.get("source_commit") if state else None
     state_fingerprint = state.get("working_tree_fingerprint") if state else None
+    try:
+        snapshot_matches = bool(state and state.get("source_snapshot_sha256") == source_fingerprint(root))
+        output_matches = bool(state and graph_path.is_file() and state.get("graph_sha256") == file_digest(graph_path))
+    except (OSError, RuntimeError):
+        snapshot_matches = output_matches = False
     fresh = bool(
         state
+        and state.get("schema_version") == 3
         and graph_path.exists()
         and state_head == current_head
         and state_fingerprint == fingerprint
+        and snapshot_matches
+        and output_matches
     )
     selected_version = state.get("provider_version") if state else None
     return {
@@ -154,13 +162,35 @@ def source_files(root: Path) -> list[str]:
     )
 
 
-def prepare_shadow(root: Path, include_previous_graph: bool) -> Path:
+def file_digest(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while chunk := stream.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def source_fingerprint(root: Path, files: list[str] | None = None) -> str:
+    """Bind to the exact file bytes supplied to the provider, not later Git state."""
+    rows = []
+    for rel in source_files(root) if files is None else files:
+        path = root / rel
+        if not path.resolve().is_relative_to(root.resolve()):
+            raise RuntimeError("graph source resolves outside snapshot root: " + rel)
+        if path.is_symlink() and not path.is_file():
+            raise RuntimeError("graph source link must resolve to a captured regular file: " + rel)
+        rows.append([rel, os.readlink(path) if path.is_symlink() else None,
+                     file_digest(path) if path.is_file() else "missing"])
+    return hashlib.sha256(json.dumps(rows, ensure_ascii=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def prepare_shadow(root: Path, include_previous_graph: bool, files: list[str] | None = None) -> Path:
     workspace = local_workspace.project_workspace(root, create=True)
     shadow = workspace / "worktrees" / "graph-shadow"
     if shadow.exists():
         shutil.rmtree(shadow)
     shadow.mkdir(parents=True, exist_ok=True)
-    for rel in source_files(root):
+    for rel in source_files(root) if files is None else files:
         src = root / rel
         if not src.exists() and not src.is_symlink():
             continue
@@ -169,8 +199,8 @@ def prepare_shadow(root: Path, include_previous_graph: bool) -> Path:
         if src.is_symlink():
             try:
                 dst.symlink_to(os.readlink(src))
-            except OSError:
-                pass
+            except OSError as exc:
+                raise RuntimeError("cannot snapshot graph source link: " + rel) from exc
         elif src.is_file():
             shutil.copy2(src, dst)
     previous = graph_root(root, create=False)
@@ -206,7 +236,11 @@ def refresh(root: Path, mode: str = "auto", keep_shadow: bool = False) -> dict[s
         mode = "incremental" if previous.exists() else "full"
     if mode not in {"full", "incremental"}:
         raise ValueError("mode must be auto, full, or incremental")
-    shadow = prepare_shadow(root, include_previous_graph=(mode == "incremental"))
+    current_head = head(root)
+    fingerprint = working_tree_fingerprint(root)
+    files = source_files(root)
+    source_snapshot = source_fingerprint(root, files)
+    shadow = prepare_shadow(root, include_previous_graph=(mode == "incremental"), files=files)
     if mode == "incremental" and not (shadow / PROVIDER_OUTPUT / "graph.json").exists():
         mode = "full"
     command = toolchain_runtime.command(
@@ -214,32 +248,38 @@ def refresh(root: Path, mode: str = "auto", keep_shadow: bool = False) -> dict[s
         selected_version,
         ["update", "."] if mode == "incremental" else ["extract", ".", "--code-only", "--no-viz"],
     )
-    rc, out = run(command, shadow)
-    if rc != 0:
+    def require_same_inputs():
+        if (head(root) != current_head or working_tree_fingerprint(root) != fingerprint
+                or source_fingerprint(root) != source_snapshot or source_fingerprint(shadow, files) != source_snapshot):
+            raise RuntimeError("graph inputs changed during snapshot/generation; previous graph retained, retry after source stabilizes")
+    try:
+        require_same_inputs()
+        rc, out = run(command, shadow)
+        if rc != 0:
+            raise RuntimeError(f"Graphify {mode} failed: {out[-2000:]}")
+        require_same_inputs()
+        path = persist_provider_output(root, shadow)
+        dirty_rc, dirty_out = git(root, "status", "--porcelain")
+        state = {
+            "schema_version": 3,
+            "provider": PROVIDER,
+            "provider_version": selected_version,
+            "resolution_source": resolved.get("source"),
+            "contract_verified": resolved.get("contract_verified"),
+            "source_commit": current_head,
+            "working_tree_fingerprint": fingerprint,
+            "source_snapshot_sha256": source_snapshot,
+            "graph_sha256": file_digest(path),
+            "source_dirty": bool(dirty_out.strip()) if dirty_rc == 0 else None,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "mode": mode,
+            "graph_path": str(path),
+        }
+        state_path = graph_state_path(root, create=True)
+        local_workspace.atomic_json(state_path, state)
+    finally:
         if not keep_shadow:
             shutil.rmtree(shadow, ignore_errors=True)
-        raise RuntimeError(f"Graphify {mode} failed: {out[-2000:]}")
-    path = persist_provider_output(root, shadow)
-    current_head = head(root)
-    fingerprint = working_tree_fingerprint(root)
-    dirty_rc, dirty_out = git(root, "status", "--porcelain")
-    state = {
-        "schema_version": 2,
-        "provider": PROVIDER,
-        "provider_version": selected_version,
-        "resolution_source": resolved.get("source"),
-        "contract_verified": resolved.get("contract_verified"),
-        "source_commit": current_head,
-        "working_tree_fingerprint": fingerprint,
-        "source_dirty": bool(dirty_out.strip()) if dirty_rc == 0 else None,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "mode": mode,
-        "graph_path": str(path),
-    }
-    state_path = graph_state_path(root, create=True)
-    state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
-    if not keep_shadow:
-        shutil.rmtree(shadow, ignore_errors=True)
     return {
         "ok": True,
         "provider": PROVIDER,
@@ -247,7 +287,7 @@ def refresh(root: Path, mode: str = "auto", keep_shadow: bool = False) -> dict[s
         "graph_path": str(path),
         "state_path": str(state_path),
         "source_commit": current_head,
-        "fresh": True,
+        "fresh": status(root)["fresh"],
     }
 
 

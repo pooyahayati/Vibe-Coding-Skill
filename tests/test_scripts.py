@@ -1681,6 +1681,75 @@ class LocalWorkspacePurityTests(unittest.TestCase):
 
 
 class GraphProviderContractTests(unittest.TestCase):
+    def test_changed_inputs_or_provider_failure_keep_previous_graph_and_require_retry(self):
+        from unittest.mock import patch, Mock
+        sys.path.insert(0, str(ROOT / "scripts"))
+        graph = load_script("graph_provider.py")
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td).resolve()
+            root = base / "product"
+            root.mkdir()
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            for args in (["config", "user.name", "Fixture"], ["config", "user.email", "fixture@example.invalid"]):
+                subprocess.run(["git", *args], cwd=root, check=True)
+            source = root / "app.py"
+            source.write_text("before", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-qm", "baseline"], cwd=root, check=True)
+            original_run, original_copy = graph.run, graph.shutil.copy2
+            mode = "stable"
+            calls = []
+            def provider(command, cwd, timeout=600):
+                if command[0] != "fixture-provider":
+                    return original_run(command, cwd, timeout)
+                calls.append(mode)
+                output = cwd / "graphify-out"
+                output.mkdir(exist_ok=True)
+                (output / "graph.json").write_text(json.dumps({"input": (cwd / "app.py").read_text()}), encoding="utf-8")
+                if mode == "live":
+                    source.write_text("after", encoding="utf-8")
+                elif mode == "shadow":
+                    (cwd / "app.py").write_text("mutated", encoding="utf-8")
+                return (1, "injected provider failure") if mode == "failed" else (0, "built")
+            session = Mock()
+            session.resolve.return_value = {"selected_version": "fixture"}
+            with patch.dict(os.environ, {"VIBE_CODING_HOME": str(base / "state")}), patch.object(graph.toolchain_runtime, "new_session", return_value=session), patch.object(graph.toolchain_runtime, "command", return_value=["fixture-provider"]), patch.object(graph, "run", side_effect=provider):
+                result = graph.refresh(root)
+                self.assertTrue(result["fresh"])
+                graph_path, state_path = Path(result["graph_path"]), Path(result["state_path"])
+                graph_bytes, state_bytes = graph_path.read_bytes(), state_path.read_bytes()
+                for mode in ("live", "shadow", "failed"):
+                    with self.subTest(mode=mode), self.assertRaises(RuntimeError):
+                        graph.refresh(root)
+                    self.assertEqual(graph_path.read_bytes(), graph_bytes)
+                    self.assertEqual(state_path.read_bytes(), state_bytes)
+                    if mode == "live":
+                        self.assertFalse(graph.status(root)["fresh"])
+                    source.write_text("before", encoding="utf-8")
+                # Copy-time mutation that does not persist in the live tree must
+                # still be caught by checking the actual provider input copy.
+                def changed_copy(src, dst, *args, **kwargs):
+                    result = original_copy(src, dst, *args, **kwargs)
+                    if src == source:
+                        Path(dst).write_text("intermediate", encoding="utf-8")
+                    return result
+                count = len(calls)
+                with patch.object(graph.shutil, "copy2", side_effect=changed_copy), self.assertRaisesRegex(RuntimeError, "inputs changed"):
+                    graph.refresh(root, mode="full")
+                self.assertEqual(len(calls), count)
+                self.assertEqual(graph_path.read_bytes(), graph_bytes)
+                mode = "stable"
+                self.assertTrue(graph.refresh(root)["fresh"])
+                # Old metadata and partially replaced output are never current.
+                state = json.loads(state_path.read_text())
+                state["schema_version"] = 2
+                state.pop("source_snapshot_sha256")
+                state_path.write_text(json.dumps(state), encoding="utf-8")
+                self.assertFalse(graph.status(root)["fresh"])
+                self.assertTrue(graph.refresh(root)["fresh"])
+                graph_path.write_text('{"input":"different"}', encoding="utf-8")
+                self.assertFalse(graph.status(root)["fresh"])
+
     def _fake_graphify(self, bindir: Path) -> None:
         fake_cli(bindir, "graphify", """import json, sys
 from pathlib import Path

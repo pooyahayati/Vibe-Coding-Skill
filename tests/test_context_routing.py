@@ -52,6 +52,60 @@ class ContextRouterTests(unittest.TestCase):
     def setUp(self):
         self.router = load_script("context_router.py")
 
+    def test_hidden_and_literal_routes_keep_source_and_governing_instructions(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            for rel in ("AGENTS.md", ".github/AGENTS.md", ".github/workflows/AGENTS.md", ".devcontainer/AGENTS.md"):
+                write(root, rel, "# Invariants\n- Preserve required validation.\n")
+            write(root, ".github/workflows/[check].yml", "name: verify\non: push\n")
+            write(root, ".devcontainer/devcontainer.json", '{"image":"fixture"}')
+            for route in (".github/workflows/[check].yml", "./.github/./workflows/[check].yml", ".\\.github\\workflows\\[check].yml", ".github/"):
+                with self.subTest(route=route):
+                    result = self.router.plan(root, "Update the existing workflow", [route])
+                    if route != ".github/":
+                        self.assertIn(".github", result["task"]["scope"]["top_level_roots"])
+                    self.assertGreater(result["context_plan"]["inspection"]["scans"]["affected"]["inspected_files"], 0)
+                    for doc in ("AGENTS.md", ".github/AGENTS.md", ".github/workflows/AGENTS.md"):
+                        self.assertIn(doc, result["context_plan"]["load"])
+                    self.assertNotIn(".devcontainer/AGENTS.md", result["context_plan"]["load"])
+                    self.assertFalse(result["task"]["routing_uncertainties"])
+            result = self.router.plan(root, "Inspect the complete project", ["./"])
+            self.assertIn(".devcontainer/AGENTS.md", result["context_plan"]["load"])
+            self.assertGreater(result["context_plan"]["inspection"]["scans"]["affected"]["inspected_files"], 0)
+
+    def test_unsafe_paths_are_rejected_and_missing_affected_input_is_explicit(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "src/app.py", "VALUE = 1\n")
+            for raw in ("../outside.py", "./../outside.py", "src/../../outside.py", "/tmp/outside.py", "C:\\outside.py", "C:outside.py", "./C:/outside.py", "./C:outside.py", "\\\\host\\share\\code.py"):
+                with self.subTest(path=raw), self.assertRaises(ValueError):
+                    self.router.plan(root, "Inspect selected source", [raw])
+            result = self.router.plan(root, "Inspect selected source", [".github/workflows/missing.yml"])
+            scan = result["context_plan"]["inspection"]["scans"]["affected"]
+            self.assertEqual(scan["unreadable_files"], 1)
+            self.assertEqual(scan["limitations"][0]["path"], ".github/workflows/missing.yml")
+            self.assertTrue(result["task"]["routing_uncertainties"])
+
+    def test_resolved_external_input_cannot_supply_routing_evidence(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "product"
+            root.mkdir()
+            init_project(root)
+            write(root, "source.py", "VALUE = 1\n")
+            external = root.parent / "outside.py"
+            external.write_text("document.querySelector('button')", encoding="utf-8")
+            original = Path.resolve
+            def redirected(path, *args, **kwargs):
+                return external if path == root / "source.py" else original(path, *args, **kwargs)
+            with patch.object(Path, "resolve", redirected):
+                with self.assertRaises(ValueError):
+                    self.router.plan(root, "Inspect selected source", ["source.py"])
+                scan = self.router.new_scan_report()
+                self.assertEqual(self.router.candidate_texts(root, ["source.py"], inspection=scan), [])
+                self.assertEqual(scan["unreadable_files"], 1)
+
     def test_large_plugin_prefix_keeps_platform_and_reports_partial_inspection(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

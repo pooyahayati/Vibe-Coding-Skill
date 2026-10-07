@@ -53,6 +53,8 @@ Project and affected-file marker scans use the same source-type gate. Documentat
 
 Directory paths are valid affected-path evidence. The router inspects a bounded subset of text/source files inside that directory so a caller does not need an exact file path before routing.
 
+Affected paths are literal project-relative paths: normalize separators and whole `.` components, preserving `.github`, `.devcontainer`, other leading dots and bracketed names. `.` selects the project root. Load governing ancestor instructions and applicable nested instructions when a whole directory is affected; exclude unrelated sibling instructions. Absolute/parent-traversing paths and resolved escapes are rejected. Missing or unreadable affected inputs remain explicit inspection limitations, including planned files that do not exist yet; absence is not evidence of a completed scan.
+
 ### Bounded inspection and uncertainty
 
 Oversized sources are read as bounded binary prefixes, not discarded or read completely before slicing. Each scan has its own hard limits: area-header discovery uses at most 600 files, 8 KiB per file and 4 MiB total; project markers use 600 files, 64 KiB per file and 8 MiB total; affected paths use 120 files, 64 KiB per file and 1 MiB total; invariant extraction uses 120 documents, 256 KiB per file and 1 MiB total. A remaining byte budget may shorten the last prefix. Header discovery prioritizes known affected paths; project-marker locality and root signals remain unchanged.
