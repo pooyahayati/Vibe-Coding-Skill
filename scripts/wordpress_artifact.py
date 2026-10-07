@@ -26,6 +26,8 @@ HEADER_FIELDS = {
 }
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
 VCS_PARTS = {".git", ".hg", ".svn", "__pycache__"}
+MAX_WP_STDOUT_CHARS = 1_048_576
+DIAGNOSTIC_CHARS = 4000
 
 
 def header_value(text: str, label: str) -> str:
@@ -341,17 +343,32 @@ def run_wp(
         f"--path={wordpress_root.resolve()}",
         *args,
     ]
-    result = subprocess.run(
-        command,
-        text=True,
-        capture_output=True,
-        timeout=timeout,
-    )
-    output = ((result.stdout or "") + "\n" + (result.stderr or "")).strip()
+    try:
+        result = subprocess.run(
+            command,
+            text=True,
+            encoding="utf-8",
+            capture_output=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"WP-CLI {' '.join(args[:2])} timed out after {timeout} seconds") from exc
+    stdout = result.stdout or ""
+    stderr = result.stderr or ""
+    if len(stdout) > MAX_WP_STDOUT_CHARS:
+        raise RuntimeError(
+            f"WP-CLI stdout exceeds the supported limit of {MAX_WP_STDOUT_CHARS} characters; "
+            "output was not parsed"
+        )
+    output = (stdout + "\n" + stderr).strip()
     return {
         "command": command,
         "returncode": result.returncode,
-        "output": output[-4000:],
+        "stdout": stdout,
+        "stderr": stderr[-DIAGNOSTIC_CHARS:],
+        "stderr_truncated": len(stderr) > DIAGNOSTIC_CHARS,
+        "output": output[-DIAGNOSTIC_CHARS:],
+        "output_truncated": len(output) > DIAGNOSTIC_CHARS,
     }
 
 
@@ -371,7 +388,9 @@ def plugin_version(
         ["plugin", "get", slug, "--field=version"],
     )
     require_wp_step(step, "plugin version check")
-    value = str(step["output"]).splitlines()[0].strip()
+    value = step["stdout"].strip()
+    if not value or len(value.splitlines()) != 1:
+        raise RuntimeError("plugin version check must return one nonempty stdout line")
     return value, step
 
 
@@ -412,7 +431,7 @@ def runtime_check(
     initial = run_wp(wp_bin, wordpress_root, ["plugin", "list", "--format=json"])
     require_wp_step(initial, "initial plugin state")
     try:
-        installed_plugins = json.loads(str(initial["output"]))
+        installed_plugins = json.loads(initial["stdout"])
     except (ValueError, TypeError) as exc:
         raise RuntimeError("initial plugin state is not valid JSON") from exc
     if not isinstance(installed_plugins, list) or not all(isinstance(item, dict) for item in installed_plugins):

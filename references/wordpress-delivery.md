@@ -84,6 +84,10 @@ The runtime check:
 - deactivates/reactivates the plugin;
 - records SHA-256 for the tested artifact(s).
 
+The helper parses complete UTF-8 `stdout` for plugin lists and versions, separately from `stderr` diagnostics. Each command supports up to 1,048,576 decoded stdout characters; larger output fails explicitly before parsing. This is a parsing limit, not a subprocess memory quota. Nonzero exits, timeouts (180 seconds per command), malformed plugin JSON and empty/multiline version output fail the check. Warnings on stderr remain visible without corrupting valid stdout; warnings mixed into stdout are not silently stripped.
+
+Step reports retain full supported `stdout`. The `stderr` field and legacy combined `output` are diagnostic tails of at most 4,000 characters, with `stderr_truncated` and `output_truncated` flags. Consumers must not parse the diagnostic `output` field as structured evidence.
+
 Do not claim install/upgrade validation from source-only tests.
 
 Before publishing, scan the final ZIP's extracted delivery tree with the [native Trivy release gate](security-and-dependencies.md#native-release-gate), retaining the ZIP hash in required evidence. Check shipped Composer dependencies with their native audit when relevant. Scanner success does not replace capability/nonce, input/output or protected-data checks.

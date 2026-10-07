@@ -202,7 +202,7 @@ class ArtifactEvidenceRegressions(unittest.TestCase):
                     def run(binary, directory, args):
                         import json
                         output = json.dumps(initial) if args[:2] == ["plugin", "list"] else "1.0.0"
-                        return {"command": args, "returncode": 0, "output": output}
+                        return {"command": args, "returncode": 0, "stdout": output, "stderr": "", "output": output}
                     with mock.patch.object(wp, "run_wp", side_effect=run):
                         result = wp.runtime_check(artifact, root)
                     self.assertEqual(result["plugin_present_before"], bool(initial))
