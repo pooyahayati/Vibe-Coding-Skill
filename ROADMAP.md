@@ -8,10 +8,10 @@ Canonical current status; closed specifications and historical verification live
 |---|---|
 | Published runtime | Stable `1.4.0`, release commit `9aa2c9db69ab14cb6530f7b1e84dd8effeb56ccb`. |
 | Completed improvement work | Original nine packages + F1 shipped in `1.3.0`; R1-R4 shipped in `1.3.1`; three approved follow-ups shipped in `1.4.0`. |
-| Current phase | **A2 in progress: implementation locally verified**, on `codex/a2-routing-graph-integrity`; A1 merged in [PR #90](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/90). |
-| Scope | A2 only: literal hidden-path routing and graph input/freshness integrity. |
-| Next action | Integrate verified A2, then implement A3 under the user's authorization. |
-| Remaining work | **1/5 packages merged; 5/7 findings open.** F1/F2 closed by verified A1 integration. Package status is maintained only in this roadmap. |
+| Current phase | **A3 in progress: implementation locally verified**, on `codex/a3-dependency-policy`; A2 merged in [PR #91](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/91). |
+| Scope | A3 only: selected-version dependency evidence and explicit compound license policy. |
+| Next action | Integrate verified A3 when authorized; A4 remains not started. |
+| Remaining work | **2/5 packages merged; 3/7 findings open.** F1-F4 closed by verified A1/A2 integration; F5-F7 remain open until their packages merge. Package status is maintained only in this roadmap. |
 
 ## Deep-audit remediation cycle A1-A5
 
@@ -22,8 +22,8 @@ Finding IDs **F1-F7** refer to the latest deep audit; they are separate from the
 | Order | Package | Intended correction | Audit findings / severity | Status |
 |---|---|---|---|---|
 | 1 | [A1: Retained-state and contract continuity](docs/improvement-implementation-plan.md#a1-retained-state-and-contract-continuity) | Preserve obligations through remote changes, recovery and authorized contract revisions; reconcile specialist assignments without losing findings. | F1, F2 / High | **Complete**; [PR #90](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/90), merge `50144bf0c8d3532a11ffec21167ac71b613a721b`. All 12 PR checks passed; local 297 tests: 294 passed, 3 environment skips. Not released/installed. |
-| 2 | [A2: Reliable routing and graph inputs](docs/improvement-implementation-plan.md#a2-reliable-routing-and-graph-inputs) | Preserve literal hidden paths and governing instructions; bind graph freshness to the source actually analyzed. | F3 / High; F4 / Medium | **In progress**; locally implemented and verified on `codex/a2-routing-graph-integrity`, awaiting integration. Focused tests, extracted-package routing/install, structure and mirror checks passed. |
-| 3 | [A3: Version-bound dependency decisions](docs/improvement-implementation-plan.md#a3-version-bound-dependency-decisions) | Use selected-version metadata and apply compound license policy without false acceptance. | F5 / Medium | **Not started** |
+| 2 | [A2: Reliable routing and graph inputs](docs/improvement-implementation-plan.md#a2-reliable-routing-and-graph-inputs) | Preserve literal hidden paths and governing instructions; bind graph freshness to the source actually analyzed. | F3 / High; F4 / Medium | **Complete**; [PR #91](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/91), merge `43f1ad2e5f36b65839981d863f26f8b7d84796bd`. All 12 PR checks passed; focused routing/graph and extracted-package checks passed. Not released/installed. |
+| 3 | [A3: Version-bound dependency decisions](docs/improvement-implementation-plan.md#a3-version-bound-dependency-decisions) | Use selected-version metadata and apply compound license policy without false acceptance. | F5 / Medium | **In progress**; locally implemented and verified on `codex/a3-dependency-policy`, awaiting integration. All 17 focused tests, including extracted-package CLI/install validation, plus structure and mirror checks passed. |
 | 4 | [A4: WordPress command output integrity](docs/improvement-implementation-plan.md#a4-wordpress-command-output-integrity) | Parse complete structured stdout separately from diagnostic output. | F6 / Medium | **Not started** |
 | 5 | [A5: Stage-aware integration controls](docs/improvement-implementation-plan.md#a5-stage-aware-integration-controls) | Align development health checks with the native publication gate and conditional graph requirements. | F7 / Medium | **Not started** |
 
@@ -32,6 +32,8 @@ Default execution order is A1 -> A2 -> A3 -> A4 -> A5, with focused review at ea
 A1 local evidence (Windows, 2026-10-07): added regressions for remote/legacy identity continuity and isolation, atomic interruption, corrupt/missing-state restoration or explicit reconstruction, accepted/active specialist revision with retained findings, and safe retirement. Extracted-package routes exercised remote-change recovery and renewed specialist acceptance. Full existing suite passed apart from three environment skips (two PHP CLI checks and one symlink fixture); no live model evaluation or production claim. Runtime/release/local installation remains `1.4.0`.
 
 A2 local evidence (Windows, 2026-10-07): F3/F4 reproduced before correction. Focused runs cover 95 distinct tests across context routing/planning, graph provider, portable integration, state capture/recovery and receipt validation; corrected new fixture assertions were rerun successfully. Hidden/bracketed/root paths, nested instruction selection, unsafe/missing inputs, live/copy/provider drift, prior-output retention and graph-cache migration passed. All 16 deterministic risk scenarios passed. No live Graphify installation, model evaluation, publication or host installation update was performed.
+
+A3 local evidence (Windows, 2026-10-07): reproduced both F5 false-acceptance paths before correction. Deterministic cases cover selected/missing/conflicting npm metadata, same-version independent supplementation, compound/exception/denied/unresolved license expressions, parser limits, legacy match-summary bypass and existing risk-required evidence. The extracted package verifies CLI decisions and exit codes with fixture providers; no live registry availability or legal compatibility claim. No new dependency, publication or host installation update.
 
 ### Start and completion boundaries
 
