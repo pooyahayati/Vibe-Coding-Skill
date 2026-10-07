@@ -4,6 +4,12 @@ User-facing release summaries; [CHANGELOG.md](CHANGELOG.md) retains technical hi
 
 From `1.0.0`, publication requires no model evaluation/provider key. Recent releases include a verified portable ZIP and checksum; publication does not update local installations. The pre-1.0 entries below describe historical policies, not current release requirements.
 
+## 1.5.0 — Verified workflow and integration reliability
+
+- Preserves task obligations, recovery state and specialist acceptance through remote changes and authorized revisions.
+- Fixes hidden-path routing, graph freshness, selected-version dependency/license decisions and complete WordPress command output.
+- Separates development tool health from mandatory native publication security, with explicit graph reliance and source-analysis fallback. Completes the A1-A5 remediation cycle.
+
 ## 1.4.0 — Reliable routing, native release security and local runtime
 
 - Separates documentation from runtime evidence and excludes unrelated domains from routing.

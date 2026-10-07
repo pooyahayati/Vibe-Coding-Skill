@@ -8,9 +8,9 @@ Canonical current status; closed specifications and historical verification live
 |---|---|
 | Published runtime | Stable `1.4.0`, release commit `9aa2c9db69ab14cb6530f7b1e84dd8effeb56ccb`. |
 | Completed improvement work | Original nine packages + F1 shipped in `1.3.0`; R1-R4 shipped in `1.3.1`; three approved follow-ups shipped in `1.4.0`. |
-| Current phase | **A1-A5 complete and merged**; final implementation merged in [PR #94](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/94). |
-| Scope | The approved seven-finding remediation cycle is closed. No new implementation package is active. |
-| Next action | Await a separate release/installation decision; these source changes are not yet published or installed. |
+| Current phase | **1.5.0 delivery in progress**; A1-A5 complete and merged in PRs #90-94. |
+| Scope | Authorized stable 1.5.0 publication and verified local installation; no new implementation package. |
+| Next action | Merge the release version, pass same-commit publication gates, verify the published ZIP/checksum, then update and verify the local installation. |
 | Remaining work | **5/5 packages merged; 0/7 confirmed findings open.** F1-F7 closed by verified A1-A5 integration. Package status is maintained only in this roadmap. |
 
 ## Deep-audit remediation cycle A1-A5
