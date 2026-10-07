@@ -8,7 +8,7 @@ Canonical current status; closed specifications and historical verification live
 |---|---|
 | Published runtime | Stable `1.4.0`, release commit `9aa2c9db69ab14cb6530f7b1e84dd8effeb56ccb`. |
 | Completed improvement work | Original nine packages + F1 shipped in `1.3.0`; R1-R4 shipped in `1.3.1`; three approved follow-ups shipped in `1.4.0`. |
-| Current phase | Repository documentation cleanup: **Complete upon merge of this change**. |
+| Current phase | Repository documentation cleanup: **Complete** — [PR #88](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/88); this status takes effect upon merge. |
 | Scope | Shorter overview/status pages, archived closed plans, accurate security guidance and working documentation links. |
 | Next action | Gather meaningful feedback from actual use. This documentation-only change does not require a new release or local installation. |
 | Remaining feature work | No new implementation package is approved. Gather meaningful feedback from actual use. |
