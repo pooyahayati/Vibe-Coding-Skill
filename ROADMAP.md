@@ -8,10 +8,37 @@ Canonical current status; closed specifications and historical verification live
 |---|---|
 | Published runtime | Stable `1.4.0`, release commit `9aa2c9db69ab14cb6530f7b1e84dd8effeb56ccb`. |
 | Completed improvement work | Original nine packages + F1 shipped in `1.3.0`; R1-R4 shipped in `1.3.1`; three approved follow-ups shipped in `1.4.0`. |
-| Current phase | Repository documentation cleanup: **Complete** — [PR #88](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/88); this status takes effect upon merge. |
-| Scope | Shorter overview/status pages, archived closed plans, accurate security guidance and working documentation links. |
-| Next action | Gather meaningful feedback from actual use. This documentation-only change does not require a new release or local installation. |
-| Remaining feature work | No new implementation package is approved. Gather meaningful feedback from actual use. |
+| Current phase | Deep-audit remediation: planning prepared; implementation **Not started**. Repository documentation cleanup was merged in [PR #88](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/88). |
+| Scope | Seven confirmed audit findings, grouped into five bounded packages below. This change prepares the plan only. |
+| Next action | Start **A1: Retained-state and contract continuity**, using its [implementation sequence and acceptance criteria](docs/improvement-implementation-plan.md#a1-retained-state-and-contract-continuity). |
+| Remaining work | **0/5 packages complete; 7/7 findings open.** Package status is maintained only in this roadmap. |
+
+## Deep-audit remediation cycle A1-A5
+
+Audit baseline: `a6e43fe73500367e52a257e0f9f725166d9c79dc` on 2026-10-07. The existing suite reported 287 tests, zero failures and three skips; structure validation and 16 deterministic scenarios passed. All 79 published runtime files matched the current portable mirror and local installation. These results establish the baseline, not acceptance of the corrections below.
+
+Finding IDs **F1-F7** refer to the latest deep audit; they are separate from the historical **F1 feedback package** shipped in 1.3.0. Reproduction evidence, affected components and verification methods are retained in the [active implementation plan](docs/improvement-implementation-plan.md#confirmed-audit-findings).
+
+| Order | Package | Intended correction | Audit findings / severity | Status |
+|---|---|---|---|---|
+| 1 | [A1: Retained-state and contract continuity](docs/improvement-implementation-plan.md#a1-retained-state-and-contract-continuity) | Preserve obligations through remote changes, recovery and authorized contract revisions; reconcile specialist assignments without losing findings. | F1, F2 / High | **Not started** |
+| 2 | [A2: Reliable routing and graph inputs](docs/improvement-implementation-plan.md#a2-reliable-routing-and-graph-inputs) | Preserve literal hidden paths and governing instructions; bind graph freshness to the source actually analyzed. | F3 / High; F4 / Medium | **Not started** |
+| 3 | [A3: Version-bound dependency decisions](docs/improvement-implementation-plan.md#a3-version-bound-dependency-decisions) | Use selected-version metadata and apply compound license policy without false acceptance. | F5 / Medium | **Not started** |
+| 4 | [A4: WordPress command output integrity](docs/improvement-implementation-plan.md#a4-wordpress-command-output-integrity) | Parse complete structured stdout separately from diagnostic output. | F6 / Medium | **Not started** |
+| 5 | [A5: Stage-aware integration controls](docs/improvement-implementation-plan.md#a5-stage-aware-integration-controls) | Align development health checks with the native publication gate and conditional graph requirements. | F7 / Medium | **Not started** |
+
+Default execution order is A1 -> A2 -> A3 -> A4 -> A5, with focused review at each package. A1 establishes the state/migration decisions first. A2-A5 have no mutual implementation dependency; keep one active package unless a different order is explicitly selected. If A1 changes workspace identity, verify A2's graph storage against that accepted identity.
+
+### Start and completion boundaries
+
+- At package start, mark that row **In progress**, record the working branch/PR when available, and make its next action the single current objective. Reconfirm the affected reproduction against the current source before editing.
+- A package becomes **Complete** only after its acceptance criteria pass and its implementation is merged. Record the PR/commit and relevant checks in its status cell; do not infer completion from test counts or a drafted fix.
+- Keep unresolved findings visible. For a partial package, name the remaining finding/criterion; for a block, record the cause and resolving action. Update the open-finding count only when the linked criteria are satisfied and merged.
+- Runtime changes must update canonical resources and the portable mirror together. Reuse relevant evidence and run affected regressions/integration plus existing required CI; no fixed test quota, model evaluation, new scanner or unrelated suite reruns.
+- Preserve lightweight/manual and supported legacy routes, Head authority, required findings, scope-bound evidence and native Trivy before publication. Never regain a passing result by dropping obligations or weakening a gate.
+- Release version, publication and local installation are separate delivery decisions after implementation. This planning change makes no runtime, release or installation claim.
+
+The pre-existing-tag/partial-release retry concern remains **needs verification**, outside these seven confirmed findings and five packages. Live external-tool compatibility and full WordPress environment execution were not re-established by the local audit; temporary fixtures are not substitutes for that evidence. Do not expand the cycle on an unconfirmed concern.
 
 ## Approved delivery follow-ups — 1.4.0
 
@@ -50,4 +77,4 @@ Specifications, reproductions, acceptance criteria and prior delivery hashes rem
 - Keep one current phase and next action consistent with the tracker. State the cause and resolving action for blockers; counts are not quality scores.
 - Keep future scope/dependencies/acceptance in the implementation index; archive closed detail instead of appending a diary. [Contributor rule](CONTRIBUTING.md#roadmap-progress).
 
-Improve actual software outcomes with proportionate checks. Receipts establish tested bindings/results; the Head still assesses relevance, semantic compatibility and evidence sufficiency. No model evaluation, fixed test quota or speculative new package is planned.
+Improve actual software outcomes with proportionate checks. Receipts establish tested bindings/results; the Head still assesses relevance, semantic compatibility and evidence sufficiency. The active cycle is limited to A1-A5; no model evaluation, fixed test quota or speculative feature is planned.
