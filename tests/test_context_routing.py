@@ -52,6 +52,40 @@ class ContextRouterTests(unittest.TestCase):
     def setUp(self):
         self.router = load_script("context_router.py")
 
+    def test_reviewed_non_runtime_scope_stays_light_through_router_and_planner(self):
+        facts = {"operation": "tiny", "environment": "local", "data_sensitivity": "none",
+                 "change_boundary": "local", "change_effect": "non-runtime",
+                 "scope_evidence": "Inspected affected lines: comment/prose spelling only; runtime and operational instructions unchanged."}
+        planner = load_script("execution_plan.py")
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "README.md", "Authentication and production installation guide.\n")
+            write(root, "api/auth/session.py", "# Authentication comment spelling\nallow = False\n")
+            write(root, "web/payment.php", WORDPRESS_WOO + "\n// Stripe refund spelling\nwp_remote_get('https://example.invalid');\n")
+            cases = [("Fix a typo in production instructions", ["README.md"]),
+                     ("Correct comment spelling", ["api/auth/session.py"]),
+                     ("اصلاح غلط املایی در توضیحات", ["api/auth/session.py", "web/payment.php"])]
+            for task, paths in cases:
+                with self.subTest(task=task):
+                    route = self.router.plan(root, task, paths, risk_facts=facts)
+                    plan = planner.draft(root, task, paths, risk_facts=facts)
+                    self.assertEqual(route["task"]["risk"]["tier"], 0)
+                    self.assertEqual(route["core"]["mode"], "light")
+                    self.assertFalse(route["interactions"])
+                    self.assertEqual(plan["planning_basis"]["risk_tier"], 0)
+                    self.assertFalse(plan["execution_plan_required"])
+                    self.assertEqual(planner.validate_plan(plan)["gate"], "PASS")
+            # Explicit affected behaviors still win, even with cosmetic wording.
+            route = self.router.plan(root, "Fix label text only", ["web/payment.php"], risk_facts=facts,
+                                     include_packs=["payments", "external-http"])
+            self.assertEqual(route["task"]["risk"]["tier"], 3)
+            self.assertEqual(route["task"]["risk"]["scope_assessment"]["status"], "unresolved")
+            for paths in (["missing/auth.py"], ["README.md", "missing/auth.py"]):
+                route = self.router.plan(root, "Fix a production typo", paths, risk_facts=facts)
+                self.assertEqual(route["task"]["risk"]["tier"], 3)
+                self.assertTrue(route["task"]["risk"]["uncertainties"])
+
     def test_hidden_and_literal_routes_keep_source_and_governing_instructions(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -296,7 +330,7 @@ class ContextRouterTests(unittest.TestCase):
         self.assertEqual(risk["router_floor_from"], 2)
         self.assertIn("explicit approval", risk["required_controls"])
         self.assertIn("rollback/recovery plan", risk["required_controls"])
-        self.assertIn("independent review", risk["required_controls"])
+        self.assertIn("review", risk["required_controls"])
         self.assertTrue(
             result["context_plan"]["coverage"]["risk_controls_preserved"]
         )

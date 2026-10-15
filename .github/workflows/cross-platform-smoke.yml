@@ -2,10 +2,36 @@ name: Cross Platform Smoke
 
 on:
   push:
+    branches: [main]
   pull_request:
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    outputs:
+      cross_platform: ${{ steps.scope.outputs.cross_platform }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Select platform checks
+        id: scope
+        run: python scripts/ci_scope.py plan --plan "$RUNNER_TEMP/ci-plan.json"
   smoke:
+    needs: scope
+    if: needs.scope.outputs.cross_platform == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -21,18 +47,45 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ matrix.python }}
+      - name: Select checks on this platform
+        id: scope
+        shell: bash
+        run: python scripts/ci_scope.py plan --plan "$RUNNER_TEMP/ci-plan.json"
       - name: Offline installation check
         run: python scripts/install_check.py --skill-root . --json
-      - name: Recovery and lifecycle smoke
-        run: python -m unittest discover -s tests -p "test_cross_platform.py"
-      - name: Offline external-tool isolation
-        run: python -m unittest tests.test_scripts.GraphProviderContractTests tests.test_scripts.GitHubTraceabilityTests
-      - name: Review control regressions
-        run: python -m unittest discover -s tests -p "test_review_regressions.py"
+      - name: Run selected platform regressions
+        shell: bash
+        run: python scripts/ci_scope.py test --plan "$RUNNER_TEMP/ci-plan.json" --platform
       - name: Portable install check
         run: python skills/vibe-coding-skill/scripts/install_check.py --skill-root skills/vibe-coding-skill --json
-      - name: Extracted package workflow integration
-        run: python -m unittest discover -s tests -p "test_portable_integration.py"
+      - name: Full validation completed
+        if: steps.scope.outputs.full == 'true'
+        shell: bash
+        run: echo "Full validation completed for $GITHUB_SHA"
+  result:
+    if: always()
+    needs: [scope, smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report selected platform result
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          MATRIX_RESULT: ${{ needs.smoke.result }}
+          MATRIX_SELECTED: ${{ needs.scope.outputs.cross_platform }}
+        shell: python
+        run: |
+          import os
+          scope = os.environ['SCOPE_RESULT']
+          selected = os.environ['MATRIX_SELECTED']
+          result = os.environ['MATRIX_RESULT']
+          assert scope == 'success', f'Scope selection did not succeed: {scope}'
+          assert selected in {'true', 'false'}, 'Missing platform selection'
+          expected = 'success' if selected == 'true' else 'skipped'
+          assert result == expected, f'Platform result {result}; expected {expected}'
+          print('Selected platform checks passed' if selected == 'true'
+                else 'Platform checks not selected; no platform validation claimed')

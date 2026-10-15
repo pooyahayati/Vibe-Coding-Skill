@@ -53,6 +53,8 @@ Project and affected-file marker scans use the same source-type gate. Documentat
 
 Directory paths are valid affected-path evidence. The router inspects a bounded subset of text/source files inside that directory so a caller does not need an exact file path before routing.
 
+For an inspected non-runtime correction, pass the shared [risk scope assessment](risk-classifier-and-integrations.md#resolving-incidental-signals) through `--risk-change-effect non-runtime` and `--risk-scope-evidence`, together with complete risk facts. The router preserves platform knowledge/instructions but does not turn incidental domain mentions, file locations or project platform integrations into changed behavioral boundaries. Explicit concerns and incomplete affected-path inspection remain conservative. The planner inherits optional retained `risk_facts`; it never lowers the accepted contract tier on its own.
+
 Affected paths are literal project-relative paths: normalize separators and whole `.` components, preserving `.github`, `.devcontainer`, other leading dots and bracketed names. `.` selects the project root. Load governing ancestor instructions and applicable nested instructions when a whole directory is affected; exclude unrelated sibling instructions. Absolute/parent-traversing paths and resolved escapes are rejected. Missing or unreadable affected inputs remain explicit inspection limitations, including planned files that do not exist yet; absence is not evidence of a completed scan.
 
 ### Bounded inspection and uncertainty
@@ -98,6 +100,8 @@ Current packs cover PHP, WordPress, WooCommerce, browser JavaScript, WordPress R
 
 Composition is expected when evidence overlaps. Interaction rules may add concern packs or raise the risk floor. Duplicate packs and integration points are deduplicated.
 
+The Head's [verification policy](execution-and-verification.md#testing-policy) selects check scope and timing before pack defaults; platform invariants and explicit project requirements still apply. Pack activation contributes affected risks, not an additive suite. Keep activity `stage` separate from the retained outcome contract: changing stages alone neither invalidates evidence nor proves a later delivery target.
+
 ## Change scope
 
 The router reports a task-scope level:
@@ -110,6 +114,8 @@ The router reports a task-scope level:
 Scope is evidence, not a permanent label. Re-route when new affected paths are discovered.
 
 ## Execution planning
+
+Specialist selection distinguishes current guidance from new formal domain work. For inspected mechanical edits within settled decisions, pass complete `--risk-*` facts and `--guidance-evidence` with the concrete diff review; an accepted non-runtime scope assessment also qualifies. The router preserves `required_specialists` with `participation`/`handoff_required`; the planner separates `specialist_guidance` and `specialist_assignments`. Incomplete inspection, material risk/domain concerns and explicit assignments keep the formal route. This never removes `bound_specialist_assignments` or retained task commitments. See [composition](specialist-composition.md#selection-and-actual-use).
 
 A **new** execution plan is required when:
 

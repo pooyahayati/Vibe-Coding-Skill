@@ -47,6 +47,108 @@ class PortableIntegrationTests(unittest.TestCase):
         self.git("config", "user.name", "Portable Integration Fixture")
         self.git("config", "user.email", "i1@example.invalid")
 
+    def test_installed_readiness_rejects_partial_or_legacy_release_evidence(self):
+        version = (self.installed / "VERSION").read_text(encoding="utf-8").strip()
+        report = {"schema_version": 2, "version": version, "commit": "a" * 40,
+                  "checks": [{"name": "Validate Skill", "conclusion": "success", "commit": "a" * 40,
+                              "run_id": 1, "run_attempt": 1, "validation_scope": "full"}]}
+        args = ["--channel", "beta", "--json"]
+        self.assertEqual(self.cli("release_readiness.py", self.json_file("full-readiness", report), *args)["gate"], "PASS")
+        report["checks"][0]["validation_scope"] = "partial"
+        self.assertEqual(self.cli("release_readiness.py", self.json_file("partial-readiness", report), *args, expected=2)["gate"], "BLOCK")
+        report["checks"][0]["validation_scope"] = "full"
+        report.pop("schema_version")
+        self.assertEqual(self.cli("release_readiness.py", self.json_file("legacy-readiness", report), *args, expected=2)["gate"], "BLOCK")
+
+    def test_installed_reviewed_risk_survives_capture_handoff_resume_and_planning(self):
+        (self.product / "settings.txt").write_text("Production authentication label\n", encoding="utf-8")
+        self.git("add", ".")
+        self.git("commit", "-qm", "fixture")
+        old = self.contract(tier=3)
+        old["objective"] = "Fix a production authentication documentation typo"
+        old["specialist_assignment_ids"] = ["retained-review"]
+        old_path = self.json_file("old-risk", old)
+        first = self.cli("project_state.py", "capture", "--root", self.product, "--task-contract", old_path, "--json")
+        before = Path(first["state_path"]).read_bytes()
+        facts = {"operation": "tiny", "environment": "local", "data_sensitivity": "none",
+                 "change_boundary": "local", "change_effect": "non-runtime",
+                 "scope_evidence": "Inspected settings.txt: descriptive label spelling only; no operational, security or data behavior changes."}
+        corrected = dict(copy.deepcopy(old), risk_tier=0, risk_facts=facts)
+        corrected_path = self.json_file("reviewed-risk", corrected)
+        self.cli("project_state.py", "capture", "--root", self.product, "--task-contract", corrected_path, "--json", expected=2)
+        self.assertEqual(Path(first["state_path"]).read_bytes(), before)
+        reason = "Head inspected the retained task: prior tier came only from incidental production/authentication signals."
+        (self.product / "settings.txt").unlink()
+        failure = self.cli("project_state.py", "capture", "--root", self.product, "--task-contract", corrected_path,
+                           "--reclassify-risk", reason, "--json", expected=2)
+        self.assertIn("current routing", failure["error"])
+        self.assertEqual(Path(first["state_path"]).read_bytes(), before)
+        (self.product / "settings.txt").write_text("Production authentication label\n", encoding="utf-8")
+        state = self.cli("project_state.py", "capture", "--root", self.product, "--task-contract", corrected_path,
+                         "--reclassify-risk", reason, "--json")
+        self.assertEqual(state["task_contract"], corrected)
+        self.assertEqual(state["contract_revisions"][-1]["previous_contract"], old)
+        self.assertEqual(state["contract_reconciliation"]["kind"], "incidental-risk-reclassification")
+        self.assertFalse(state["contract_reconciliation"]["authorization_verified"])
+        self.assertEqual(state["acceptance"]["gate"], "UNVERIFIED")
+        handoff = self.cli("project_state.py", "handoff", "--root", self.product, "--write-local", "--json")
+        self.assertIn("Risk reclassification: " + reason, handoff["markdown"])
+        self.assertIn("retained-review", handoff["markdown"])
+        resumed = self.cli("resume_context.py", "--root", self.product, "--json")
+        self.assertEqual(resumed["local_state"]["project_state"]["task_contract"], corrected)
+        plan = self.cli("execution_plan.py", "draft", "--root", self.product, "--task-contract", corrected_path, "--json")
+        self.assertEqual(plan["planning_basis"]["risk_tier"], 0)
+        self.assertFalse(plan["execution_plan_required"])
+        args = [item for key, value in facts.items() for item in ("--risk-" + key.replace("_", "-"), value)]
+        route = self.cli("context_router.py", "--root", self.product, "--task", old["objective"],
+                         "--path", "settings.txt", *args, "--json")
+        self.assertEqual(route["task"]["risk"]["tier"], 0)
+        # General reconciliation cannot strip later-confirmed material risk.
+        known = dict(copy.deepcopy(corrected), risk_tier=3,
+                     risk_facts=dict(facts, operation="auth", change_effect="behavioral"))
+        self.cli("project_state.py", "capture", "--root", self.product,
+                 "--task-contract", self.json_file("known-risk", known), "--json")
+        replacement = dict(copy.deepcopy(corrected), risk_tier=3)
+        failure = self.cli("project_state.py", "capture", "--root", self.product,
+                           "--task-contract", self.json_file("weakened-risk", replacement),
+                           "--accept-contract-change", "Attempt to discard known auth effects", "--json", expected=2)
+        self.assertIn("known material risk", failure["error"])
+
+    def test_installed_light_specialist_route_and_preparation(self):
+        (self.product / "Button.tsx").write_text("export const Label = () => <span>Save</span>;", encoding="utf-8")
+        facts = ["--risk-operation", "tiny", "--risk-environment", "local", "--risk-data-sensitivity", "none",
+                 "--risk-change-boundary", "local", "--guidance-evidence",
+                 "Inspected the accepted design and diff: label spelling only; behavior, accessibility and contracts preserved."]
+        args = ["--root", self.product, "--task", "Correct label spelling", "--path", "Button.tsx",
+                "--stage", "build", "--context-concern", "ui", *facts, "--json"]
+        route = self.cli("context_router.py", *args)
+        self.assertFalse(route["required_specialists"][0]["handoff_required"])
+        plan = self.cli("execution_plan.py", "draft", *args)
+        self.assertEqual(plan["specialist_assignments"], [])
+        self.assertEqual(plan["specialist_guidance"][0]["participation"], "guidance-only")
+        # The same existing offline fixture calls prepare/assign public entrypoints,
+        # loading runtime modules exclusively from this extracted package.
+        program = textwrap.dedent('''
+            import importlib, sys
+            from pathlib import Path
+            installed, tests = map(Path, sys.argv[1:])
+            sys.path.insert(0, str(installed / "scripts"))
+            modules = [importlib.import_module(name) for name in ("specialist_manager", "specialist_handoff")]
+            assert all(Path(m.__file__).resolve().is_relative_to(installed) for m in modules)
+            sys.path.append(str(tests))
+            import test_handoffs as fixtures
+            fixtures.ROOT = installed
+            case = fixtures.HandoffTests()
+            try:
+                case.setUp()
+                case.test_preparation_reuses_only_the_same_assignment_without_duplicate_upstream_checks()
+            finally:
+                case.doCleanups()
+        ''')
+        process = subprocess.run([sys.executable, "-X", "utf8", "-c", program, str(self.installed), str(ROOT / "tests")],
+                                 cwd=self.product, env=self.env, capture_output=True, text=True, encoding="utf-8", timeout=60)
+        self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
+
     def test_portable_release_gate_blocks_without_installed_native_trivy(self):
         self.env["PATH"] = str(self.home / "no-executables")
         result = self.cli("trivy_compat.py", "--release-target", self.product,
@@ -198,12 +300,15 @@ class PortableIntegrationTests(unittest.TestCase):
 
     def report(self, contract, result):
         receipt = result["receipt"]
-        return {"schema_version": 3, "task_id": contract["task_id"], "contract_sha256": receipt["contract_sha256"],
+        report = {"schema_version": 3, "task_id": contract["task_id"], "contract_sha256": receipt["contract_sha256"],
                 "status": "Done", "risk_tier": contract["risk_tier"], "blockers": [],
                 "acceptance_criteria": [dict(copy.deepcopy(contract["acceptance_criteria"][0]), met=True, evidence_ids=[receipt["id"]])],
                 "evidence": [{"id": receipt["id"], "kind": receipt["kind"], "origin": receipt["origin"],
                     "result": receipt["result"], "required": True, "requirement_id": "check",
                     "receipt_ref": result["receipt_ref"], "receipt_sha256": result["receipt_sha256"]}]}
+        if contract["risk_tier"] >= 2:
+            report["commit"] = self.git("rev-parse", "HEAD").stdout.decode().strip()
+        return report
 
     def test_installed_document_and_python_route_does_not_invent_runtime_or_specialists(self):
         (self.product / "scripts").mkdir()
@@ -313,7 +418,7 @@ class PortableIntegrationTests(unittest.TestCase):
         self.assertEqual(resumed["local_state"]["project_state"]["task_contract"], contract)
         self.assertEqual(sorted(p.name for p in self.product.iterdir()), [".git", "settings.txt"])
 
-    def test_bound_route_runs_literal_inputs_and_rejects_failed_stale_and_downgraded_evidence(self):
+    def test_bound_route_reuses_stage_evidence_without_quotas_and_rejects_failed_stale_or_expanded_claims(self):
         relative = "src/[id]/settings.txt"
         source = self.product / relative
         source.parent.mkdir(parents=True)
@@ -321,7 +426,7 @@ class PortableIntegrationTests(unittest.TestCase):
         (self.product / "check.py").write_text("from pathlib import Path\nassert Path(" + repr(relative) + ").read_text() == 'accepted'\n", encoding="utf-8")
         self.git("add", ".")
         self.git("commit", "-qm", "bound fixture")
-        contract = self.contract(1, "collected", "unit-test")
+        contract = self.contract(2, "collected", "integration")
         contract["scope"] = ["src", "check.py"]
         contract["evidence_requirements"][0]["input_paths"] = [relative, "check.py"]
         contract_path = self.json_file("contract", contract)
@@ -329,10 +434,18 @@ class PortableIntegrationTests(unittest.TestCase):
         failed = self.cli("evidence_capture.py", *args, expected=2)
         self.assertEqual(failed["receipt"]["result"], "fail")
         self.assertTrue(failed["receipt"]["process_started"])
+        diagnostics = Path(failed["diagnostics_path"])
+        self.assertFalse(diagnostics.is_relative_to(self.product))
+        self.assertIn("AssertionError", json.loads(diagnostics.read_text(encoding="utf-8"))["stderr"]["text"])
+        self.assertNotIn("AssertionError", json.dumps(failed))
         self.cli("completion_gate.py", self.json_file("failed", self.report(contract, failed)), "--task-contract", contract_path,
                  "--root", self.product, "--json", expected=2)
         source.write_text("accepted", encoding="utf-8")
         passed = self.cli("evidence_capture.py", *args)
+        boundary = args.index("--")
+        private = self.cli("evidence_capture.py", *args[:boundary], "--no-diagnostics", *args[boundary:])
+        self.assertNotIn("log", private["receipt"])
+        self.assertNotIn("diagnostics_path", private)
         report_path = self.json_file("report", self.report(contract, passed))
         complete_args = [report_path, "--task-contract", contract_path, "--root", self.product, "--json"]
         self.assertTrue(self.cli("completion_gate.py", *complete_args)["receipt_verified"])
@@ -340,6 +453,22 @@ class PortableIntegrationTests(unittest.TestCase):
                          "--completion-report", report_path, "--json")
         self.assertEqual(state["completion_schema"], 3)
         self.assertTrue(state["acceptance"]["receipt_verified"])
+        self.assertEqual(state["acceptance"]["verification_policy"], "outcome-and-obligation-v1")
+        self.assertEqual(state["acceptance"]["completion_scope"], "retained-task-contract")
+        receipt_bytes = Path(passed["receipt_path"]).read_bytes()
+        for stage in ("build", "verify", "review"):
+            plan = self.cli("execution_plan.py", "draft", "--root", self.product, "--task-contract", contract_path,
+                            "--stage", stage, "--json")
+            self.assertEqual(plan["task_contract"], contract)
+            self.assertTrue(self.cli("project_state.py", "capture", "--root", self.product, "--json")["acceptance"]["receipt_verified"])
+        self.assertEqual(Path(passed["receipt_path"]).read_bytes(), receipt_bytes)
+        # Publication is an expanded outcome, not a relabeling of Build success.
+        publication = copy.deepcopy(contract)
+        publication["acceptance_criteria"].append({"id": "release", "description": "Final artifact passes required publication security checks", "required": True})
+        publication["evidence_requirements"].append({"id": "release-scan", "criterion_ids": ["release"], "kind": "security-scan",
+                                                   "origin": "collected", "required": True, "input_paths": [relative]})
+        self.cli("completion_gate.py", report_path, "--task-contract", self.json_file("publication", publication),
+                 "--root", self.product, "--json", expected=2)
         self.git("remote", "add", "origin", "https://example.invalid/owner/product.git")
         Path(state["state_path"]).write_text("{broken", encoding="utf-8")
         restored = self.cli("state_recovery.py", "repair", "--root", self.product, "--apply", "--json")

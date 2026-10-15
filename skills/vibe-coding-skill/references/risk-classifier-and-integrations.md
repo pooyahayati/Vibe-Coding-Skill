@@ -2,7 +2,7 @@
 
 ## Risk classifier
 
-The bundled classifier provides a deterministic workflow floor. It does not replace engineering judgment.
+The bundled classifier reports discovery signals and a conservative workflow floor until the Head resolves actual scope. It checks supplied input consistency; it does not verify source semantics or replace engineering judgment.
 
 For ordinary tasks:
 
@@ -34,9 +34,26 @@ Canonical values (defined in `scripts/risk_classifier.py`):
 
 Bounded aliases such as `delete-all`, `live`, and `pii` normalize to canonical values. Unsupported nonempty values remain unresolved; they do not count as evidence that a dimension is safe. Preserve the same facts in routing and planning: `execution_plan.py draft` accepts `--risk-operation`, `--risk-environment`, `--risk-data-sensitivity`, and `--risk-change-boundary`.
 
-Structured facts are authoritative inputs to the workflow floor. Text/keyword detection is supplemental and supports English plus selected Persian risk phrases. Unknown or unresolved facts must be surfaced as uncertainty; absence of a keyword is not evidence that a sensitive operation is low risk.
+Structured material-risk facts establish a protected floor. Text/path detection supports English plus selected Persian phrases; it is conservative discovery evidence, not a semantic parser. Unknown or conflicting facts remain explicit uncertainty. Neither absent keywords nor an unsupported `tiny` claim establishes safety.
 
 Context routing may raise the tier. Whenever it does, the final tier, approval requirement, reasons, and required controls are rebuilt from the same risk-policy source of truth.
+
+### Resolving incidental signals
+
+For a local prose/comment-only correction, inspect the requested edit and relevant source/diff, then supply two optional fields with all four known risk dimensions and affected paths: `change_effect=non-runtime` and a concrete `scope_evidence` summary. Record what was inspected and why executable behavior, operational instructions, data, contracts and protected outcomes are unchanged. This is an inline Head assessment, not a new mandatory file, test or approval. `behavioral` is the other supported effect value; it never suppresses signals.
+
+```bash
+python scripts/risk_classifier.py "Fix a production guide typo" --path README.md \
+  --operation tiny --environment local --data-sensitivity none --change-boundary local \
+  --change-effect non-runtime \
+  --scope-evidence "Inspected README diff: spelling only; commands, deployment steps and behavior unchanged." --json
+```
+
+The classifier accepts this assessment only for `tiny`/`read-only` operations with complete valid facts, a nonempty inspection summary, known paths and no material-risk fact signal. Unsupported/missing/conflicting facts preserve discovery signals and emit uncertainty. An accepted review moves incidental matches to `resolved_signals`; known auth, destructive, financial, production or cross-module facts cannot be suppressed. Do not classify edited executable instructions, security requirements, data contracts, runtime Markdown or meaningful runbook steps as non-runtime. Reassess after scope/effect changes; a copied summary is not fresh evidence.
+
+Router and planner use the same fields with the `--risk-` prefix, including `--risk-change-effect` and `--risk-scope-evidence`. An accepted review prevents incidental task/path/source mentions and project-wide platform relationships from manufacturing behavioral integration work. Platform context and governing instructions remain available. Incomplete affected-path inspection keeps the assessment unresolved; explicit context facts/pack requirements can still raise the floor. Specialist participation is governed separately.
+
+Output `scope_assessment.semantics_verified` remains false: the tool validates consistency, while the Head must verify the review against the actual edit. Existing callers without an assessment keep conservative behavior. In an existing structured contract, retain the same input map as optional `risk_facts`; the planner reuses it and rejects conflicting overrides. A retained tier still wins until the [explicit state reconciliation](project-state-automation.md#correcting-an-incidental-risk-floor) succeeds.
 
 ## Dependency adapters
 

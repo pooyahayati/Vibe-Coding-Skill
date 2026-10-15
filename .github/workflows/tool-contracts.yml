@@ -7,7 +7,13 @@ on:
       - main
     paths:
       - "VERSION"
-      - ".github/workflows/release.yml"
+      - ".github/workflows/**"
+      - "scripts/ci_scope.py"
+      - "scripts/collect_release_checks.py"
+      - "scripts/release_readiness.py"
+      - "scripts/build_release.py"
+      - "scripts/sync_package.py"
+      - "scripts/validate_skill.py"
       - "config/toolchain.json"
       - "scripts/dependency_guard.py"
       - "scripts/live_dependency_evals.py"
@@ -18,11 +24,16 @@ on:
       - "tests/test_toolchain_resolution.py"
       - "references/security-and-dependencies.md"
       - "references/toolchain-version-resolution.md"
-      - ".github/workflows/tool-contracts.yml"
   pull_request:
     paths:
       - "VERSION"
-      - ".github/workflows/release.yml"
+      - ".github/workflows/**"
+      - "scripts/ci_scope.py"
+      - "scripts/collect_release_checks.py"
+      - "scripts/release_readiness.py"
+      - "scripts/build_release.py"
+      - "scripts/sync_package.py"
+      - "scripts/validate_skill.py"
       - "config/toolchain.json"
       - "scripts/dependency_guard.py"
       - "scripts/live_dependency_evals.py"
@@ -33,7 +44,13 @@ on:
       - "tests/test_toolchain_resolution.py"
       - "references/security-and-dependencies.md"
       - "references/toolchain-version-resolution.md"
-      - ".github/workflows/tool-contracts.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   registries:

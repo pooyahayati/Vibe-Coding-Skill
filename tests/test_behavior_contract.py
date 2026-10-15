@@ -26,6 +26,59 @@ def contract(tier=0):
 
 
 class BehaviorContractTests(unittest.TestCase):
+    def test_risk_reclassification_preserves_commitments_and_known_material_facts(self):
+        old = contract(3)
+        old["objective"] = "Fix a typo in production instructions"
+        old["specialist_assignment_ids"] = ["retained-review"]
+        facts = {"operation": "tiny", "environment": "local", "data_sensitivity": "none",
+                 "change_boundary": "local", "change_effect": "non-runtime",
+                 "scope_evidence": "Inspected settings.txt: label spelling only, no executable or operational change."}
+        corrected = dict(copy.deepcopy(old), risk_tier=0, risk_facts=facts)
+        behavior.reconcile_risk(old, corrected)
+        for field in ("scope", "acceptance_criteria", "evidence_requirements", "specialist_assignment_ids"):
+            altered = copy.deepcopy(corrected)
+            if field == "scope":
+                altered[field] = ["README.md"]
+            elif field == "specialist_assignment_ids":
+                altered[field] = []
+            else:
+                altered[field][0]["id"] = "changed"
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                behavior.reconcile_risk(old, altered)
+        unreviewed = dict(copy.deepcopy(corrected), risk_facts={k: v for k, v in facts.items() if k not in {"change_effect", "scope_evidence"}})
+        with self.assertRaises(ValueError):
+            behavior.reconcile_risk(old, unreviewed)
+        for field, value in [("operation", "auth"), ("operation", "destructive"),
+                             ("environment", "production"), ("data_sensitivity", "financial")]:
+            known = dict(copy.deepcopy(old), risk_facts=dict(facts, **{field: value, "change_effect": "behavioral"}))
+            with self.subTest(field=field, value=value), self.assertRaisesRegex(ValueError, "known material risk"):
+                behavior.reconcile_risk(known, corrected)
+            same_tier = dict(copy.deepcopy(corrected), risk_tier=3)
+            self.assertTrue(behavior.material_risk_losses(known, same_tier))
+
+    def test_retained_scope_assessment_drives_planning_without_weakening_old_floor(self):
+        c = dict(contract(), objective="Correct a production documentation typo",
+                 risk_facts={"operation": "tiny", "environment": "local", "data_sensitivity": "none",
+                     "change_boundary": "local", "change_effect": "non-runtime",
+                     "scope_evidence": "Inspected settings.txt spelling; operational instructions and behavior unchanged."})
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "settings.txt").write_text("Production label spelling", encoding="utf-8")
+            draft = execution_plan.draft(root, c["objective"], task_contract=c)
+            self.assertEqual(draft["planning_basis"]["risk_tier"], 0)
+            self.assertFalse(draft["execution_plan_required"])
+            self.assertEqual(execution_plan.validate_plan(draft, c)["gate"], "PASS")
+            missing_assessment = copy.deepcopy(draft)
+            missing_assessment["task_contract"].pop("risk_facts")
+            missing_assessment["task_contract_sha256"] = behavior.digest(missing_assessment["task_contract"])
+            self.assertEqual(execution_plan.validate_plan(missing_assessment, c)["gate"], "BLOCK")
+            prior = dict(c, risk_tier=3)
+            high = execution_plan.draft(root, c["objective"], task_contract=prior)
+            self.assertTrue(high["execution_plan_required"])
+            self.assertEqual(high["risk_policy"]["tier"], 3)
+            with self.assertRaisesRegex(ValueError, "risk facts differ"):
+                execution_plan.draft(root, c["objective"], task_contract=c, risk_facts={"operation": "auth"})
+
     def test_bound_root_owner_conflicts_with_nested_owner_but_disjoint_scopes_pass(self):
         c = contract()
         c["scope"] = ["."]

@@ -1,5 +1,6 @@
 """S2 actual project changes, retained findings, receipt resolution and completion."""
 import copy
+import io
 import json
 import os
 import subprocess
@@ -7,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,6 +53,7 @@ class HandoffTests(unittest.TestCase):
                       "checks": [{"area": a, "status": "compatible", "rationale": "The contained fixture uses assigned Head controls without additional requests.", "resource_paths": ["SKILL.md", "vibe-head-contract.md"]} for a in sorted(manager.COMPATIBILITY_AREAS)]}
         self.assertEqual(manager.compatibility(self.entry, self.skills, self.state, installed, assessment)["status"], "accepted")
         original = manager.ensure
+        self.real_ensure = original
         def ensure(entry, *args):
             return {"id": entry["id"], "status": "current", "updated": False} if entry["id"] == "vibe-coding-skill" else original(entry, *args)
         mocked = patch.object(manager, "ensure", side_effect=ensure)
@@ -69,6 +72,110 @@ class HandoffTests(unittest.TestCase):
 
     def start(self, spec=None):
         return handoff.assign(self.root, self.contract, spec or self.spec, self.skills, self.state)
+
+    def install_head_fixture(self):
+        head = manager.registry()["head"]
+        source = dict(self.source, repository=head["repository"], skill_path=head["skill_path"])
+        with patch.object(manager, "resolve_latest", return_value=source):
+            self.real_ensure(head, self.skills, self.state, True)
+
+    def resolve_fixture(self, entry):
+        return dict(self.source, repository=entry["repository"], skill_path=entry["skill_path"])
+
+    def test_preparation_reuses_only_the_same_assignment_without_duplicate_upstream_checks(self):
+        self.install_head_fixture()
+        contract_path, assignment_path = self.base / "contract.json", self.base / "assignment.json"
+        contract_path.write_text(json.dumps(self.contract), encoding="utf-8")
+        assignment_path.write_text(json.dumps(self.spec), encoding="utf-8")
+        def cli(mode):
+            output = io.StringIO()
+            args = [handoff.__file__, mode, "--root", str(self.root), "--task-contract", str(contract_path),
+                    "--assignment", str(assignment_path), "--skills-dir", str(self.skills), "--state-dir", str(self.state)]
+            with patch.object(sys, "argv", args), redirect_stdout(output):
+                result = handoff.main()
+            self.assertEqual(result, 0, output.getvalue())
+            return json.loads(output.getvalue())
+        with patch.object(manager, "ensure", wraps=self.real_ensure), patch.object(manager, "resolve_latest", side_effect=self.resolve_fixture) as upstream:
+            result = cli("prepare")
+            self.assertEqual(result["gate"], "PASS")
+            self.assertEqual(upstream.call_count, 2)  # Head and selected specialist, once each.
+            # A new explicit task-start preparation always observes upstream again.
+            result = cli("prepare")
+            self.assertEqual(upstream.call_count, 4)
+            prepared = manager.read_local_json(Path(result["preparation_path"]))
+            with patch.object(manager, "resolve_latest", side_effect=OSError("offline")) as offline:
+                started = cli("assign")
+                offline.assert_not_called()
+            self.assertTrue(started["preflight_reuse"]["reused"])
+            self.assertFalse(started["preflight_reuse"]["upstream_checked"])
+            self.assertEqual(started["preflight_reuse"]["checked_at"], prepared["checked_at"])
+            self.assertFalse(started["accepted"])
+            self.assertFalse(Path(result["preparation_path"]).exists())
+
+    def test_changed_preparation_inputs_and_due_inventory_require_fresh_checks(self):
+        self.install_head_fixture()
+        with patch.object(manager, "ensure", wraps=self.real_ensure), patch.object(manager, "resolve_latest", side_effect=self.resolve_fixture):
+            for case in ("scope-file", "assignment", "contract", "resource", "head-resource", "source", "controls", "assessment", "inventory", "expired"):
+                with self.subTest(case=case):
+                    result = handoff.prepare(self.root, self.contract, self.spec, self.skills, self.state)
+                    self.assertEqual(result["gate"], "PASS")
+                    path = Path(result["preparation_path"])
+                    contract, spec = copy.deepcopy(self.contract), copy.deepcopy(self.spec)
+                    originals = {}
+                    def write(target, value):
+                        originals[target] = target.read_bytes()
+                        target.write_bytes(value if isinstance(value, bytes) else json.dumps(value).encode())
+                    registry = manager.registry()
+                    try:
+                        if case == "scope-file":
+                            write(self.root / "src/value.txt", b"new input")
+                        elif case == "assignment":
+                            spec["settled_decisions"].append("New accepted layout decision")
+                        elif case == "contract":
+                            contract["scope"].append("extra")
+                            spec["contract_sha256"] = behavior.digest(contract)
+                        elif case in ("resource", "head-resource"):
+                            name = self.entry["skill_name"] if case == "resource" else registry["head"]["skill_name"]
+                            write(self.skills / name / "SKILL.md", b"changed instructions")
+                        elif case == "source":
+                            record = self.state / (self.entry["id"] + ".json")
+                            value = manager.read_local_json(record)
+                            value["source"]["commit"] = "b" * 40
+                            write(record, value)
+                        elif case == "controls":
+                            registry["permissions"]["head_owned"].append("new-control")
+                        elif case == "assessment":
+                            installed = manager.read_local_json(self.state / (self.entry["id"] + ".json"))
+                            packet = manager.compatibility_packet(self.entry, self.skills, self.state, installed)
+                            target = Path(packet["assessment_path"])
+                            value = manager.read_local_json(target)
+                            value["decision"] = "blocked"
+                            write(target, value)
+                        else:
+                            target = self.state / "inventory.json" if case == "inventory" else path
+                            value = manager.read_local_json(target)
+                            value["checked_at"] = "2000-01-01T00:00:00+00:00"
+                            write(target, value)
+                        with patch.object(manager, "registry", return_value=registry), patch.object(manager, "resolve_latest", side_effect=OSError("offline")) as upstream:
+                            with self.assertRaisesRegex(ValueError, "current Head"):
+                                handoff.assign(self.root, contract, spec, self.skills, self.state)
+                            self.assertGreater(upstream.call_count, 0)
+                    finally:
+                        for target, raw in originals.items():
+                            target.write_bytes(raw)
+
+    def test_failed_new_preparation_cannot_reuse_old_currency(self):
+        self.install_head_fixture()
+        with patch.object(manager, "ensure", wraps=self.real_ensure), patch.object(manager, "resolve_latest", side_effect=self.resolve_fixture):
+            handoff.prepare(self.root, self.contract, self.spec, self.skills, self.state)
+            with patch.object(manager, "resolve_latest", side_effect=OSError("offline")):
+                changed = copy.deepcopy(self.spec)
+                changed["settled_decisions"].append("A revised decision for the same assignment")
+                failed = handoff.prepare(self.root, self.contract, changed, self.skills, self.state)
+                self.assertEqual(failed["gate"], "BLOCK")
+                # Reverting the spec after a failed refresh cannot revive old success.
+                with self.assertRaisesRegex(ValueError, "current Head"):
+                    self.start()
 
     def output(self, start, changes=None):
         (self.root / "src/value.txt").write_text("changed", encoding="utf-8")
@@ -167,6 +274,11 @@ class HandoffTests(unittest.TestCase):
         returned = self.output(start)
         inspected = self.inspect(returned)
         self.assertEqual(inspected["gate"], "UNVERIFIED")
+        light = manager.select_specialists("Correct label", ["src/view.tsx"], facts={"concern": ["ui"]},
+                                            risk_facts={"operation": "tiny", "environment": "local", "data_sensitivity": "none", "change_boundary": "local"},
+                                            guidance_evidence="Inspected the follow-up diff: mechanical label only, existing decisions preserved.")
+        self.assertFalse(light[0]["handoff_required"])
+        # New lightweight routing never accepts/removes the retained formal work.
         self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "BLOCK")
         self.assertTrue(self.inspect(returned, self.decision(returned, inspected))["accepted"])
         self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "PASS")

@@ -7,7 +7,13 @@ on:
       - main
     paths:
       - "VERSION"
-      - ".github/workflows/release.yml"
+      - ".github/workflows/**"
+      - "scripts/ci_scope.py"
+      - "scripts/collect_release_checks.py"
+      - "scripts/release_readiness.py"
+      - "scripts/build_release.py"
+      - "scripts/sync_package.py"
+      - "scripts/validate_skill.py"
       - "scripts/run_real_world_validations.py"
       - "validation/real-world-projects.json"
       - "scripts/local_workspace.py"
@@ -22,11 +28,16 @@ on:
       - "references/project-intelligence.md"
       - "references/context-routing-and-execution.md"
       - "tests/test_real_world_validation.py"
-      - ".github/workflows/real-world-validation.yml"
   pull_request:
     paths:
       - "VERSION"
-      - ".github/workflows/release.yml"
+      - ".github/workflows/**"
+      - "scripts/ci_scope.py"
+      - "scripts/collect_release_checks.py"
+      - "scripts/release_readiness.py"
+      - "scripts/build_release.py"
+      - "scripts/sync_package.py"
+      - "scripts/validate_skill.py"
       - "scripts/run_real_world_validations.py"
       - "validation/real-world-projects.json"
       - "scripts/local_workspace.py"
@@ -41,9 +52,15 @@ on:
       - "references/project-intelligence.md"
       - "references/context-routing-and-execution.md"
       - "tests/test_real_world_validation.py"
-      - ".github/workflows/real-world-validation.yml"
   schedule:
     - cron: "7 6 * * 4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   validate:

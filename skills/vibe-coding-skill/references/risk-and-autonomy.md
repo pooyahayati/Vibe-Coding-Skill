@@ -4,6 +4,8 @@
 
 User autonomy preference does not override task risk.
 
+Classify the operation and behavior actually affected, not every domain mentioned in prose or a file path. Inspect the requested edit and relevant source/diff. A spelling-only change in authentication documentation or a source comment can use Tier 0 when code, operational instructions, data, contracts and protected behavior remain unchanged. Markdown consumed as agent instructions, executable examples, configuration and semantic runbook changes do not become harmless because they are text. Use the [scope assessment](risk-classifier-and-integrations.md#resolving-incidental-signals) for ambiguous signals; incomplete/conflicting evidence stays explicit and known material risk remains protected.
+
 Effective permission is:
 
 `User Preference × Task Risk × Action Risk × Environment Risk`
@@ -40,7 +42,7 @@ Required:
 - impact/graph analysis;
 - implementation plan;
 - stronger testing;
-- independent review where possible;
+- review of the changed behavior; independent corroboration for a named consequential risk or explicit project requirement;
 - security/regression checks.
 
 ## Tier 3 — Critical
@@ -59,6 +61,8 @@ Required:
 - strong evidence;
 - human review when available;
 - fail closed on missing critical verification.
+
+Use the [canonical verification policy](execution-and-verification.md#testing-policy) to select the actual checks. A tier indicates risk, not a minimum count or diversity of evidence. Preserve required security, integrity and recovery checks; specialist/pack lists do not add unrelated suites.
 
 ## Approval classes
 

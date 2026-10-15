@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 REPORT_SCHEMA_VERSION = 2
+VERIFICATION_POLICY = "outcome-and-obligation-v1"
 PASS_RESULTS = {"pass", "passed", "success", "ok"}
 
 PROVENANCE_FIELDS_BY_TIER = {
@@ -17,20 +18,6 @@ PROVENANCE_FIELDS_BY_TIER = {
     1: ("source", "reference"),
     2: ("source", "reference", "commit"),
     3: ("source", "reference", "commit", "captured_at"),
-}
-
-MIN_PASSING_EVIDENCE_BY_TIER = {
-    0: 1,
-    1: 1,
-    2: 2,
-    3: 2,
-}
-
-MIN_DISTINCT_EVIDENCE_FAMILIES_BY_TIER = {
-    0: 1,
-    1: 1,
-    2: 2,
-    3: 2,
 }
 
 EVIDENCE_KIND_FAMILIES = {
@@ -340,6 +327,11 @@ def evaluate_declared(
                             "issues": issues,
                         }
                     )
+                    if item.get("required") is True:
+                        failures.append(
+                            f"required evidence {item['id']} has invalid provenance: "
+                            + ", ".join(issues)
+                        )
                 else:
                     qualified_evidence.append(item)
                     family = evidence_family(item.get("kind"))
@@ -362,20 +354,9 @@ def evaluate_declared(
                         "has no linked passing evidence with required provenance"
                     )
 
-            minimum = MIN_PASSING_EVIDENCE_BY_TIER[risk_tier]
-            if len(qualified_evidence) < minimum:
-                failures.append(
-                    f"Tier {risk_tier} requires at least {minimum} passing "
-                    "evidence item(s) with required provenance"
-                )
-
-            minimum_families = MIN_DISTINCT_EVIDENCE_FAMILIES_BY_TIER[risk_tier]
-            if len(qualified_evidence_families) < minimum_families:
-                failures.append(
-                    f"Tier {risk_tier} requires at least {minimum_families} "
-                    "distinct semantic evidence family/families"
-                )
-
+            # Required outcomes determine sufficiency; a count/family quota
+            # cannot establish relevance or independent corroboration.
+            # Schema 3 also checks every independently retained obligation.
             if evidence_provenance_issues and qualified_evidence:
                 warnings.append(
                     "some passing evidence items were ignored because their "
@@ -412,6 +393,8 @@ def evaluate_declared(
 
     return {
         "schema_version": schema_version,
+        "verification_policy": VERIFICATION_POLICY,
+        "completion_scope": "declared-criteria",
         "gate": "BLOCK" if failures else ("WARN" if warnings else "PASS"),
         "status": report.get("status"),
         "risk_tier": risk_tier,

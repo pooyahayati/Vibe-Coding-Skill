@@ -25,7 +25,11 @@ The canonical stage/exit table is in `references/operating-model.md`. The shared
 
 Task/path terms are supplemental routing signals: confirm the affected boundary and pass semantic concerns for uncertain language. Ordinary contained fixes do not require every specialist. Selected entries with `active_in_stage: false` are preparation-only; do not invoke them just because they are installed. Multiple explicit `--specialist` selections are permitted only for registered identities.
 
-For each required specialist:
+Participation has two routes. `guidance-only` uses current, S1-accepted instructions directly for a reviewed mechanical edit within settled decisions; it does not create a formal assignment/return/acceptance record. The Head still checks the actual outcome. Provide known affected paths, complete `--risk-*` facts and `--guidance-evidence` describing the inspected diff and preserved decisions; an accepted `non-runtime` scope review already supplies that evidence. No text field proves its own semantics: inspect the actual change first. UI `ui`/`ux` concerns allow this route, while explicit accessibility/RTL/responsive/design work, security/contracts/debugging concerns, material risk, incomplete inspection and explicit `--specialist` selections keep formal participation. A bare `tiny` claim is insufficient. Re-route when effects change.
+
+Both routes require reading the selected current instructions and resolving S1 compatibility. The planner separates `specialist_guidance` from formal `specialist_assignments`; router `required_specialists` retains both with `participation` and `handoff_required`. This classification cannot remove retained assignment IDs, required findings or acceptance obligations. No new task contract or formal ledger is needed solely for guidance use.
+
+For each formal assignment:
 
 1. Obtain a current installation and read its `SKILL.md`; resolve any required S1 compatibility assessment before actual delegation. Selecting/installing it is not using it.
 2. Read the installed `vibe-head-contract.md`; pass current stage, objective, affected surfaces/files, settled stack/product constraints, protected invariants, risk floor, authorized actions, acceptance criteria and evidence expectations.
@@ -35,7 +39,7 @@ For each required specialist:
 
 The upstream specialist controls its supported product routes and exclusions. Do not invent coverage beyond its current instructions. If a requested design falls outside its support, report the gap instead of silently activating the retired dashboard specialist. UI/UX delegation does not make the specialist responsible for unrelated graphic/media generation or backend behavior.
 
-Use only the evidence needed for the change and its material failure modes. Head risk/scope controls govern test breadth; specialist recommendations must not force irrelevant suites, repeat settled discovery, or introduce unrequested approvals or model evaluations.
+Use the Head's [canonical verification policy](execution-and-verification.md#testing-policy) for the change, its material failure modes and delivery stage. Specialist recommendations must not force irrelevant suites, repeat valid checks or settled discovery, or introduce unrequested approvals or model evaluations. Preserve required findings and independently justified review obligations.
 
 ## Freshness and installation
 
@@ -47,7 +51,7 @@ python scripts/specialist_manager.py prepare --task "<task>" --path <affected-pa
 
 Use `--stage <stage>` and matching `--concern` facts; repeat `--specialist <registered-id>` for explicit approved selections. Omit UI facts for backend-only work. Selection prepares relevant skills for the workflow; current-stage assignments decide actual use. `--apply` is used within existing authorization to install/update approved registered packages; do not treat a command-line option as permission to exceed host permissions. Without it, missing/outdated installations block rather than being silently used.
 
-The manager always checks the Head and each selected specialist upstream. At most once per successful daily interval, it also reconciles all registered specialists already installed on the host. Unselected missing skills are reported but not downloaded. A daily audit can also be invoked explicitly:
+The manager always checks the Head and each selected specialist upstream. When a complete formal assignment is already available at task start, use the bound S2 `prepare` below instead of stacking both preparation commands. At most once per successful daily interval, preparation also reconciles all registered specialists already installed on the host. Unselected missing skills are reported but not downloaded. A daily audit can also be invoked explicitly:
 
 ```sh
 python scripts/specialist_manager.py inventory --apply --json
@@ -104,16 +108,21 @@ Accepted unchanged bindings reuse the decision without another instruction diff 
 
 ## Stage return and Head acceptance (S2)
 
-Before actual delegation, retain one small `vibe-specialist-assignment` with `scripts/specialist_handoff.py assign`. It requires the independently retained task contract and current S1-accepted specialist. It snapshots the actual project baseline and assigned source/Head controls outside product source. A planner may carry these objects in `bound_specialist_assignments` using repeatable `--specialist-assignment`; drafting or structurally validating a plan does not start or accept delegation.
+For formal domain work, retain one small `vibe-specialist-assignment` with `scripts/specialist_handoff.py assign`. It requires the independently retained task contract and current S1-accepted specialist. It snapshots the actual project baseline and assigned source/Head controls outside product source. A planner may carry these objects in `bound_specialist_assignments` using repeatable `--specialist-assignment`; drafting or structurally validating a plan does not start or accept delegation. Guidance-only edits do not create this record; existing records remain binding.
 
 The assignment fields and return/Head decision formats are defined in [shared contracts](shared-improvement-contracts.md#specialist-assignment-and-return--s1s2). Use known criterion/evidence IDs, concrete project-relative scope, actual `platform.stack`/`platform.runtime`, settled decisions, protected invariants and existing authorized actions. Retain inherited criterion invariants. Optional `shared_contracts` entries (`id`, concrete producer/consumer `description`) name confirmed boundaries the return and Head must assess. Optional `input_excludes` identify generated input subtrees; do not exclude actual affected product inputs merely to suppress a mismatch.
 
 ```sh
+python scripts/specialist_handoff.py prepare --root <project> --task-contract <contract.json> --assignment <head-assignment.json> --skills-dir <host-skills> --state-dir <external-specialist-state>
 python scripts/specialist_handoff.py assign --root <project> --task-contract <contract.json> --assignment <head-assignment.json> --skills-dir <host-skills> --state-dir <external-specialist-state>
 python scripts/specialist_handoff.py review --root <project> --task-contract <contract.json> --assignment-id <id> --return <specialist-return.json> --evidence <head-receipt-catalog.json>
 ```
 
-The evidence catalog is an independently supplied array of E2 evidence entries (`id`, `kind`, `origin`, `result`, `required`, `requirement_id`, `receipt_ref`, `receipt_sha256`). Resolve actual task-local receipts and their current source/artifact/context bindings; copied success flags cannot qualify. Assign only current-stage evidence obligations, which can be empty for an analysis-only handoff. A protected invariant or resolved required finding needs a qualifying relevant receipt; a real manual review/observation is supported without inventing command execution. Whole-task E2 risk/evidence-family requirements remain separate.
+`prepare` performs a fresh upstream check and due inventory, then retains a successful check for this exact assignment. It grants no acceptance or installation permission. If installation/S1 work is needed, resolve it through the manager first. `assign` reuses the preparation only while the project/contract/assignment, scoped inputs and baseline, installed Head/specialist resources and provenance, accepted compatibility, registry and controls match. Reuse expires at the existing 24-hour inventory interval and cannot skip due inventory. Changed/missing/invalid preparation triggers the ordinary fresh preflight; an offline failure blocks, and a failed fresh attempt cannot restore old success. A successful assignment consumes the preparation. Generic manager preparation is not an assignment-bound cache.
+
+The result labels reuse with `preflight_reuse.reused: true`, the original preparation time and `upstream_checked: false`; it is locally revalidated evidence from that preparation, not a new upstream observation. A valid prepared assignment can therefore start offline with that explicit limitation. Every new task still starts with fresh preparation; this is not a global freshness bypass or a version pin. Active-assignment update protection is unchanged.
+
+The evidence catalog is an independently supplied array of E2 evidence entries (`id`, `kind`, `origin`, `result`, `required`, `requirement_id`, `receipt_ref`, `receipt_sha256`). Resolve actual task-local receipts and their current source/artifact/context bindings; copied success flags cannot qualify. Assign only current-stage evidence obligations, which can be empty for an analysis-only handoff. A protected invariant or resolved required finding needs a qualifying relevant receipt; a real manual review/observation is supported without inventing command execution. Whole-task E2 outcome and retained-obligation coverage remains separate, without an evidence-family quota.
 
 The review without a Head decision remains `UNVERIFIED` or `BLOCK`. It retains the actual return/findings and supplies `return_sha256`, `delivery_sha256`, observed changes, out-of-assignment paths, qualifying evidence IDs and unresolved required finding IDs. The Head reads actual code/output and confirms scope, settled decisions, platform invariants, producer/consumer contracts and evidence relevance. Structural validity and successful commands do not prove semantic correctness.
 

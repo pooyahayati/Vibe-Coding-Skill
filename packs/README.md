@@ -10,7 +10,7 @@ Each pack should contain:
 - **Constraints** — platform/runtime rules that affect implementation.
 - **Risks** — failure modes the task must consider.
 - **Integration points** — boundaries that deserve explicit verification.
-- **Required checks** — evidence expected before completion when the pack is active.
+- **Required checks** — applicable evidence for changed outcomes/risks, selected through the Head's [verification policy](../references/execution-and-verification.md#testing-policy). Activation alone does not require the entire list or repeated checks at each stage.
 - **Avoid** — patterns that commonly create compatibility, security, or performance problems.
 - **Deeper references** — optional official/specialist material; baseline correctness must not depend on an external skill.
 

@@ -15,6 +15,7 @@ import graph_provider
 import github_traceability
 import local_workspace
 import behavior_contract
+import context_router
 
 DOCS = [
     "STATUS.md",
@@ -41,7 +42,8 @@ def file_hash(path: Path) -> str | None:
 def current_state(root: Path, task_contract=None, completion_report=None, delivery_notes=None,
                   new_task: bool = False, accept_contract_change: str | None = None,
                   receipt_completion: bool = False, delivery_context=None,
-                  reconcile_recovery: str | None = None) -> dict[str, Any]:
+                  reconcile_recovery: str | None = None,
+                  reclassify_risk: str | None = None) -> dict[str, Any]:
     root = root.resolve()
     local_workspace.ensure_git_repo(root)
     _, head = run_git(root, "rev-parse", "HEAD")
@@ -88,26 +90,40 @@ def current_state(root: Path, task_contract=None, completion_report=None, delive
         if previous.get("task_contract_sha256") != behavior_contract.digest(retained):
             raise ValueError("retained task contract fingerprint mismatch")
     contract = behavior_contract.validate(task_contract) if task_contract is not None else retained
-    if new_task and accept_contract_change is not None:
-        raise ValueError("choose a new task or a reconciled contract change, not both")
+    if sum((new_task, accept_contract_change is not None, reclassify_risk is not None)) > 1:
+        raise ValueError("choose a new task, contract reconciliation or risk reclassification, not multiple")
     if new_task and (task_contract is None or (retained and contract["task_id"] == retained["task_id"])):
         raise ValueError("--new-task needs an explicit contract with a different task_id")
-    if retained and contract and not new_task and accept_contract_change is None:
+    if reclassify_risk is not None:
+        if not behavior_contract.text(reclassify_risk) or task_contract is None or retained is None:
+            raise ValueError("risk reclassification needs a retained and explicit replacement contract plus reason")
+        behavior_contract.reconcile_risk(retained, contract)
+        routed = context_router.plan(root, contract["objective"], contract["scope"], risk_facts=contract["risk_facts"])["task"]["risk"]
+        if routed["scope_assessment"]["status"] != "accepted" or routed["tier"] > contract["risk_tier"]:
+            raise ValueError("current routing does not support the proposed risk reclassification; inspect unresolved scope/effects")
+    if retained and contract and not new_task:
+        failures = behavior_contract.material_risk_losses(retained, contract)
+        if failures:
+            raise ValueError("; ".join(failures))
+    if retained and contract and not new_task and accept_contract_change is None and reclassify_risk is None:
         failures = behavior_contract.compare(retained, contract)
         if failures:
             raise ValueError("; ".join(failures))
-    if retained and contract and not new_task and contract["risk_tier"] < retained["risk_tier"]:
+    if retained and contract and not new_task and reclassify_risk is None and contract["risk_tier"] < retained["risk_tier"]:
         raise ValueError("contract reconciliation cannot lower the retained risk floor")
+    reconciliation_reason = reclassify_risk if reclassify_risk is not None else accept_contract_change
     if new_task:
         previous = {}
-    elif accept_contract_change is not None:
-        if not behavior_contract.text(accept_contract_change) or task_contract is None or retained is None:
+    elif reconciliation_reason is not None:
+        if not behavior_contract.text(reconciliation_reason) or task_contract is None or retained is None:
             raise ValueError("contract reconciliation needs a retained and explicit replacement contract plus reason")
         if contract["task_id"] != retained["task_id"]:
             raise ValueError("a different task_id requires --new-task")
-        current["contract_reconciliation"] = {"reason": accept_contract_change,
+        current["contract_reconciliation"] = {"reason": reconciliation_reason,
             "previous_contract": retained, "previous_sha256": behavior_contract.digest(retained),
             "authorization_verified": False}
+        if reclassify_risk is not None:
+            current["contract_reconciliation"]["kind"] = "incidental-risk-reclassification"
     elif previous.get("contract_reconciliation"):
         current["contract_reconciliation"] = previous["contract_reconciliation"]
     if previous.get("recovery_reconciliation"):
@@ -116,7 +132,7 @@ def current_state(root: Path, task_contract=None, completion_report=None, delive
     if retained and contract and not new_task and behavior_contract.digest(retained) != behavior_contract.digest(contract):
         history.append({"previous_contract": retained, "previous_sha256": behavior_contract.digest(retained),
                         "next_sha256": behavior_contract.digest(contract),
-                        "reason": accept_contract_change or "Compatible extension of retained obligations",
+                        "reason": reconciliation_reason or "Compatible extension of retained obligations",
                         "authorization_verified": False})
     if history and not new_task:
         current["contract_revisions"] = history
@@ -324,6 +340,7 @@ def main() -> int:
         p.add_argument("--delivery-context", help="independent relevant runtime/dataset JSON for receipt freshness")
         p.add_argument("--new-task", action="store_true", help="begin a different explicitly supplied task, within existing authorization")
         p.add_argument("--accept-contract-change", metavar="REASON", help="record a Head-reconciled material change; does not grant authorization")
+        p.add_argument("--reclassify-risk", metavar="REASON", help="correct an incidental risk floor using reviewed non-runtime facts; preserve all other commitments")
         p.add_argument("--reconcile-recovery", metavar="REASON", help="reconstruct lost obligations from an independently verified explicit task contract")
         for field in ("how-to-use", "how-to-check", "next-action"):
             p.add_argument("--" + field)
@@ -339,6 +356,7 @@ def main() -> int:
             "completion_report": json.loads(Path(ns.completion_report).read_text(encoding="utf-8")) if ns.completion_report else None,
             "new_task": ns.new_task,
             "accept_contract_change": ns.accept_contract_change,
+            "reclassify_risk": ns.reclassify_risk,
             "reconcile_recovery": ns.reconcile_recovery,
             "receipt_completion": ns.receipt_completion,
             "delivery_context": json.loads(ns.delivery_context) if ns.delivery_context else None,

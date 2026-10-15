@@ -121,6 +121,7 @@ def draft(
     stage: str = "plan",
     task_contract: dict[str, Any] | None = None,
     specialist_handoffs: list[dict[str, Any]] | None = None,
+    guidance_evidence: str | None = None,
 ) -> dict[str, Any]:
     behavior = load_behavior_contract()
     contract = behavior.validate(task_contract) if task_contract is not None else None
@@ -130,6 +131,10 @@ def draft(
         paths = paths or contract["scope"]
         if any(not path_covered(p, contract["scope"]) for p in paths):
             raise ValueError("draft paths exceed retained task scope")
+        if "risk_facts" in contract:
+            if risk_facts is not None and risk_facts != contract["risk_facts"]:
+                raise ValueError("risk facts differ from retained contract; reconcile the contract before planning")
+            risk_facts = contract["risk_facts"]
     router = load_context_router()
     route = router.plan(
         root,
@@ -141,6 +146,7 @@ def draft(
         context_facts=context_facts,
         risk_facts=risk_facts,
         stage=stage,
+        guidance_evidence=guidance_evidence,
     )
     complexity = route["project"]["complexity"]["level"]
     tier = int(route["task"]["risk"]["tier"])
@@ -215,7 +221,8 @@ def draft(
         },
         "objective": task,
         "context_plan": route,
-        "specialist_assignments": route["required_specialists"],
+        "specialist_assignments": [s for s in route["required_specialists"] if s["handoff_required"]],
+        "specialist_guidance": [s for s in route["required_specialists"] if not s["handoff_required"]],
         "coordination": {
             "recommended_parallelism": 1,
             "default_owner": "lead-agent",
@@ -587,9 +594,10 @@ def main() -> int:
     draft_cmd.add_argument("--context-capability", action="append", default=[])
     draft_cmd.add_argument("--context-concern", action="append", default=[])
     draft_cmd.add_argument("--stage", choices=load_context_router().load_specialist_manager().registry()["lifecycle"], default="plan")
+    draft_cmd.add_argument("--guidance-evidence", help="Head diff review confirming mechanical use of settled decisions")
     draft_cmd.add_argument("--specialist-assignment", action="append", default=[], help="Head-owned stage assignment JSON; no delegation or permissions granted")
-    for field in ("operation", "environment", "data-sensitivity", "change-boundary"):
-        draft_cmd.add_argument("--risk-" + field)
+    for field in load_context_router().load_risk_classifier().INPUT_FIELDS:
+        draft_cmd.add_argument("--risk-" + field.replace("_", "-"))
     draft_cmd.add_argument("--json", action="store_true")
 
     validate_cmd = sub.add_parser("validate")
@@ -633,10 +641,11 @@ def run_cli(ns, ap) -> int:
             context_facts or None,
             risk_facts={
                 field: getattr(ns, "risk_" + field)
-                for field in ("operation", "environment", "data_sensitivity", "change_boundary")
+                for field in load_context_router().load_risk_classifier().INPUT_FIELDS
                 if getattr(ns, "risk_" + field) is not None
             } or None,
             stage=ns.stage,
+            guidance_evidence=ns.guidance_evidence,
             task_contract=contract,
             specialist_handoffs=[json.loads(Path(p).read_text(encoding="utf-8")) for p in ns.specialist_assignment] if ns.specialist_assignment else None,
         )

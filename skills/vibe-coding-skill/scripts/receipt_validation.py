@@ -121,7 +121,8 @@ def evaluate_completion(report, contract, root, receipt_root, context, declared_
             provisional = copy.deepcopy(report)
             provisional["schema_version"] = 2
             result = declared_gate(provisional)
-            result.update(schema_version=3, receipt_verified=False, task_contract_checked=True, receipt_resolution=[])
+            result.update(schema_version=3, completion_scope="retained-task-contract",
+                          receipt_verified=False, task_contract_checked=True, receipt_resolution=[])
             return result
         criteria = report.get("acceptance_criteria")
         require(isinstance(criteria, list), "report criteria must be an array")
@@ -177,7 +178,8 @@ def evaluate_completion(report, contract, root, receipt_root, context, declared_
         result["failures"].extend(failures)
     except (ValueError, OSError, TypeError, RuntimeError, capture.zipfile.BadZipFile) as exc:
         result = {"gate": "BLOCK", "failures": [str(exc)], "warnings": []}
-    result.update({"schema_version": 3, "receipt_resolution": resolved, "task_contract_checked": True,
+    result.update({"schema_version": 3, "verification_policy": behavior._gate.VERIFICATION_POLICY,
+                   "completion_scope": "retained-task-contract", "receipt_resolution": resolved, "task_contract_checked": True,
                    "receipt_verified": not result["failures"] and str(report.get("status", "")).lower() == "done"})
     result["gate"] = "BLOCK" if result["failures"] else ("WARN" if result["warnings"] else "PASS")
     return result

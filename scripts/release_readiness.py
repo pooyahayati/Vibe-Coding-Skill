@@ -13,6 +13,8 @@ BASE_RELEASE_CHECKS = (
     "Agent Skills Spec Compatibility", "Tool Contract Tests", "WordPress Artifact Contract",
 )
 CHANNEL_CHECKS = {"beta": ("Validate Skill",), "rc": BASE_RELEASE_CHECKS, "stable": BASE_RELEASE_CHECKS}
+FULL_SCOPE_CHECKS = {"Validate Skill": 1, "Cross Platform Smoke": 4}
+FULL_VALIDATION_STEP = "Full validation completed"
 
 def current_skill_version() -> str:
     version_file = ROOT / "VERSION"
@@ -28,11 +30,11 @@ def current_skill_version() -> str:
     return match.group(1).strip()
 
 
-def latest_check_conclusions(
+def latest_check_records(
     checks: list[Any],
     commit: str,
-) -> dict[str, str]:
-    latest: dict[str, tuple[tuple[int, int, int], str]] = {}
+) -> dict[str, dict]:
+    latest: dict[str, tuple[tuple[int, int, int, int], dict]] = {}
     for index, item in enumerate(checks):
         if not isinstance(item, dict):
             continue
@@ -44,18 +46,34 @@ def latest_check_conclusions(
 
         run_id = item.get("run_id")
         if isinstance(run_id, int) and not isinstance(run_id, bool):
-            rank = (1, run_id, index)
+            attempt = item.get("run_attempt", 1)
+            rank = (1, run_id, attempt if type(attempt) is int else 0, index)
         else:
-            rank = (0, index, index)
+            rank = (0, index, 0, index)
 
         current = latest.get(name)
         if current is None or rank > current[0]:
-            latest[name] = (rank, conclusion)
+            latest[name] = (rank, item)
 
     return {
         name: value[1]
         for name, value in latest.items()
     }
+
+
+def latest_check_conclusions(checks: list[Any], commit: str) -> dict[str, str]:
+    return {name: str(item.get("conclusion") or "").lower() for name, item in latest_check_records(checks, commit).items()}
+
+
+def full_validation_scope(name: str, jobs: list[dict]) -> bool:
+    """Only completed full-validation steps from the actual run/attempt qualify."""
+    expected = FULL_SCOPE_CHECKS.get(name)
+    if expected is None:
+        return True  # Other baseline workflows do not have a partial route.
+    marked = [job for job in jobs if job.get("conclusion") == "success" and any(
+        step.get("name") == FULL_VALIDATION_STEP and step.get("conclusion") == "success"
+        for step in job.get("steps", []))]
+    return len(marked) == expected and len({job.get("id") for job in marked}) == expected
 
 
 def evaluate(report: dict[str, Any], channel: str) -> dict[str, Any]:
@@ -68,6 +86,8 @@ def evaluate(report: dict[str, Any], channel: str) -> dict[str, Any]:
     commit = str(report.get("commit") or "").strip()
     checks = report.get("checks") or []
     current_version = current_skill_version()
+    if report.get("schema_version") != 2:
+        failures.append("release report schema_version 2 required; recollect actual workflow scope evidence")
 
     if version != current_version:
         failures.append(
@@ -81,10 +101,11 @@ def evaluate(report: dict[str, Any], channel: str) -> dict[str, Any]:
         checks = []
 
     latest_checks = latest_check_conclusions(checks, commit)
+    latest_records = latest_check_records(checks, commit)
     passed = {
         name
         for name, conclusion in latest_checks.items()
-        if conclusion == "success"
+        if conclusion == "success" and (name not in FULL_SCOPE_CHECKS or latest_records[name].get("validation_scope") == "full")
     }
     required_checks = set(CHANNEL_CHECKS[channel])
     missing_checks = sorted(required_checks - passed)
@@ -95,7 +116,7 @@ def evaluate(report: dict[str, Any], channel: str) -> dict[str, Any]:
         )
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "gate": "BLOCK" if failures else ("WARN" if warnings else "PASS"),
         "channel": channel,
         "version": version,
@@ -104,6 +125,7 @@ def evaluate(report: dict[str, Any], channel: str) -> dict[str, Any]:
         "required_checks": sorted(required_checks),
         "passing_checks": sorted(passed),
         "latest_check_conclusions": dict(sorted(latest_checks.items())),
+        "validation_scopes": {name: item.get("validation_scope", "unverified") for name, item in latest_records.items()},
         "missing_checks": missing_checks,
         "failures": failures,
         "warnings": warnings,

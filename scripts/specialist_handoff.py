@@ -11,6 +11,7 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
+from datetime import datetime, timezone
 
 import behavior_contract as behavior
 import evidence_capture as capture
@@ -118,7 +119,7 @@ def scope_snapshot(root, assignment):
 def control_fingerprint(entry):
     return behavior.digest({"authority": hashlib.sha256((manager.ROOT / "references/specialist-authority.md").read_bytes()).hexdigest(),
                             "adapter": manager.PACKAGE_ADAPTER, "permissions": manager.registry()["permissions"],
-                            "domain": {k: entry.get(k) for k in ("mode", "capability", "assignment", "stages", "primary_stages")}})
+                            "domain": {k: entry.get(k) for k in ("mode", "capability", "assignment", "stages", "primary_stages", "guidance_only_concerns")}})
 
 
 def markers(operation, remove=False):
@@ -133,13 +134,95 @@ def markers(operation, remove=False):
             manager.write_record(path, {"task_id": operation["assignment"]["task_id"], "assignment_id": operation["assignment"]["assignment_id"], "root": operation["root"]})
 
 
-def assign(root, contract, specification, skills_dir, state):
+def assignment_inputs(root, contract, specification, skills_dir, state):
     root, skills_dir, state = root.resolve(), skills_dir.resolve(), state.resolve()
     require(not any(p.is_relative_to(root) for p in (skills_dir, state)) and not skills_dir.is_relative_to(state) and not state.is_relative_to(skills_dir), "host skills/state must remain separate and outside product")
     assignment = copy.deepcopy(specification)
     assignment.setdefault("completion_binding", "current-delivery" if assignment.get("stage") in ("verify", "review", "ship") else "stage-handoff")
     entry = validate_assignment(assignment, contract)
-    preflight = manager.run("prepare", skills_dir, state, [{**entry, "active_in_stage": True}], False)
+    require(not (directory(root, contract["task_id"], assignment["assignment_id"]) / "operation.json").exists(),
+            "assignment ID already retained; create a new stage assignment")
+    return root, skills_dir, state, assignment, entry
+
+
+def preparation_path(root, assignment, state):
+    key = behavior.digest({"root": str(root), "task_id": assignment["task_id"], "assignment_id": assignment["assignment_id"]})
+    return capture.checked_path(state, state / "preparations" / (key + ".json"))
+
+
+def preparation_binding(root, contract, assignment, entry, skills_dir, state):
+    """Local validity only; never claims a new upstream observation."""
+    rows = []
+    for selected in (manager.registry()["head"], entry):
+        target = skills_dir / selected["skill_name"]
+        record = manager.read_local_json(state / (selected["id"] + ".json"))
+        files = manager.installed_hashes(target)
+        require(record.get("status") == "current" and bool(files) and record.get("files") == files
+                and record.get("installation") == str(target)
+                and record.get("source", {}).get("repository") == selected["repository"]
+                and record["source"].get("skill_path") == selected["skill_path"], "prepared installation changed")
+        rows.append(record)
+    compatible = manager.compatibility(entry, skills_dir, state, rows[-1])
+    require(compatible.get("status") == "accepted", "prepared compatibility no longer accepted")
+    rows[-1] = {**rows[-1], "compatibility": compatible}
+    rc, commit = capture.local_workspace.run_git(root, "rev-parse", "HEAD")
+    require(rc == 0 and re.fullmatch(r"[0-9a-f]{40}", commit), "assignment needs an existing Git baseline commit")
+    binding = {"root": str(root), "contract_sha256": behavior.digest(contract), "assignment": assignment,
+               "skills_dir": str(skills_dir), "state": str(state), "installations": rows,
+               "assessment": manager.read_local_json(Path(compatible["assessment_path"])),
+               "registry": manager.registry(), "controls": control_fingerprint(entry),
+               "implementation": {p: hashlib.sha256((manager.ROOT / "scripts" / p).read_bytes()).hexdigest()
+                                  for p in ("specialist_manager.py", "specialist_handoff.py")},
+               "commit": commit, "inputs": scope_snapshot(root, assignment)}
+    return behavior.digest(binding), rows
+
+
+def prepared_preflight(root, contract, assignment, entry, skills_dir, state):
+    path = preparation_path(root, assignment, state)
+    if not path.exists() or manager.inventory_due(state):
+        return None
+    try:
+        prepared = manager.read_local_json(path)
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(prepared["checked_at"])).total_seconds()
+        if prepared.get("schema_version") != 1 or not 0 <= age < manager.registry()["policy"]["inventory_interval_hours"] * 3600:
+            return None
+        binding, rows = preparation_binding(root, contract, assignment, entry, skills_dir, state)
+        if prepared["binding_sha256"] != binding:
+            return None
+        return {"gate": "PASS", "skills": rows,
+                "preflight_reuse": {"reused": True, "upstream_checked": False, "checked_at": prepared["checked_at"],
+                                    "basis": "same prepared assignment; local inputs and compatibility revalidated"}}
+    except (OSError, ValueError, KeyError, TypeError):
+        return None  # Invalid local evidence requires the normal fresh preflight.
+
+
+def prepare(root, contract, specification, skills_dir, state):
+    root, skills_dir, state, assignment, entry = assignment_inputs(root, contract, specification, skills_dir, state)
+    path = preparation_path(root, assignment, state)
+    # A failed fresh attempt must not resurrect an earlier successful check.
+    with manager.installation_lock(skills_dir):
+        path.unlink(missing_ok=True)
+    result = manager.run("prepare", skills_dir, state, [{**entry, "active_in_stage": True}], False)
+    result["preflight_reuse"] = {"reused": False, "upstream_checked": True}
+    if result["gate"] == "PASS":
+        with manager.installation_lock(skills_dir):
+            binding, rows = preparation_binding(root, contract, assignment, entry, skills_dir, state)
+            require(all(next(s for s in result["skills"] if s["id"] == row["id"])["source"] == row["source"] for row in rows),
+                    "prepared source changed during preflight")
+            manager.write_record(path, {"schema_version": 1, "binding_sha256": binding, "checked_at": capture.now()})
+        result["preparation_path"] = str(path)
+    return result
+
+
+def assign(root, contract, specification, skills_dir, state):
+    root, skills_dir, state, assignment, entry = assignment_inputs(root, contract, specification, skills_dir, state)
+    with manager.installation_lock(skills_dir):
+        preflight = prepared_preflight(root, contract, assignment, entry, skills_dir, state)
+    reused = preflight is not None
+    if not reused:
+        with manager.installation_lock(skills_dir):
+            preparation_path(root, assignment, state).unlink(missing_ok=True)
+        preflight = manager.run("prepare", skills_dir, state, [{**entry, "active_in_stage": True}], False)
     require(preflight["gate"] in ("PASS", "WARN"), "current Head and accepted specialist compatibility required before assignment")
     installed = next(s for s in preflight["skills"] if s["id"] == entry["id"])
     require(installed.get("compatibility", {}).get("status") == "accepted", "assigned specialist lacks Head instruction compatibility")
@@ -149,6 +232,8 @@ def assign(root, contract, specification, skills_dir, state):
     rc, commit = capture.local_workspace.run_git(root, "rev-parse", "HEAD")
     require(rc == 0 and re.fullmatch(r"[0-9a-f]{40}", commit), "assignment needs an existing Git baseline commit")
     with manager.installation_lock(skills_dir):
+        require(not reused or prepared_preflight(root, contract, assignment, entry, skills_dir, state) is not None,
+                "prepared inputs changed during assignment; prepare again")
         packet = manager.compatibility_packet(entry, skills_dir, state, installed)
         require(packet["binding_sha256"] == installed["compatibility"]["binding_sha256"], "specialist changed during assignment preparation")
         operation = {"assignment": assignment, "contract": behavior.validate(contract), "root": str(root),
@@ -160,7 +245,9 @@ def assign(root, contract, specification, skills_dir, state):
         base.mkdir(parents=True, exist_ok=True)
         manager.write_record(base / "operation.json", operation)
         markers(operation)
-    return {"assignment": assignment, "upstream_revision": operation["source"]["commit"], "head_contract_sha256": operation["source"]["package_policy"], "record_path": str(base / "operation.json"), "accepted": False}
+        preparation_path(root, assignment, state).unlink(missing_ok=True)
+    return {"assignment": assignment, "upstream_revision": operation["source"]["commit"], "head_contract_sha256": operation["source"]["package_policy"], "record_path": str(base / "operation.json"), "accepted": False,
+            "preflight_reuse": preflight.get("preflight_reuse", {"reused": False, "upstream_checked": True})}
 
 
 def load_operation(root, contract, assignment_id):
@@ -471,10 +558,10 @@ def completion_failures(root, contract, context=None):
 def main():
     behavior.configure_output()
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("mode", choices=("assign", "review", "close", "reconcile"))
+    ap.add_argument("mode", choices=("prepare", "assign", "review", "close", "reconcile"))
     ap.add_argument("--root", required=True, type=Path)
     ap.add_argument("--task-contract", required=True)
-    ap.add_argument("--assignment", help="Head-owned assignment JSON for assign")
+    ap.add_argument("--assignment", help="Head-owned assignment JSON for prepare/assign")
     ap.add_argument("--assignment-id")
     ap.add_argument("--return", dest="returned")
     ap.add_argument("--evidence", help="independent Head receipt catalog JSON array")
@@ -489,9 +576,9 @@ def main():
     try:
         root, contract = ns.root.resolve(), behavior.read(ns.task_contract)
         read = lambda path: json.loads(Path(path).read_text(encoding="utf-8"))
-        if ns.mode == "assign":
-            require(ns.assignment is not None, "assign requires a Head assignment")
-            result = assign(root, contract, read(ns.assignment), ns.skills_dir, ns.state_dir)
+        if ns.mode in ("prepare", "assign"):
+            require(ns.assignment is not None, ns.mode + " requires a Head assignment")
+            result = (prepare if ns.mode == "prepare" else assign)(root, contract, read(ns.assignment), ns.skills_dir, ns.state_dir)
         elif ns.mode == "reconcile":
             require(behavior.text(ns.assignment_id) and ns.previous_task_contract is not None, "reconcile requires assignment ID and previous task contract")
             result = reconcile(root, contract, behavior.read(ns.previous_task_contract), ns.assignment_id, ns.reason,

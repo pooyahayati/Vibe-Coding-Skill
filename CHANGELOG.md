@@ -4,7 +4,19 @@ Technical release history. Entries describe their release; current operating and
 
 ## Unreleased
 
-No unreleased changes.
+No pending changes.
+
+## 1.6.0 — Proportionate verification and focused CI
+
+- T5: Select CI checks by changed inputs: overview structure/links/mirror, instruction policy/routing, affected runtime regressions/platform checks, or the full baseline for version/CI controls and unknown impact. Remove duplicate feature-branch push runs and cancel only obsolete PR runs. Keep full same-revision publication evidence and native final-artifact Trivy. Release-readiness schema 2 and its collector inspect actual full-validation steps and the latest run attempt, exclude PR/fork evidence, and require recollection of legacy reports. Local implementation and hosted rollout status remain separate in ROADMAP.
+
+- T4: Retain bounded separate stdout/stderr from the original local check, with prefix/tail diagnostics, visible truncation, a returned local path and a pre-execution `--no-diagnostics` option for sensitive output. Reuse the optional receipt log/digest without changing receipt schemas or trusting printed success. Keep timeout/tree cleanup and bounded inherited-pipe draining; incomplete diagnostic collection cannot claim success. Cover failure, verbose/binary output, suppression, cleanup, integrity and the extracted-package route.
+
+- T3: Replace Tier 2/3 evidence-count/family quotas with required-outcome and retained-obligation coverage in declared and receipt-backed completion. Keep provenance/revision checks and explicitly block invalid required provenance. Report policy/scope without changing external formats or weakening retained checks. Centralize stage-based selection, independent-corroboration triggers and scoped reuse; remove configured-command run-all pressure and move optional E1/E2 procedures to a routed receipt guide. Preserve native Trivy publication, specialist acceptance and schema-3 migration protections.
+
+- T2: Separate reviewed mechanical use of current accepted specialist guidance from formal domain assignments; keep material decisions, uncertainty and retained commitments on the formal route. Add assignment-bound preparation reuse with local source/resource/control/scope revalidation, due-inventory invalidation and explicit cached-observation reporting. Preserve task-start upstream checks, S1/S2 acceptance, sole UI/UX ownership and active-instruction protection. Cover paired lightweight/material routes and preparation invalidation without live downloads, host installs or model evaluation.
+
+- T1: Resolve incidental risk words/paths only through a consistent Head-reviewed non-runtime scope assessment with complete facts and inspection evidence. Propagate the assessment through routing/planning without manufacturing behavioral integration work; retain explicit/incomplete-scope safeguards. Add optional retained risk facts and an explicit risk-only reconciliation that preserves outcomes, evidence and specialist commitments, protects known material risk, records history and invalidates old completion bindings. Cover paired harmless/material-risk cases and the installed capture/handoff/resume route. No release or local installation change.
 
 ## 1.5.0 — Verified workflow and integration reliability
 

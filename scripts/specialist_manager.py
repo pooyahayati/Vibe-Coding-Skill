@@ -6,12 +6,14 @@ import argparse
 import difflib
 import hashlib
 import io
+import importlib.util
 import json
 import os
 import posixpath
 import re
 import shutil
 import stat
+import sys
 import tempfile
 import urllib.error
 import urllib.parse
@@ -61,6 +63,8 @@ def registry() -> dict:
                 raise ValueError("invalid specialist stage or authority contract")
             if entry.get("shared_resources", []) not in ([], ["references"]):
                 raise ValueError("unapproved shared resource root")
+            if not set(entry.get("guidance_only_concerns", [])) <= set(entry["activation"]["concerns"]):
+                raise ValueError("guidance concerns must belong to the specialist domain")
             for pattern in entry["activation"].get("path_patterns", []):
                 re.compile(pattern)
     if data["primary_ui_specialist"] not in {item["id"] for item in data["specialists"]} or data["policy"] != {
@@ -99,9 +103,19 @@ def domain_task_text(task: str, terms: list[str]) -> str:
     return "".join(masked)
 
 
+def load_risk_classifier():
+    spec = importlib.util.spec_from_file_location("_specialist_risk_classifier", ROOT / "scripts/risk_classifier.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def select_specialists(task: str, paths: list[str] | None = None,
                        facts: dict | None = None, explicit: list[str] | None = None,
-                       stage: str = "discover", risk_facts: dict | None = None) -> list[dict]:
+                       stage: str = "discover", risk_facts: dict | None = None,
+                       guidance_evidence: str | None = None, risk_assessment: dict | None = None,
+                       inspection_complete: bool = True) -> list[dict]:
     data = registry()
     entries = {item["id"]: item for item in data["specialists"]}
     if stage not in data["lifecycle"]:
@@ -110,9 +124,29 @@ def select_specialists(task: str, paths: list[str] | None = None,
         raise ValueError("select registered specialists only")
     concerns = (facts or {}).get("concern", [])
     concerns = {concerns} if isinstance(concerns, str) else set(concerns)
-    if (risk_facts or {}).get("data_sensitivity") in {"personal", "sensitive", "financial", "payment", "health", "credentials", "secret", "private-key"}:
+    classifier = load_risk_classifier()
+    canonical = classifier.normalized_facts(risk_facts)
+    if canonical["data_sensitivity"] in {"personal", "sensitive", "financial", "payment", "health", "medical", "credentials", "secret", "private-key"}:
         concerns.add("sensitive-data")
+    concerns.update({"auth": {"auth"}, "authentication": {"auth"}, "authorization": {"authorization"},
+                     "security": {"security"}, "payment": {"payments"}, "external-integration": {"external-http"},
+                     "webhook": {"webhooks"}, "public-api": {"api"}}.get(canonical["operation"], set()))
     paths = [path.replace("\\", "/") for path in paths or []]
+    risk = risk_assessment if risk_assessment is not None else classifier.classify(task, paths, risk_facts)
+    reviewed = risk.get("scope_assessment", {}).get("status") == "accepted"
+    evidence = risk.get("scope_assessment", {}).get("evidence") if reviewed else guidance_evidence
+    # A standard-change word such as Button in a path may remain at Tier 1.
+    # A mechanical diff review changes participation, never that risk floor.
+    unresolved = [u for u in risk["uncertainties"]
+                  if not (guidance_evidence and risk["tier"] <= 1 and u.startswith("text/path risk signals remain unresolved;"))]
+    # The Head inspects actual effects. This only validates the supplied scope;
+    # it does not prove semantics or erase a previously retained assignment.
+    mechanical = (inspection_complete and bool(paths) and bool(isinstance(evidence, str) and evidence.strip())
+                  and canonical["operation"] in {"tiny", "read-only"}
+                  and all(canonical[k] in classifier.FACT_VALUES[k] for k in classifier.FACT_FIELDS)
+                  and not classifier.structured_fact_signals(risk_facts)
+                  and risk["tier"] <= 1 and not unresolved
+                  and risk.get("scope_assessment", {}).get("status") != "unresolved")
     # Documentation edits do not change the discussed runtime boundary.
     documents_only = bool(paths) and all(Path(path).suffix.casefold() in {".md", ".markdown", ".txt", ".rst", ".adoc"} for path in paths)
     selected = []
@@ -132,10 +166,14 @@ def select_specialists(task: str, paths: list[str] | None = None,
             if any(re.search(pattern, path.casefold()) for pattern in activation["path_patterns"] for path in paths):
                 reasons.append("affected domain boundary")
         if reasons:
+            guidance = (mechanical and entry["id"] not in (explicit or [])
+                        and not (concerns - set(entry.get("guidance_only_concerns", []))))
             selected.append({**entry, "reason": "; ".join(reasons), "required": True, "head_precedence": True,
                              "stage": stage, "active_in_stage": stage in entry["stages"],
                              "permissions": data["permissions"], "stage_owner": data["head"]["id"],
-                             "handoff_required": True})
+                             "participation": "guidance-only" if guidance else "formal-assignment",
+                             "guidance_evidence": evidence if guidance else None,
+                             "handoff_required": not guidance})
     return selected
 
 
@@ -497,7 +535,7 @@ def compatibility_packet(entry: dict, skills_dir: Path, state: Path, installatio
     binding = {"specialist_id": entry["id"],
                "source": {k: source[k] for k in ("repository", "skill_path", "commit", "package_policy")}, "files": files,
                "head_controls": registry()["permissions"],
-               "domain": {k: entry.get(k) for k in ("mode", "capability", "assignment", "stages", "primary_stages")}}
+               "domain": {k: entry.get(k) for k in ("mode", "capability", "assignment", "stages", "primary_stages", "guidance_only_concerns")}}
     key = canonical_digest(binding)
     home = state / "compatibility" / entry["id"]
     cached = home / key
@@ -647,12 +685,20 @@ def compatibility(entry: dict, skills_dir: Path, state: Path, installation: dict
         return {"status": "compatibility-unverified", "error": str(exc)}
 
 
+def inventory_due(state: Path) -> bool:
+    inventory = state / "inventory.json"
+    try:
+        last = read_local_json(inventory)
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(last["checked_at"])).total_seconds()
+        return not 0 <= age < registry()["policy"]["inventory_interval_hours"] * 3600
+    except (OSError, ValueError, KeyError, TypeError):
+        return True
+
+
 def run(mode: str, skills_dir: Path, state: Path, selected: list[dict], apply: bool, assessment=None) -> dict:
     data = registry()
     inventory = state / "inventory.json"
-    last = json.loads(inventory.read_text(encoding="utf-8")) if inventory.exists() else {}
-    last_time = datetime.fromisoformat(last["checked_at"]) if last.get("checked_at") else None
-    due = not last_time or (datetime.now(timezone.utc) - last_time).total_seconds() >= data["policy"]["inventory_interval_hours"] * 3600
+    due = inventory_due(state)
     entries = {data["head"]["id"]: data["head"]}
     if mode == "inventory" or due:
         entries.update({entry["id"]: entry for entry in data["specialists"] if (skills_dir / entry["skill_name"]).exists()})
@@ -691,6 +737,9 @@ def main() -> int:
     parser.add_argument("--concern", action="append", default=[])
     parser.add_argument("--specialist", action="append", default=[])
     parser.add_argument("--stage", choices=registry()["lifecycle"], default="discover")
+    parser.add_argument("--guidance-evidence", help="Head diff review: mechanical use of settled decisions, no new domain behavior")
+    for field in load_risk_classifier().INPUT_FIELDS:
+        parser.add_argument("--risk-" + field.replace("_", "-"))
     parser.add_argument("--skills-dir", type=Path, default=Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))) / "skills")
     parser.add_argument("--state-dir", type=Path, default=Path(os.environ.get("VIBE_CODING_HOME", str(Path.home() / ".vibe-coding"))) / "specialists")
     parser.add_argument("--project-root", type=Path)
@@ -707,7 +756,10 @@ def main() -> int:
         unknown_concerns = set(args.concern) - supported_concerns()
         if unknown_concerns:
             raise ValueError("unknown specialist concerns: " + ", ".join(sorted(unknown_concerns)))
-        selected = select_specialists(args.task, args.path, {"concern": args.concern}, args.specialist, args.stage)
+        risk_facts = {field: getattr(args, "risk_" + field) for field in load_risk_classifier().INPUT_FIELDS
+                      if getattr(args, "risk_" + field) is not None}
+        selected = select_specialists(args.task, args.path, {"concern": args.concern}, args.specialist, args.stage,
+                                      risk_facts or None, args.guidance_evidence)
         if (args.mode == "assess") != bool(args.assessment) or (args.mode == "assess" and len(selected) != 1):
             raise ValueError("assess requires one selected registered specialist and --assessment")
         result = run(args.mode, skills, state, selected, args.apply,

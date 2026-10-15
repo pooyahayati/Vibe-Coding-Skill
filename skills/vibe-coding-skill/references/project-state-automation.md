@@ -57,6 +57,21 @@ Each contract revision retains its previous contract/digest, next digest and Hea
 
 Snapshots are atomically replaced with a retained recovery copy. Unreadable state, mismatched copies or altered contract fingerprints require [repair or explicit obligation reconstruction](recovery-and-resume.md#corrupt-local-state) before replacement. Product requirements remain legitimate Git documents; operational snapshots stay in the existing local workspace. See [shared formats and trust limits](shared-improvement-contracts.md).
 
+Completion uses the [outcome policy](shared-improvement-contracts.md#outcome-policy-compatibility-t3). Capture/resume re-evaluates required evidence; the policy identifier does not turn old success into new proof. A planning/activity-stage transition alone leaves scoped receipt validity intact. Preserve the contract when only activity changes; new delivery outcomes still require explicit reconciliation and cannot reuse old contract bindings.
+
+### Correcting an incidental risk floor
+
+For an existing structured task whose tier was raised only by incidental words/paths, the Head may supply a replacement contract with a lower `risk_tier` and optional `risk_facts` containing the [reviewed non-runtime assessment](risk-classifier-and-integrations.md#resolving-incidental-signals):
+
+```bash
+python scripts/project_state.py capture --root <project> --task-contract <reviewed-contract.json> \
+  --reclassify-risk "<why the previous tier was incidental; evidence inspected>" --json
+```
+
+This separate route requires a retained contract, nonempty reason and consistent inspected scope. Current routing must also support the proposed tier; missing/incomplete affected inputs block reclassification. Only `risk_tier` and `risk_facts` may change: task identity, scope, acceptance/protected behavior, evidence obligations and specialist commitments must remain identical. It cannot be combined with `--new-task` or `--accept-contract-change`. Known material facts cannot be weakened or removed, including through general contract reconciliation. Legacy integer-only floors have no automated provenance; the Head must inspect the retained requirements and actual edit before declaring them incidental. The helper does not establish the truth of that review or grant permission.
+
+The existing revision ledger retains the prior contract/digest and reason; handoff/resume retain the reviewed facts. The new contract digest invalidates old completion/receipt bindings and follows the existing specialist revision rules. Normal capture/plan/resume still cannot lower a retained tier. Tiny inline work needs no structured contract merely to use the reviewed scope route.
+
 ## Repository updates
 
 Do not mechanically rewrite project documents after every command or commit.

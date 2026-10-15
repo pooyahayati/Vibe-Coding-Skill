@@ -138,7 +138,7 @@ CONTROLS_BY_TIER = {
         "graph/impact analysis",
         "implementation plan",
         "tests",
-        "independent review",
+        "review",
         "security/regression checks",
     ],
     3: [
@@ -148,7 +148,7 @@ CONTROLS_BY_TIER = {
         "graph/impact analysis",
         "implementation plan",
         "tests",
-        "independent review",
+        "review",
         "security/regression checks",
         "explicit approval",
         "rollback/recovery plan",
@@ -158,6 +158,7 @@ CONTROLS_BY_TIER = {
 }
 
 FACT_FIELDS = ("operation", "environment", "data_sensitivity", "change_boundary")
+INPUT_FIELDS = (*FACT_FIELDS, "change_effect", "scope_evidence")
 FACT_VALUES = {
     "operation": {"tiny", "feature", "read-only", "refactor", "destructive", "auth",
                   "migration", "external-integration", "dependency", "security", "payment"},
@@ -221,6 +222,8 @@ def structured_fact_signals(facts: dict[str, Any] | None) -> list[dict[str, obje
         signals.append({"name": "fact:dependency", "tier": 1, "reason": "structured fact: dependency change", "approval": False})
     elif operation in {"security", "payment"}:
         signals.append({"name": "fact:security", "tier": 2, "reason": "structured fact: security/payment behavior", "approval": False})
+    elif operation in {"feature", "refactor"}:
+        signals.append({"name": "fact:" + operation, "tier": 1, "reason": "structured fact: bounded behavioral change", "approval": False})
 
     environment = normalized["environment"]
     if environment in {"production", "prod", "control-plane"}:
@@ -244,23 +247,56 @@ def classify(
     paths: list[str] | None = None,
     facts: dict[str, Any] | None = None,
 ) -> dict[str, object]:
+    if facts is not None and not isinstance(facts, dict):
+        raise ValueError("structured risk facts must be an object")
     normalized_text = " ".join([text, *(paths or [])])
-    matches = [rule for rule in RULES if rule.pattern.search(normalized_text)]
+    discovered = [rule for rule in RULES if rule.pattern.search(normalized_text)]
     fact_signals = structured_fact_signals(facts)
+    supplied_facts = facts or {}
+    canonical = normalized_facts(supplied_facts)
+    uncertainties: list[str] = []
+    if supplied_facts:
+        for field in FACT_FIELDS:
+            if canonical[field] not in FACT_VALUES[field]:
+                uncertainties.append(f"structured fact unresolved: {field}")
+        for field in sorted(set(supplied_facts) - set(INPUT_FIELDS)):
+            uncertainties.append(f"unsupported structured risk field: {field}")
+
+    effect = normalize_fact(supplied_facts.get("change_effect"))
+    evidence = supplied_facts.get("scope_evidence")
+    assessment = {"status": "not-provided", "semantics_verified": False}
+    if "change_effect" in supplied_facts or "scope_evidence" in supplied_facts:
+        assessment.update(effect=effect, evidence=evidence, paths=list(paths or []), status="unresolved")
+        if effect not in {"non-runtime", "behavioral"}:
+            uncertainties.append("change_effect must be non-runtime or behavioral")
+        elif effect == "non-runtime":
+            if not isinstance(evidence, str) or not evidence.strip() or not paths:
+                uncertainties.append("non-runtime scope needs known affected paths and concrete inspection evidence")
+            if fact_signals or canonical["operation"] not in {"tiny", "read-only"}:
+                uncertainties.append("non-runtime scope conflicts with operation or material risk facts")
+            if not uncertainties:
+                assessment["status"] = "accepted"
+        else:
+            assessment["status"] = "behavioral"
+
+    # A Head-reviewed scope assessment can resolve discovery signals; a bare
+    # tiny claim cannot. This validates consistency, not the truth of the review.
+    resolved = assessment["status"] == "accepted"
+    matches = [] if resolved else discovered
 
     text_tier = max((rule.tier for rule in matches), default=-1)
     fact_tier = max((int(row["tier"]) for row in fact_signals), default=-1)
     tier = max(text_tier, fact_tier)
 
     if tier < 0:
-        tier = 0 if TINY.search(normalized_text) else 1
+        tier = 0 if resolved or TINY.search(normalized_text) else 1
 
     highest_text = [rule for rule in matches if rule.tier == tier]
     highest_facts = [row for row in fact_signals if int(row["tier"]) == tier]
     reasons = [rule.reason for rule in highest_text] + [str(row["reason"]) for row in highest_facts]
     if not reasons:
         reasons = [
-            "localized/reversible change"
+            "reviewed non-runtime scope" if resolved else "localized/reversible change"
             if tier == 0
             else "standard change with no higher-risk signal detected"
         ]
@@ -270,16 +306,9 @@ def classify(
 
     policy = policy_for_tier(tier, approval)
 
-    uncertainties: list[str] = []
-    supplied_facts = facts or {}
-    if supplied_facts:
-        canonical = normalized_facts(supplied_facts)
-        for field in FACT_FIELDS:
-            if canonical[field] not in FACT_VALUES[field]:
-                uncertainties.append(f"structured fact unresolved: {field}")
-        for field in sorted(set(supplied_facts) - set(FACT_FIELDS)):
-            uncertainties.append(f"unsupported structured risk field: {field}")
-    elif not matches and not fact_signals and not TINY.search(normalized_text):
+    if not resolved and text_tier > max(fact_tier, 0) and canonical["operation"] in {"tiny", "read-only"}:
+        uncertainties.append("text/path risk signals remain unresolved; inspect actual effects before treating them as incidental")
+    if not supplied_facts and not matches and not fact_signals and not TINY.search(normalized_text):
         uncertainties.append(
             "no explicit risk signal was recognized; provide structured risk facts when operation, environment, data sensitivity, or change boundary may affect risk"
         )
@@ -289,12 +318,16 @@ def classify(
         "reasons": list(dict.fromkeys(reasons)),
         "matched_rules": [rule.name for rule in matches]
         + [str(row["name"]) for row in fact_signals],
-        "structured_facts": {key: normalized_facts(supplied_facts)[key] for key in FACT_FIELDS if key in supplied_facts},
+        "structured_facts": {**{key: canonical[key] for key in FACT_FIELDS if key in supplied_facts},
+                             **{key: supplied_facts[key] for key in INPUT_FIELDS if key not in FACT_FIELDS and key in supplied_facts}},
+        "scope_assessment": assessment,
+        "resolved_signals": [rule.name for rule in discovered] if resolved else [],
         "uncertainties": uncertainties,
-        "decision_basis": "structured-facts+text-signals" if fact_signals else "text-signals",
+        "decision_basis": "reviewed-scope+structured-facts" if resolved else "structured-facts+text-signals" if fact_signals else "text-signals",
         "note": (
             "This classifier supplies a conservative workflow floor; engineering context may raise the tier. "
-            "Structured facts are authoritative inputs; keyword matching is supplemental."
+            "Text/path matches are discovery signals, resolved only by a consistent Head scope review. "
+            "The caller verifies actual effects; this tool checks input consistency, not source semantics or authorization."
         ),
     }
 
@@ -303,22 +336,14 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("text", nargs="?", default="")
     ap.add_argument("--path", action="append", default=[])
-    ap.add_argument("--operation")
-    ap.add_argument("--environment")
-    ap.add_argument("--data-sensitivity")
-    ap.add_argument("--change-boundary")
+    for field in INPUT_FIELDS:
+        ap.add_argument("--" + field.replace("_", "-"))
     ap.add_argument("--json", action="store_true")
     ns = ap.parse_args()
     if not ns.text and not ns.path:
         raise SystemExit("provide task text and/or --path")
 
-    facts = {
-        "operation": ns.operation,
-        "environment": ns.environment,
-        "data_sensitivity": ns.data_sensitivity,
-        "change_boundary": ns.change_boundary,
-    }
-    facts = {key: value for key, value in facts.items() if value is not None}
+    facts = {field: getattr(ns, field) for field in INPUT_FIELDS if getattr(ns, field) is not None}
     result = classify(ns.text, ns.path, facts or None)
     if ns.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))

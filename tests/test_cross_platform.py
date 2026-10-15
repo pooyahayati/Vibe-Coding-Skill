@@ -286,8 +286,30 @@ class EvidenceCaptureTests(unittest.TestCase):
     def run_check(self, code="pass", **options):
         return capture.capture(self.root, self.c, "check", [sys.executable, "-c", code], **options)
 
+    def test_failure_retains_separate_diagnostics_from_the_original_attempt(self):
+        (self.root / "check.py").write_text(
+            "import sys\nfrom pathlib import Path\n"
+            "p = Path('src/generated/attempts.txt')\n"
+            "p.write_text(str(int(p.read_text()) + 1) if p.exists() else '1')\n"
+            "print('reported success')\n"
+            "print('AssertionError: stored setting was lost', file=sys.stderr)\n"
+            "raise SystemExit(7)\n", encoding="utf-8")
+        result = capture.capture(self.root, self.c, "check", [sys.executable, "check.py"])
+        self.assertEqual(result["receipt"]["result"], "fail")
+        self.assertEqual(result["receipt"]["command"]["exit_code"], 7)
+        self.assertEqual((self.root / "src/generated/attempts.txt").read_text(), "1")
+        path = Path(result["diagnostics_path"])
+        self.assertFalse(path.is_relative_to(self.root))
+        diagnostic = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(diagnostic["stdout"]["text"].strip(), "reported success")
+        self.assertEqual(diagnostic["stderr"]["text"].strip(), "AssertionError: stored setting was lost")
+        self.assertTrue(diagnostic["stdout"]["complete"])
+        self.assertFalse(result["receipt"]["log"]["truncated"])
+        self.assertFalse(result["receipt"]["log"]["redacted"])
+        self.assertNotIn("stored setting was lost", json.dumps(result))
+
     def test_real_success_failure_and_spawn_error_are_distinct_and_local(self):
-        passed = self.run_check("print('discarded command output')")
+        passed = self.run_check("print('successful command output')")
         r = passed["receipt"]
         self.assertEqual(r["result"], "pass")
         self.assertEqual(r["command"]["exit_code"], 0)
@@ -301,12 +323,63 @@ class EvidenceCaptureTests(unittest.TestCase):
         path = Path(passed["receipt_path"])
         self.assertFalse(path.is_relative_to(self.root))
         self.assertEqual(json.loads(path.read_text(encoding="utf-8")), r)
-        self.assertNotIn("log", r)
+        output_path = Path(passed["diagnostics_path"])
+        self.assertEqual(capture.hashlib.sha256(output_path.read_bytes()).hexdigest(), r["log"]["sha256"])
+        if os.name != "nt":
+            self.assertEqual(output_path.stat().st_mode & 0o777, 0o600)
         self.assertEqual(self.run_check("raise SystemExit(7)")["receipt"]["command"]["exit_code"], 7)
         failed = capture.capture(self.root, self.c, "check", [str(self.base / "missing-executable")])["receipt"]
         self.assertEqual(failed["result"], "error")
         self.assertFalse(failed["process_started"])
         self.assertIsNone(failed["command"]["exit_code"])
+        self.assertNotIn("log", failed)
+
+    def test_verbose_streams_keep_bounded_prefix_and_tail_without_blocking(self):
+        code = ("import os\nos.write(1, b'OUT-START\\n')\nos.write(2, b'ERR-START\\n')\n"
+                "for _ in range(128):\n os.write(1, b'x'*4096)\n os.write(2, b'\\xff'*4096)\n"
+                "os.write(1, b'\\nOUT-END')\nos.write(2, b'\\nERR-END')\nraise SystemExit(9)")
+        result = self.run_check(code, timeout_seconds=10)
+        self.assertEqual(result["receipt"]["result"], "fail")
+        path = Path(result["diagnostics_path"])
+        self.assertLess(path.stat().st_size, 2 * capture.OUTPUT_BYTES_PER_STREAM * 6 + 2048)
+        output = json.loads(path.read_text(encoding="utf-8"))
+        for name, prefix in (("stdout", "OUT"), ("stderr", "ERR")):
+            with self.subTest(stream=name):
+                row = output[name]
+                self.assertLessEqual(row["retained_bytes"], capture.OUTPUT_BYTES_PER_STREAM)
+                self.assertEqual(row["observed_bytes"], row["retained_bytes"] + row["omitted_bytes"])
+                self.assertGreater(row["omitted_bytes"], 0)
+                self.assertTrue(row["complete"])
+                self.assertTrue(row["truncated"])
+                self.assertTrue(row["text"].startswith(prefix + "-START"))
+                self.assertTrue(row["text"].endswith(prefix + "-END"))
+        self.assertTrue(result["receipt"]["log"]["truncated"])
+
+    def test_sensitive_output_can_be_disabled_before_execution(self):
+        secret = "synthetic-private-output-4821"
+        with patch.dict(os.environ, {"VIBE_TEST_PRIVATE_OUTPUT": secret}):
+            result = self.run_check("import os,sys; print(os.environ['VIBE_TEST_PRIVATE_OUTPUT']); "
+                                    "print(os.environ['VIBE_TEST_PRIVATE_OUTPUT'], file=sys.stderr)", diagnostics=False)
+        self.assertEqual(result["receipt"]["result"], "pass")
+        self.assertNotIn("log", result["receipt"])
+        self.assertNotIn("diagnostics_path", result)
+        self.assertNotIn(secret, json.dumps(result))
+        for path in Path(result["receipt_root"]).iterdir():
+            self.assertNotIn(secret, path.read_text(encoding="utf-8"))
+
+    def test_diagnostic_failures_cannot_claim_success_or_erase_command_failure(self):
+        with patch.object(capture, "output_reader", side_effect=OSError("synthetic sensitive error")):
+            result = self.run_check("import time; time.sleep(10)")
+        self.assertEqual(result["receipt"]["result"], "error")
+        self.assertTrue(result["receipt"]["collection_errors"])
+        self.assertNotIn("synthetic sensitive error", json.dumps(result))
+        with patch.object(capture, "write_diagnostics", side_effect=OSError("synthetic disk failure")):
+            for code, expected in (("pass", "error"), ("raise SystemExit(7)", "fail")):
+                with self.subTest(expected=expected):
+                    receipt = self.run_check(code)["receipt"]
+                    self.assertEqual(receipt["result"], expected)
+                    self.assertTrue(receipt["collection_errors"])
+                    self.assertTrue(receipt["process_started"])
 
     def test_manifest_includes_untracked_missing_and_empty_directory_membership(self):
         obligation = self.c["evidence_requirements"][0]
@@ -346,14 +419,33 @@ class EvidenceCaptureTests(unittest.TestCase):
     def test_timeout_stops_child_tree_and_never_becomes_success(self):
         marker = self.base / "child-survived.txt"
         child = "import time; from pathlib import Path; time.sleep(1.2); Path(" + repr(str(marker)) + ").write_text('bad')"
-        code = "import subprocess,sys,time; subprocess.Popen([sys.executable,'-c'," + repr(child) + "]); time.sleep(10)"
+        code = ("import subprocess,sys,time; subprocess.Popen([sys.executable,'-c'," + repr(child) + "]); "
+                "print('before timeout', flush=True); print('waiting for child', file=sys.stderr, flush=True); time.sleep(10)")
         start = time.monotonic()
-        r = self.run_check(code, timeout_seconds=0.3)["receipt"]
+        result = self.run_check(code, timeout_seconds=0.3)
+        r = result["receipt"]
         self.assertEqual(r["result"], "timeout")
         self.assertTrue(r["termination_confirmed"])
         self.assertLess(time.monotonic() - start, 8)
+        output = json.loads(Path(result["diagnostics_path"]).read_text(encoding="utf-8"))
+        self.assertIn("before timeout", output["stdout"]["text"])
+        self.assertIn("waiting for child", output["stderr"]["text"])
         time.sleep(1.3)
         self.assertFalse(marker.exists())
+
+    def test_inherited_open_pipe_has_bounded_drain_and_cannot_claim_success(self):
+        code = "import subprocess,sys; subprocess.Popen([sys.executable,'-c','import time; time.sleep(0.8)'])"
+        start = time.monotonic()
+        with patch.object(capture, "OUTPUT_DRAIN_SECONDS", 0.05):
+            result = self.run_check(code)
+        self.assertLess(time.monotonic() - start, 5)
+        self.assertEqual(result["receipt"]["result"], "error")
+        self.assertEqual(result["receipt"]["command"]["exit_code"], 0)
+        self.assertTrue(result["receipt"]["collection_errors"])
+        self.assertTrue(result["receipt"]["log"]["truncated"])
+        # Windows cannot confirm a tree kill after its original parent exits.
+        # The fixture's child self-expires even on that explicitly unconfirmed route.
+        time.sleep(0.9)
 
     def test_unsafe_paths_scope_erasure_limits_and_origins_fail_before_execution(self):
         for value in ("../outside", "/outside", "C:/outside", "src/*", "src/?", "src/\x00value", "src\\value"):
