@@ -417,8 +417,56 @@ class RiskClassifierTests(unittest.TestCase):
     def test_higher_tier_policy_retains_lower_tier_controls(self):
         policy = self.mod.policy_for_tier(3)
         self.assertIn("acceptance criteria", policy["required_controls"])
-        self.assertIn("independent review", policy["required_controls"])
+        self.assertIn("review", policy["required_controls"])
         self.assertIn("rollback/recovery plan", policy["required_controls"])
+
+    def reviewed_non_runtime_facts(self):
+        return {"operation": "tiny", "environment": "local", "data_sensitivity": "none",
+                "change_boundary": "local", "change_effect": "non-runtime",
+                "scope_evidence": "Inspected requested edit and diff: spelling only; executable code, instructions and protected behavior unchanged."}
+
+    def test_reviewed_non_runtime_scope_resolves_incidental_words_and_paths(self):
+        facts = self.reviewed_non_runtime_facts()
+        cases = [("Fix a typo in the authentication documentation only.", "README.md"),
+                 ("Fix a typo in the production installation instructions only.", "README.md"),
+                 ("Correct a spelling mistake in a comment.", "src/auth/session.py"),
+                 ("اصلاح غلط املایی در توضیحات محیط تولید", "docs/production.md"),
+                 ("Korrigiere einen Schreibfehler.", "docs/auth.md")]
+        for task, path in cases:
+            with self.subTest(task=task, path=path):
+                result = self.mod.classify(task, [path], facts)
+                self.assertEqual(result["tier"], 0)
+                self.assertEqual(result["required_controls"], ["focused check"])
+                self.assertFalse(result["approval_required"])
+                self.assertEqual(result["scope_assessment"]["status"], "accepted")
+                self.assertFalse(result["uncertainties"])
+
+    def test_tiny_claim_or_incomplete_assessment_cannot_resolve_risk_signals(self):
+        facts = self.reviewed_non_runtime_facts()
+        variants = [{k: v for k, v in facts.items() if k not in {"change_effect", "scope_evidence"}},
+                    dict(facts, scope_evidence=" "), dict(facts, environment="unknown"),
+                    dict(facts, change_effect="docs-are-always-safe"), dict(facts, typo="ignored?")]
+        for supplied in variants:
+            with self.subTest(facts=supplied):
+                result = self.mod.classify("Fix production documentation typo", ["README.md"], supplied)
+                self.assertEqual(result["tier"], 3)
+                self.assertTrue(result["uncertainties"])
+        result = self.mod.classify("Fix production typo", [], facts)
+        self.assertEqual(result["tier"], 3)
+        self.assertTrue(result["uncertainties"])
+
+    def test_cosmetic_wording_and_non_runtime_claim_cannot_erase_material_facts(self):
+        facts = self.reviewed_non_runtime_facts()
+        for field, value, tier in [("operation", "auth", 2), ("operation", "destructive", 3),
+                                   ("operation", "feature", 1), ("operation", "refactor", 1),
+                                   ("data_sensitivity", "financial", 3), ("environment", "production", 3),
+                                   ("change_boundary", "cross-module", 2)]:
+            for task in ("Small spelling correction", "اصلاح متن کوتاه"):
+                with self.subTest(field=field, task=task):
+                    result = self.mod.classify(task, ["README.md"], dict(facts, **{field: value}))
+                    self.assertEqual(result["tier"], tier)
+                    self.assertTrue(result["uncertainties"])
+                    self.assertEqual(result["scope_assessment"]["status"], "unresolved")
 
 
 class LiveAgentEvalTests(unittest.TestCase):
@@ -755,7 +803,7 @@ class CompletionGateTests(unittest.TestCase):
         result = self.mod.evaluate(self.report(tier=1, evidence=evidence))
         self.assertEqual(result["gate"], "PASS")
 
-    def test_tier2_requires_two_distinct_revision_bound_evidence_kinds(self):
+    def test_required_test_and_review_both_qualify_when_current(self):
         commit = "abc1234"
         evidence = [
             self.evidence(
@@ -833,12 +881,12 @@ class CompletionGateTests(unittest.TestCase):
             )
         )
 
-    def test_tier2_requires_distinct_semantic_evidence_families(self):
+    def test_relevant_same_family_evidence_does_not_force_an_extra_check(self):
         commit = "abc1234"
         evidence = [
             self.evidence(
                 evidence_id="E-1",
-                kind="test",
+                kind="integration",
                 provenance={
                     "source": "ci",
                     "reference": "unit/run-1",
@@ -847,7 +895,7 @@ class CompletionGateTests(unittest.TestCase):
             ),
             self.evidence(
                 evidence_id="E-2",
-                kind="regression-test",
+                kind="contract-test",
                 provenance={
                     "source": "ci",
                     "reference": "regression/run-2",
@@ -863,17 +911,21 @@ class CompletionGateTests(unittest.TestCase):
                 evidence=evidence,
             )
         )
-        self.assertEqual(result["gate"], "BLOCK")
+        self.assertEqual(result["gate"], "PASS")
         self.assertEqual(
             result["qualified_evidence_families"],
-            ["verification"],
+            ["integration"],
         )
-        self.assertTrue(
-            any(
-                "distinct semantic evidence" in failure
-                for failure in result["failures"]
-            )
-        )
+
+    def test_one_qualified_check_can_cover_the_required_outcome_at_any_tier(self):
+        for tier in (0, 1, 2, 3):
+            with self.subTest(tier=tier):
+                evidence = [self.evidence(kind="integration", provenance={
+                    "source": "local", "reference": "permission-denial-with-state-preservation",
+                    "commit": "current", "captured_at": "2026-10-15T10:00:00Z"})]
+                result = self.mod.evaluate(self.report(tier=tier, commit="current", evidence=evidence))
+                self.assertEqual(result["gate"], "PASS", result["failures"])
+                self.assertFalse(result["receipt_verified"])
 
     def test_tier2_rejects_evidence_from_different_revision(self):
         evidence = [
@@ -1403,6 +1455,106 @@ class BenchmarkScoringTests(unittest.TestCase):
 
 
 
+class CISelectionTests(unittest.TestCase):
+    def test_overview_instructions_unknown_and_release_are_distinct(self):
+        mod = load_script("ci_scope.py")
+        overview = mod.select(["README.md", "ROADMAP.md"], "pull_request")
+        self.assertEqual(overview["mode"], "overview")
+        self.assertFalse(overview["cross_platform"])
+        self.assertEqual(overview["tests"], [])
+        for path in ("SKILL.md", "references/security-and-dependencies.md", "packs/wordpress.md",
+                     "assets/templates/AGENTS.md", "skills/vibe-coding-skill/SKILL.md", "docs/AGENTS.md"):
+            with self.subTest(path=path):
+                plan = mod.select([path], "pull_request")
+                self.assertEqual(plan["mode"], "affected")
+                self.assertTrue(plan["policy"])
+                self.assertTrue(plan["tests"])
+        for paths, event in ((["VERSION"], "push"), ([".github/workflows/release.yml"], "pull_request"),
+                             (["scripts/ci_scope.py"], "push"), (["docs/unknown.py"], "push"),
+                             (["new-runtime.txt"], "push"), (None, "pull_request"), ([], "push"),
+                             (["README.md"], "workflow_dispatch")):
+            with self.subTest(paths=paths, event=event):
+                plan = mod.select(paths, event)
+                self.assertTrue(plan["full"])
+                self.assertTrue(plan["cross_platform"])
+                self.assertIn("tests.test_portable_integration", plan["platform_tests"])
+
+    def test_test_selection_follows_transitive_dependencies_not_unrelated_classes(self):
+        mod = load_script("ci_scope.py")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "scripts").mkdir()
+            (root / "tests").mkdir()
+            (root / "scripts/core.py").write_text("VALUE = 1\n")
+            (root / "scripts/wrapper.py").write_text("import core\n")
+            (root / "tests/test_cases.py").write_text(
+                "import unittest\nclass Related(unittest.TestCase):\n def test_it(self):\n  import wrapper\n"
+                "class Other(unittest.TestCase):\n def test_it(self):\n  pass\n")
+            selected = mod.select(["scripts/core.py"], "pull_request", root)
+            self.assertEqual(selected["tests"], ["tests.test_cases.Related"])
+            self.assertTrue(selected["cross_platform"])
+            self.assertFalse(selected["full"])
+            (root / "scripts/wrapper.py").write_text("broken Python :\n")
+            self.assertTrue(mod.select(["scripts/core.py"], "pull_request", root)["full"])
+
+    def test_git_paths_keep_deleted_runtime_and_test_the_checked_out_revision(self):
+        mod = load_script("ci_scope.py")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            def git(*args):
+                return subprocess.check_output(["git", *args], cwd=root, text=True, stderr=subprocess.DEVNULL).strip()
+            git("init", "-q")
+            git("config", "user.name", "CI fixture")
+            git("config", "user.email", "ci@example.invalid")
+            (root / "runtime.py").write_text("value = 1\n")
+            git("add", ".")
+            git("commit", "-qm", "baseline")
+            before = git("rev-parse", "HEAD")
+            (root / "runtime.py").rename(root / "README.md")
+            git("add", "-A")
+            git("commit", "-qm", "rename")
+            head = git("rev-parse", "HEAD")
+            with mock.patch.dict(os.environ, {"GITHUB_SHA": head}):
+                paths = mod.changed_paths(root, "pull_request", {"pull_request": {"base": {"sha": before}}})
+                self.assertEqual(set(paths), {"runtime.py", "README.md"})
+                self.assertTrue(mod.select(paths, "pull_request", root)["full"])
+                self.assertIsNone(mod.changed_paths(root, "push", {"before": "0" * 40}))
+            with mock.patch.dict(os.environ, {"GITHUB_SHA": before}):
+                self.assertIsNone(mod.changed_paths(root, "push", {"before": before}))
+
+    def test_local_links_and_anchors_are_checked_without_network(self):
+        mod = load_script("ci_scope.py")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "README.md").write_text("[Guide](guide.md#safe-check)\n[External](https://example.invalid/)\n")
+            (root / "guide.md").write_text("# Safe check\n")
+            self.assertEqual(mod.link_errors(root, ["README.md"]), [])
+            (root / "guide.md").write_text("# Changed heading\n")
+            self.assertEqual(len(mod.link_errors(root, ["README.md"])), 1)
+            (root / "guide.md").unlink()
+            self.assertEqual(len(mod.link_errors(root, ["README.md"])), 1)
+
+    def test_platform_result_rejects_missing_failed_or_cancelled_selected_work(self):
+        import textwrap
+        workflow = (ROOT / ".github/workflows/cross-platform-smoke.yml").read_text(encoding="utf-8")
+        source = textwrap.dedent(workflow.split("      - name: Report selected platform result\n", 1)[1].split("        run: |\n", 1)[1])
+        code = compile(source, "platform-result-step", "exec")
+        for scope, selected, result, passes in (
+            ("success", "true", "success", True), ("success", "false", "skipped", True),
+            ("failure", "false", "skipped", False), ("cancelled", "true", "skipped", False),
+            ("success", "true", "skipped", False), ("success", "true", "failure", False),
+            ("success", "true", "cancelled", False), ("success", "", "skipped", False),
+        ):
+            with self.subTest(scope=scope, selected=selected, result=result), \
+                 mock.patch.dict(os.environ, {"SCOPE_RESULT": scope, "MATRIX_SELECTED": selected, "MATRIX_RESULT": result}), \
+                 redirect_stdout(io.StringIO()):
+                if passes:
+                    exec(code, {})
+                else:
+                    with self.assertRaises(AssertionError):
+                        exec(code, {})
+
+
 class ReleaseReadinessTests(unittest.TestCase):
     def _report(self, mod, commit="abc123", include_cross=True):
         names = list(mod.CHANNEL_CHECKS["rc"])
@@ -1418,10 +1570,12 @@ class ReleaseReadinessTests(unittest.TestCase):
                 "conclusion": "success",
                 "commit": commit,
                 "run_id": 100 + index,
+                "validation_scope": "full",
             }
             for index, name in enumerate(names)
         ]
         return {
+            "schema_version": 2,
             "version": mod.current_skill_version(),
             "commit": commit,
             "checks": checks,
@@ -1460,6 +1614,52 @@ class ReleaseReadinessTests(unittest.TestCase):
             "failure",
         )
 
+    def test_partial_or_unverified_scope_cannot_be_used_for_publication(self):
+        mod = load_script("release_readiness.py")
+        for scope in (None, "partial", "unverified"):
+            with self.subTest(scope=scope):
+                report = self._report(mod)
+                report["checks"][0]["validation_scope"] = scope
+                self.assertEqual(mod.evaluate(report, "stable")["gate"], "BLOCK")
+        report = self._report(mod)
+        report.pop("schema_version")
+        self.assertEqual(mod.evaluate(report, "stable")["gate"], "BLOCK")
+
+    def test_full_scope_requires_all_actual_completed_platform_jobs(self):
+        mod = load_script("release_readiness.py")
+        jobs = [{"id": index, "conclusion": "success", "steps": [
+            {"name": mod.FULL_VALIDATION_STEP, "conclusion": "success"}]} for index in range(4)]
+        self.assertTrue(mod.full_validation_scope("Cross Platform Smoke", jobs))
+        self.assertFalse(mod.full_validation_scope("Cross Platform Smoke", jobs[:3]))
+        jobs[-1]["steps"][0]["conclusion"] = "skipped"
+        self.assertFalse(mod.full_validation_scope("Cross Platform Smoke", jobs))
+        self.assertFalse(mod.full_validation_scope("Validate Skill", []))
+
+    def test_collector_uses_latest_attempt_and_excludes_pr_or_foreign_evidence(self):
+        mod = load_script("release_readiness.py")
+        collector = load_script("collect_release_checks.py")
+        repo, sha = "owner/repo", "a" * 40
+        runs = [{"id": index + 1, "name": name, "head_sha": sha, "head_branch": "main",
+                 "event": "push", "head_repository": {"full_name": repo}, "conclusion": "success", "run_attempt": 2}
+                for index, name in enumerate(mod.BASE_RELEASE_CHECKS)]
+        queried = []
+        def jobs(run_id, attempt):
+            queried.append((run_id, attempt))
+            count = mod.FULL_SCOPE_CHECKS[runs[run_id - 1]["name"]]
+            return [{"id": i, "conclusion": "success", "steps": [
+                {"name": mod.FULL_VALIDATION_STEP, "conclusion": "success"}]} for i in range(count)]
+        report = collector.collect(runs, repo, sha, "stable", jobs)
+        self.assertEqual(mod.evaluate(report, "stable")["gate"], "PASS")
+        self.assertEqual(queried, [(1, 2), (2, 2)])
+        self.assertEqual(mod.evaluate(collector.collect(runs, repo, sha, "stable", lambda *_: []), "stable")["gate"], "BLOCK")
+        for fields in ({"event": "pull_request"}, {"head_repository": {"full_name": "fork/repo"}},
+                       {"head_sha": "b" * 40}, {"conclusion": "cancelled"}):
+            altered = [dict(runs[0], **fields), *runs[1:]]
+            self.assertEqual(mod.evaluate(collector.collect(altered, repo, sha, "stable", jobs), "stable")["gate"], "BLOCK")
+        newer = dict(runs[0], run_attempt=3, conclusion="failure")
+        report = collector.collect([*runs, newer], repo, sha, "stable", jobs)
+        self.assertEqual(mod.evaluate(report, "stable")["gate"], "BLOCK")
+
 
     def test_rc_requires_cross_platform_on_same_commit(self):
         mod = load_script("release_readiness.py")
@@ -1486,7 +1686,9 @@ class ReleaseReadinessTests(unittest.TestCase):
             self.assertEqual(result["gate"], "BLOCK")
             self.assertIn(missing_name, result["missing_checks"])
 
-    def test_release_critical_path_filtered_workflows_run_on_version_bump(self):
+    def test_release_critical_workflows_cover_version_and_ci_controls(self):
+        from fnmatch import fnmatchcase
+        selector = load_script("ci_scope.py")
         for rel in (
             "real-world-validation.yml",
             "agent-skills-spec.yml",
@@ -1498,12 +1700,13 @@ class ReleaseReadinessTests(unittest.TestCase):
             ).read_text(encoding="utf-8")
             self.assertIn("push:", workflow, rel)
             self.assertIn("branches:\n      - main", workflow, rel)
-            self.assertIn('- "VERSION"', workflow, rel)
-            self.assertIn(
-                '- ".github/workflows/release.yml"',
-                workflow,
-                rel,
-            )
+            events = re.findall(r"^  (push|pull_request):\n(.*?)(?=^  \w+:|^\S|\Z)", workflow, re.M | re.S)
+            self.assertEqual(len(events), 2, rel)
+            for event, block in events:
+                patterns = re.findall(r'^      - "([^"]+)"$', block, re.M)
+                for path in selector.FULL_INPUTS | {".github/workflows/release.yml", ".github/workflows/validate-skill.yml"}:
+                    self.assertTrue(any(fnmatchcase(path, pattern) for pattern in patterns), (rel, event, path))
+                self.assertFalse(any(fnmatchcase("README.md", pattern) for pattern in patterns), (rel, event))
 
 
 
@@ -1554,13 +1757,28 @@ class ReleaseReadinessTests(unittest.TestCase):
             "WordPress Artifact Contract",
         ):
             self.assertIn(f"      - {workflow_name}", workflow)
-        self.assertIn("current = latest.get(name)", workflow)
-        self.assertIn("steps.readiness.outputs.base_ready == 'true'", workflow)
-        self.assertIn("TRIGGER_NAME:", workflow)
-        self.assertIn("TRIGGER_CONCLUSION:", workflow)
-        self.assertIn("TRIGGER_RUN_ID:", workflow)
-        self.assertIn("trigger_name in wanted", workflow)
-        self.assertIn("base_ready={'true' if base_ready else 'false'}", workflow)
+        self.assertIn("python scripts/collect_release_checks.py", workflow)
+        self.assertIn('--event "$GITHUB_EVENT_PATH"', workflow)
+        self.assertIn('ref: ${{ github.event.workflow_run.head_sha }}', workflow)
+        self.assertIn('github.event.workflow_run.head_repository.full_name == github.repository', workflow)
+        release_steps = re.split(r"\n      - ", workflow)
+        for name in ("Enforce release readiness", "Install native Trivy before publication",
+                     "Build and verify portable release package", "Create immutable version tag and GitHub Release"):
+            step = next(step for step in release_steps if step.startswith("name: " + name + "\n"))
+            self.assertIn("if: steps.readiness.outputs.base_ready == 'true'", step)
+        self.assertLess(workflow.index("python scripts/release_readiness.py"), workflow.index("aquasecurity/setup-trivy@"))
+        self.assertLess(workflow.index("aquasecurity/setup-trivy@"), workflow.index("--before-publication"))
+        self.assertLess(workflow.index("--before-publication"), workflow.index("gh release create"))
+        for filename in ("validate-skill.yml", "cross-platform-smoke.yml"):
+            baseline = (ROOT / ".github/workflows" / filename).read_text(encoding="utf-8")
+            self.assertIn("push:\n    branches: [main]", baseline)
+            self.assertIn("  pull_request:\n", baseline)
+            self.assertNotIn("    paths:", baseline)
+            self.assertIn("  workflow_dispatch:\n", baseline)
+            self.assertIn("fetch-depth: 0", baseline)
+            self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", baseline)
+            self.assertIn("github.event.pull_request.number || github.run_id", baseline)
+            self.assertIn("name: Full validation completed\n        if: steps.scope.outputs.full == 'true'", baseline)
         self.assertIn('CHANNEL="beta"', workflow)
         self.assertIn('CHANNEL="rc"', workflow)
         self.assertIn('CHANNEL="stable"', workflow)

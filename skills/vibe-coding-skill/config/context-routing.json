@@ -3,6 +3,7 @@
   "precedence": [
     "safety-invariant",
     "explicit-project-rule",
+    "head-verification-policy",
     "platform-framework-pack",
     "language-runtime-pack",
     "generic-vibe-rule"

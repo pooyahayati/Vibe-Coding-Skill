@@ -1,6 +1,6 @@
 # Specialist Authority Contract
 
-Apply this contract when Vibe delegates work. Direct standalone use keeps the specialist's own workflow subject to the host's actual instructions.
+Apply this contract when Vibe uses specialist guidance or delegates work. Direct standalone use keeps the specialist's own workflow subject to the host's actual instructions.
 
 Actual system/developer/user instructions and applicable project rules remain authoritative. Within skill composition, Vibe engineering controls override specialist standalone defaults. These are instruction boundaries, not an operating-system sandbox or additional permission grant.
 
@@ -17,9 +17,11 @@ Vibe retains the objective, scope, stack, architecture, risk floor, approvals, d
 
 Preserve settled decisions. Do not independently expand scope, install arbitrary linked skills/tools, start other agents, evaluate coding models, publish, or deploy. A dependency link is a request for the Head, not unrestricted installation authority. Honor existing user authorization; raise only a genuinely new material user-owned decision.
 
+For Head-reviewed mechanical edits within settled decisions, apply the relevant current, accepted guidance without starting a new formal assignment or standalone lifecycle. Preserve the risk floor and perform the focused outcome check. New domain decisions, material behavior/boundary changes, uncertainty or explicit assignments use the formal handoff below. A lightweight follow-up cannot abandon retained assignments or required findings.
+
 ## Verification and conflicts
 
-Before delegation, the Head assesses changed specialist instructions/resources against this contract. Package identity/freshness alone is not compatibility acceptance. Record the bounded reasoning using the Head's [S1 compatibility assessment](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/main/references/specialist-composition.md#instruction-compatibility-assessment-s1); reuse unchanged accepted bindings. This is a Head engineering decision within existing authority, not a new user approval or proof from keyword matching.
+Before use, the Head assesses changed specialist instructions/resources against this contract. Package identity/freshness alone is not compatibility acceptance. Record the bounded reasoning using the Head's [S1 compatibility assessment](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/main/references/specialist-composition.md#instruction-compatibility-assessment-s1); reuse unchanged accepted bindings. This is a Head engineering decision within existing authority, not a new user approval or proof from keyword matching.
 
 Reuse sufficient existing evidence and choose the cheapest useful checks. Specialist defaults must not mandate unrelated full suites, coverage quotas, duplicate checks, or repeated approval questions. Required relevant checks and explicit project policies still apply. Missing evidence stays unverified; scope reduction must not hide a real failure or vulnerability.
 

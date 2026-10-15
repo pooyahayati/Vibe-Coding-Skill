@@ -4,7 +4,7 @@
 
 A risk-adaptive engineering Head for AI-assisted development of small, medium and large software projects, including WordPress plugins. Works with OpenAI Codex, Claude Code and compatible skill-based agents.
 
-Current version: `1.5.0` — [stable release and portable ZIP](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.5.0).
+Current version: `1.6.0` — [stable release and portable ZIP](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.6.0).
 
 ## One engineering Head, focused specialists
 
@@ -57,7 +57,7 @@ WordPress work additionally preserves public APIs, authorization, lifecycle/data
 | [API and interface design](https://github.com/addyosmani/agent-skills/tree/main/skills/api-and-interface-design) | Producer/consumer contracts, errors, compatibility, retries and idempotency. | Design · Build · Verify · Review |
 | [Debugging and error recovery](https://github.com/addyosmani/agent-skills/tree/main/skills/debugging-and-error-recovery) | Unclear/intermittent failures, repeated failed fixes and delivery failures. | Discover · Build · Verify · Ship on failure |
 
-Use specialists only for matching work; never install the entire external collection. Check their installed version and instruction compatibility, assign a bounded task, then assess the returned work and evidence before accepting it. [Composition and freshness](references/specialist-composition.md).
+Use specialists only for matching work; never install the entire external collection. Check currency and instruction compatibility. Reviewed mechanical edits reuse accepted guidance; material domain decisions use a bounded assignment and separate Head acceptance of the result. Retained commitments still apply. [Composition and freshness](references/specialist-composition.md).
 
 | Role | Responsibility | Boundary |
 |---|---|---|
@@ -78,7 +78,7 @@ Keep generated reports outside product source. Development uses native project c
 
 ## Verification and delivery
 
-- Define an observable user/system outcome and preserve approved scope, business rules and platform invariants. Select checks from changed behavior and meaningful failures, without fixed test counts, coverage quotas or unrelated reruns. Required project checks still apply.
+- Define an observable outcome and preserve approved scope, business rules and platform invariants. Use focused checks during implementation, relevant integration checks before merging, and artifact/security checks for publication. Reuse valid evidence; no fixed test-count, evidence-family or coverage quota. Required project checks still apply. [Verification policy](references/execution-and-verification.md#testing-policy).
 - Preserve acceptance criteria, required checks and unresolved findings across handoffs and resumes. For structured tasks, validate recorded results against the relevant code and artifacts. A successful command alone does not prove the intended outcome. [Completion and trust limits](references/execution-and-verification.md#receipt-backed-completion-e2).
 - Deliver what works, how to start/use it, actual checks, unresolved limits and the next action. Merge, release, deployment and local installation are distinct outcomes.
 

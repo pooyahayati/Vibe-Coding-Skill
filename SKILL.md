@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Python 3.10+ and Git. Publication requires an installed native Trivy executable and relevant local release scans. Graphify is conditional. Network access is needed for registry, vulnerability data, GitHub and tool-update checks.
 metadata:
   author: "Pooya Hayati"
-  version: "1.5.0"
+  version: "1.6.0"
 ---
 
 # Vibe Coding Skill
@@ -71,7 +71,7 @@ For new products or changed installation/deployment paths, read `references/prod
 
 ## Risk and controls
 
-Use the deterministic classifier as a workflow floor:
+Classify actual effects; use the deterministic classifier to surface risk signals and controls:
 
 `python scripts/risk_classifier.py "<task>" --path <changed-path> --json`
 
@@ -79,10 +79,10 @@ Use the deterministic classifier as a workflow floor:
 |---|---|---|
 | 0 | typo, isolated visual/copy change | change + focused check |
 | 1 | contained feature | acceptance criteria + impact + tests/review |
-| 2 | auth, migration, integration, cross-module | explicit spec + impact + plan + independent/security regression |
+| 2 | auth, migration, integration, cross-module | explicit spec + impact + plan + relevant review/security regression |
 | 3 | production, destructive, sensitive/financial | Tier 2 + approval + recovery + strong verification |
 
-When wording is ambiguous or language-specific signals may be incomplete, provide/verify structured facts for operation, environment, data sensitivity, and change boundary. Context may raise the tier; automation must not lower known risk.
+Verify structured facts for operation, affected environment/data and behavioral boundary when wording is ambiguous. Words and paths are discovery signals, not proof of a sensitive change. For inspected prose/comment-only edits, record `change_effect=non-runtime` and concrete `scope_evidence` with complete facts and affected paths to resolve incidental signals. A bare `tiny` claim or Markdown suffix is insufficient; executable instructions, contracts and security behavior remain behavioral. Reassess when scope/effects change. Context may raise the tier; known material risk and retained obligations cannot disappear. Previously retained false escalation requires explicit evidence-based reconciliation, not an automatic downgrade.
 
 Read `references/risk-and-autonomy.md` and `references/risk-classifier-and-integrations.md` for Tier 2/3 or uncertain classification.
 
@@ -102,11 +102,11 @@ Read `references/context-routing-and-execution.md` for routing precedence, conte
 
 Vibe is the engineering Head: it owns scope, architecture, risk, integration, acceptance, and final delivery. Specialist methodology belongs to the specialist, not to duplicated rules in Vibe.
 
-Before each new task, run `scripts/specialist_manager.py prepare --task "<task>" --stage <stage> --project-root <project> --json --apply` from the installed Head. Include known `--path` values and applicable `--concern` facts (for example `ui`, `contracts`, `security`, `debugging`); new projects also require semantic routing. Install/update only within existing authorization and host permissions. Specialists outside the current stage are preparation-only, not instructions to invoke a standalone lifecycle.
+Before each new task, run `scripts/specialist_manager.py prepare --task "<task>" --stage <stage> --project-root <project> --json --apply` from the installed Head. Include known `--path` values and applicable `--concern` facts (for example `ui`, `contracts`, `security`, `debugging`); new projects also require semantic routing. If a complete formal assignment already exists, use `specialist_handoff.py prepare` instead so its subsequent `assign` can reuse the same bound check. Install/update only within existing authorization and host permissions. Specialists outside the current stage are preparation-only, not instructions to invoke a standalone lifecycle.
 
 Registered specialists: sole design specialist `pooyahayati/UI-UX-Skill`; application security `security-and-hardening`; contracts `api-and-interface-design`; unclear failures `debugging-and-error-recovery` from `addyosmani/agent-skills`. Use only matching affected domains; never load the entire collection. Pass structured concerns when semantics are known and task wording is ambiguous.
 
-Read each selected current `SKILL.md` and `vibe-head-contract.md`; resolve required instruction-compatibility assessment before delegation. Reuse acceptance only while source, resources and Head/domain controls match. Retain a bounded stage assignment, then compare the actual return, changes and receipts and record separate Head acceptance using [S2 handoffs](references/specialist-composition.md#stage-return-and-head-acceptance-s2). Installation is not specialist use; registry permissions do not grant host access.
+Read each selected current `SKILL.md` and `vibe-head-contract.md`; resolve required instruction-compatibility assessment before use. Reuse acceptance only while source, resources and Head/domain controls match. For inspected mechanical changes within settled decisions, use the relevant accepted guidance directly without a new formal handoff. Supply complete risk facts and `--guidance-evidence` describing the diff and preserved decisions, or reuse an accepted non-runtime scope review. Files/extensions alone do not require formal work. Missing/uncertain scope, material domain decisions and explicit specialist assignments retain [S2 handoffs](references/specialist-composition.md#stage-return-and-head-acceptance-s2) and separate Head acceptance of actual returns, changes and evidence. Existing assignments/findings remain binding. Installation is not specialist use; registry permissions do not grant host access.
 
 Resolve the latest stable release, or the latest default-branch commit when no release exists; never put specialist version pins in Head policy. Check the Head at task start and selected specialists before use; reconcile registered installed skills when the daily inventory is due. Record observed revisions outside the product repository and keep them stable during the operation.
 
@@ -149,17 +149,17 @@ Follow the canonical lifecycle above; use Ready/impact checks, a plan when requi
 
 Keep code structure requirement-driven: clear responsibilities and ownership, explicit meaningful boundary contracts, entry validation, diagnosable failures, and abstractions only after a real shared need. Do not manufacture interfaces, repositories, services, message buses, or architectural layers by default.
 
-Choose tests from changed behavior, important failure modes, and integration boundaries. Do not select tests by file count, LOC, or a fixed coverage quota.
+Use the canonical [testing policy](references/execution-and-verification.md#testing-policy): choose checks from accepted outcomes, material failure modes, affected boundaries and delivery stage. During Build, use the cheapest useful check; integration/publication add only their relevant requirements. Pack/specialist lists and configured commands are not cumulative mandatory suites. Name the risk, failure or explicit project requirement before expanding verification; never manufacture an evidence-count/family or coverage quota.
 
 A bug fix should add a regression scenario when it exposes a meaningful uncovered failure mode. Auth/persistence/integration/payment/migration work requires the relevant denial, integrity, failure, idempotency, or recovery cases. A visual/text correction may need no new automated test but still needs a focused check.
 
-Read `references/execution-and-verification.md`.
+Reuse sufficient evidence while its scoped inputs, artifacts and relevant context remain valid; changing activity stage alone does not require another run. Preserve required review/security/recovery obligations, using independent corroboration when a named risk or project rule warrants it. Read `references/execution-and-verification.md` for selection and stopping rules.
 
 ## Completion contract
 
 Never report `Done` without explicit acceptance criteria and relevant evidence.
 
-For new structured completion, retain the accepted task contract and use `scripts/completion_gate.py --task-contract <contract> --root <project>` with schema-3 receipt references. New structured state uses schema 3 automatically; `--receipt-completion` explicitly migrates a retained legacy task. Once selected, schema 3 cannot downgrade. Retained in-flight schema-2 tasks keep their declared-evidence route until reconciliation/migration. Required specialist commitments cannot disappear without recorded Head reconciliation. Failed required evidence blocks completion; unrelated passing checks cannot cancel it. Evidence kinds use the gate's taxonomy and Tier 2/3 diversity uses semantic families. Higher-risk evidence retains provenance/revision binding.
+For structured completion, retain the accepted task contract and use `scripts/completion_gate.py --task-contract <contract> --root <project>` with schema-3 receipts. Read [receipt usage and compatibility](references/execution-receipts.md) only when collecting/resolving receipts or migrating retained legacy state. Schema 3 cannot downgrade; schema-2 results remain declared evidence. Preserve required outcomes, checks and specialist commitments until explicit reconciliation. Failed, missing or stale required evidence blocks completion; extra passing checks cannot cancel it. Higher-risk provenance/revision binding remains. A task pass establishes only its accepted outcomes, not later release readiness.
 
 If evidence is unavailable, report `Unverified` rather than complete.
 

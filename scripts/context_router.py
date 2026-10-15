@@ -672,6 +672,9 @@ def change_scope(paths: list[str], risk: dict[str, Any], area_roots: tuple[str, 
     ):
         level = "cross-boundary"
         reasons.append("explicit cross-module/system impact")
+    elif risk.get("scope_assessment", {}).get("status") == "accepted":
+        level = "local" if len(normalized_paths) == 1 else "bounded"
+        reasons.append("reviewed non-runtime scope; file locations do not establish behavioral boundaries")
     elif len(areas) > 1:
         level = "cross-boundary"
         reasons.append("affected paths span multiple project areas")
@@ -1016,6 +1019,7 @@ def plan(
     risk_facts: dict[str, Any] | None = None,
     context_facts: dict[str, Any] | None = None,
     stage: str = "discover",
+    guidance_evidence: str | None = None,
 ) -> dict[str, Any]:
     root = root.resolve()
     paths = list(dict.fromkeys(normalize_rel(raw) for raw in paths or [] if raw))
@@ -1039,6 +1043,17 @@ def plan(
     scan_files, scan_strategy = scan_candidate_files(files, paths, area_roots)
     texts = candidate_texts(root, scan_files, inspection=scans["project"])
     touched = touched_texts(root, paths, files, inspection=scans["affected"])
+    risk_module = load_risk_classifier()
+    risk = risk_module.classify(task, paths, risk_facts)
+    reviewed_non_runtime = risk["scope_assessment"]["status"] == "accepted"
+    if reviewed_non_runtime and (scans["affected"]["limitations"] or not touched):
+        # Incomplete local inspection cannot corroborate a non-runtime scope.
+        fallback = {k: v for k, v in (risk_facts or {}).items() if k in risk_module.FACT_FIELDS}
+        risk = risk_module.classify(task, paths, fallback)
+        risk["scope_assessment"] = {"status": "unresolved", "semantics_verified": False,
+                                    "effect": "non-runtime", "evidence": (risk_facts or {}).get("scope_evidence"), "paths": paths}
+        risk["uncertainties"].append("affected-path inspection incomplete; non-runtime assessment not applied")
+        reviewed_non_runtime = False
     specialist_manager = load_specialist_manager()
     task_signal_text = specialist_manager.domain_task_text(
         task, [term for pack in config["packs"].values() for term in pack.get("task_keywords", [])],
@@ -1050,9 +1065,9 @@ def plan(
         project_ev[name] = pack_project_evidence(pack, scan_files, texts)
         task_ev[name] = pack_task_evidence(
             pack,
-            task_signal_text,
-            paths,
-            touched,
+            "" if reviewed_non_runtime else task_signal_text,
+            [] if reviewed_non_runtime else paths,
+            [] if reviewed_non_runtime else touched,
             normalized_context_facts,
         )
         if name in include_packs:
@@ -1060,21 +1075,18 @@ def plan(
                 dict.fromkeys(task_ev[name] + ["explicit-include"])
             )
 
-    risk_module = load_risk_classifier()
-    risk = risk_module.classify(task, paths, risk_facts)
     complexity = project_complexity(files, config, complexity_override)
     selected, effective_tier, interactions = resolve_selection(
         config,
         project_ev,
         task_ev,
-        task,
+        "" if reviewed_non_runtime else task,
         int(risk["tier"]),
         paths,
         str(complexity["level"]),
         area_roots,
     )
     risk = dict(risk)
-    scope = change_scope(paths, risk, area_roots)
     if effective_tier > int(risk["tier"]):
         previous_tier = int(risk["tier"])
         policy = risk_module.policy_for_tier(
@@ -1083,6 +1095,9 @@ def plan(
         )
         risk.update(policy)
         risk["router_floor_from"] = previous_tier
+        if reviewed_non_runtime:
+            risk["scope_assessment"]["status"] = "unresolved"
+            risk["uncertainties"].append("explicit routing requirements conflict with the non-runtime assessment")
         prior_reasons = (
             list(risk.get("reasons") or [])
             if risk.get("matched_rules")
@@ -1094,6 +1109,7 @@ def plan(
                 + ["routing interaction raised the workflow floor"]
             )
         )
+    scope = change_scope(paths, risk, area_roots)
 
     agent_docs = applicable_agent_docs(root, files, paths)
     detected_invariants = detected_project_invariants(root, agent_docs, scans["invariants"])
@@ -1145,7 +1161,8 @@ def plan(
             "evidence": ev,
         }
         selected_rows.append(row)
-        integrations.extend(pack.get("integration_points", []))
+        if risk["scope_assessment"]["status"] != "accepted" or task_ev[name]:
+            integrations.extend(pack.get("integration_points", []))
         specialists.extend(pack.get("optional_specialists", []))
 
     persistent = persistent_context(
@@ -1212,7 +1229,9 @@ def plan(
         "integration_points": sorted(set(integrations)),
         "optional_specialists": sorted(set(specialists)),
         "required_specialists": specialist_manager.select_specialists(
-            task, paths, normalized_context_facts, stage=stage, risk_facts=risk_facts),
+            task, paths, normalized_context_facts, stage=stage, risk_facts=risk_facts,
+            guidance_evidence=guidance_evidence, risk_assessment=risk,
+            inspection_complete=not routing_uncertainties and bool(touched)),
         "lifecycle": {"stage_owner": "vibe-coding-skill", "stages": load_specialist_manager().registry()["lifecycle"],
                       "rule": "Stage selects the assignment boundary, not all specialists. Reuse settled work; apply only relevant stage controls."},
         "context_plan": {
@@ -1296,28 +1315,19 @@ def main() -> int:
     )
     ap.add_argument("--invariant", action="append", default=[])
     ap.add_argument("--include-pack", action="append", default=[])
-    ap.add_argument("--risk-operation")
-    ap.add_argument("--risk-environment")
-    ap.add_argument("--risk-data-sensitivity")
-    ap.add_argument("--risk-change-boundary")
+    for field in load_risk_classifier().INPUT_FIELDS:
+        ap.add_argument("--risk-" + field.replace("_", "-"))
     ap.add_argument("--context-runtime", action="append", default=[])
     ap.add_argument("--context-platform", action="append", default=[])
     ap.add_argument("--context-capability", action="append", default=[])
     ap.add_argument("--context-concern", action="append", default=[])
     ap.add_argument("--stage", choices=load_specialist_manager().registry()["lifecycle"], default="discover")
+    ap.add_argument("--guidance-evidence", help="Head diff review confirming mechanical use of settled decisions")
     ap.add_argument("--json", action="store_true")
     ns = ap.parse_args()
 
-    risk_facts = {
-        "operation": ns.risk_operation,
-        "environment": ns.risk_environment,
-        "data_sensitivity": ns.risk_data_sensitivity,
-        "change_boundary": ns.risk_change_boundary,
-    }
-    risk_facts = {
-        key: value for key, value in risk_facts.items()
-        if value is not None
-    }
+    risk_facts = {field: getattr(ns, "risk_" + field) for field in load_risk_classifier().INPUT_FIELDS
+                  if getattr(ns, "risk_" + field) is not None}
     context_facts = {
         field: getattr(ns, f"context_{field}")
         for field in CONTEXT_FACT_FIELDS
@@ -1334,6 +1344,7 @@ def main() -> int:
         risk_facts or None,
         context_facts or None,
         ns.stage,
+        ns.guidance_evidence,
     )
     if ns.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))

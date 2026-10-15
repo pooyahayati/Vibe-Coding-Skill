@@ -4,29 +4,43 @@ on:
   pull_request:
     paths:
       - "VERSION"
-      - ".github/workflows/release.yml"
+      - ".github/workflows/**"
+      - "scripts/ci_scope.py"
+      - "scripts/collect_release_checks.py"
+      - "scripts/release_readiness.py"
+      - "scripts/build_release.py"
+      - "scripts/sync_package.py"
+      - "scripts/validate_skill.py"
       - "scripts/wordpress_artifact.py"
       - "references/wordpress-delivery.md"
       - "packs/wordpress.md"
       - "packs/woocommerce.md"
       - "tests/test_wordpress_artifact.py"
-      - ".github/workflows/wordpress-artifact-contract.yml"
   push:
     branches:
       - main
     paths:
       - "VERSION"
-      - ".github/workflows/release.yml"
+      - ".github/workflows/**"
+      - "scripts/ci_scope.py"
+      - "scripts/collect_release_checks.py"
+      - "scripts/release_readiness.py"
+      - "scripts/build_release.py"
+      - "scripts/sync_package.py"
+      - "scripts/validate_skill.py"
       - "scripts/wordpress_artifact.py"
       - "references/wordpress-delivery.md"
       - "packs/wordpress.md"
       - "packs/woocommerce.md"
       - "tests/test_wordpress_artifact.py"
-      - ".github/workflows/wordpress-artifact-contract.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   contract:

@@ -16,6 +16,11 @@ _spec = importlib.util.spec_from_file_location("_behavior_completion", Path(__fi
 _gate = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_gate)
 
+_risk_spec = importlib.util.spec_from_file_location("_behavior_risk", Path(__file__).with_name("risk_classifier.py"))
+_risk = importlib.util.module_from_spec(_risk_spec)
+sys.modules[_risk_spec.name] = _risk
+_risk_spec.loader.exec_module(_risk)
+
 
 def text(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
@@ -63,6 +68,12 @@ def validate(value: Any) -> dict[str, Any]:
         raise ValueError("task contract requires task_id, objective and scope")
     if not _gate.valid_risk_tier(value.get("risk_tier")):
         raise ValueError("task contract requires risk_tier 0-3")
+    if "risk_facts" in value:
+        if not isinstance(value["risk_facts"], dict):
+            raise ValueError("task contract risk_facts must be an object")
+        assessment = _risk.classify(value["objective"], value["scope"], value["risk_facts"])
+        if value["risk_tier"] < assessment["tier"]:
+            raise ValueError("task contract is below its assessed risk floor")
     if "specialist_assignment_ids" in value and (not strings(value["specialist_assignment_ids"]) or len(set(value["specialist_assignment_ids"])) != len(value["specialist_assignment_ids"])):
         raise ValueError("invalid retained specialist assignment IDs")
     criteria = value.get("acceptance_criteria")
@@ -122,6 +133,7 @@ def compare(baseline: dict[str, Any], current: dict[str, Any]) -> list[str]:
             failures.append("retained task " + field + " changed")
     if current["risk_tier"] < baseline["risk_tier"]:
         failures.append("retained risk floor lowered")
+    failures.extend(material_risk_losses(baseline, current))
     for field in ("acceptance_criteria", "evidence_requirements"):
         actual = {r["id"]: r for r in current[field]}
         for row in baseline[field]:
@@ -131,6 +143,39 @@ def compare(baseline: dict[str, Any], current: dict[str, Any]) -> list[str]:
     for assignment_id in sorted(missing_assignments):
         failures.append("required specialist assignment removed: " + assignment_id)
     return failures
+
+
+def material_risk_losses(baseline: dict[str, Any], current: dict[str, Any]) -> list[str]:
+    """Keep known material facts even through an explicit contract revision."""
+    if "risk_facts" in baseline and "risk_facts" not in current:
+        return ["retained risk facts removed; provide an explicit reassessment"]
+    old = _risk.normalized_facts(baseline.get("risk_facts"))
+    new = _risk.normalized_facts(current.get("risk_facts"))
+    failures = []
+    for field in _risk.FACT_FIELDS:
+        before = _risk.structured_fact_signals({field: old[field]})
+        after = _risk.structured_fact_signals({field: new[field]})
+        if (max((s["tier"] for s in before), default=0) > max((s["tier"] for s in after), default=0)
+                or (any(s["approval"] for s in before) and not any(s["approval"] for s in after))):
+            failures.append("known material risk fact removed or weakened: " + field)
+    return failures
+
+
+def reconcile_risk(baseline: dict[str, Any], current: dict[str, Any]) -> None:
+    """Allow only an explicit correction of an incidental-signal floor."""
+    baseline, current = validate(baseline), validate(current)
+    if current["risk_tier"] >= baseline["risk_tier"]:
+        raise ValueError("risk reclassification requires a lower replacement tier")
+    fields = {"risk_tier", "risk_facts"}
+    if ({k: v for k, v in baseline.items() if k not in fields}
+            != {k: v for k, v in current.items() if k not in fields}):
+        raise ValueError("risk reclassification cannot change task scope, outcomes, evidence or specialist commitments")
+    assessment = _risk.classify(current["objective"], current["scope"], current.get("risk_facts"))
+    if assessment["scope_assessment"]["status"] != "accepted":
+        raise ValueError("risk reclassification needs a consistent non-runtime scope assessment with inspection evidence")
+    failures = material_risk_losses(baseline, current)
+    if failures:
+        raise ValueError("; ".join(failures))
 
 
 def plan_failures(plan: dict[str, Any], baseline: dict[str, Any] | None = None) -> list[str]:
@@ -182,7 +227,8 @@ def completion(contract: dict[str, Any], report: dict[str, Any] | None, stale: b
                  "required": c["required"], "status": "unverified", "evidence_ids": []}
                 for c in contract["acceptance_criteria"]]
     if report is None or (stale and expected_schema != 3):
-        return {"gate": "UNVERIFIED", "outcomes": outcomes, "execution_verified": False,
+        return {"gate": "UNVERIFIED", "verification_policy": _gate.VERIFICATION_POLICY,
+                "completion_scope": "retained-task-contract", "outcomes": outcomes, "execution_verified": False,
                 "reason": "source/contract context changed" if stale else "no completion report"}
     if not isinstance(report, dict):
         raise ValueError("completion report must be an object")
@@ -198,7 +244,8 @@ def completion(contract: dict[str, Any], report: dict[str, Any] | None, stale: b
                 outcome["status"] = "receipt-qualified"
                 outcome["evidence_ids"] = row.get("evidence_ids", [])
         collected_only = bool(result.get("receipt_resolution")) and all(r.get("qualified") and r.get("origin") == "collected" for r in result["receipt_resolution"])
-        return {"gate": result["gate"], "outcomes": outcomes, "failures": result["failures"],
+        return {"gate": result["gate"], "verification_policy": _gate.VERIFICATION_POLICY,
+                "completion_scope": "retained-task-contract", "outcomes": outcomes, "failures": result["failures"],
                 "receipt_verified": result.get("receipt_verified", False),
                 "execution_verified": result.get("receipt_verified", False) and collected_only,
                 "reason": "receipts resolved against retained obligations and current scoped delivery inputs"}
@@ -223,7 +270,8 @@ def completion(contract: dict[str, Any], report: dict[str, Any] | None, stale: b
         elif result["gate"] in {"PASS", "WARN"} and row.get("met") is True:
             outcome["status"] = "reported-met"
             outcome["evidence_ids"] = row.get("evidence_ids", [])
-    return {"gate": result["gate"], "outcomes": outcomes, "failures": result["failures"],
+    return {"gate": result["gate"], "verification_policy": _gate.VERIFICATION_POLICY,
+            "completion_scope": "retained-task-contract", "outcomes": outcomes, "failures": result["failures"],
             "execution_verified": False,
             "reason": "schema-2 declared evidence; execution receipts not verified"}
 
@@ -235,7 +283,12 @@ def handoff_lines(state: dict[str, Any]) -> list[str]:
         lines += ["", "## Task behavior and reported outcomes", "",
                   "Task: " + contract["task_id"], "Objective: " + contract["objective"],
                   "Contract SHA-256: " + state["task_contract_sha256"],
+                  "Risk tier: " + str(contract["risk_tier"]),
                   "Acceptance: " + state["acceptance"]["gate"], state["acceptance"]["reason"], ""]
+        if contract.get("risk_facts"):
+            lines.append("Risk facts (Head assessment, not semantic proof): " + json.dumps(contract["risk_facts"], ensure_ascii=False))
+        if state.get("contract_reconciliation", {}).get("kind") == "incidental-risk-reclassification":
+            lines.append("Risk reclassification: " + state["contract_reconciliation"]["reason"])
         if contract.get("specialist_assignment_ids"):
             lines.append("Required specialist assignments: " + ", ".join(contract["specialist_assignment_ids"]))
         for row in state["acceptance"]["outcomes"]:

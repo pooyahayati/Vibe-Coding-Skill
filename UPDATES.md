@@ -4,6 +4,14 @@ User-facing release summaries; [CHANGELOG.md](CHANGELOG.md) retains technical hi
 
 From `1.0.0`, publication requires no model evaluation/provider key. Recent releases include a verified portable ZIP and checksum; publication does not update local installations. The pre-1.0 entries below describe historical policies, not current release requirements.
 
+## 1.6.0 — Proportionate verification and focused CI
+
+- Bases risk on the actual change and reuses accepted specialist guidance for inspected mechanical edits, avoiding unnecessary repeated preparation.
+- Chooses checks by required outcomes, real risks and delivery stage instead of fixed evidence quotas. Existing obligations, current evidence and publication security remain required.
+- Retains bounded diagnostics from the original failed command, with an option to suppress sensitive output.
+- Runs focused development CI and removes duplicate feature-branch runs. Publication still requires complete checks on the exact revision and native Trivy on the final artifact.
+- Release-readiness reports now require schema 2 and actual full-run scope evidence. Recollect old reports; do not relabel partial results as full. Existing task/receipt formats remain supported.
+
 ## 1.5.0 — Verified workflow and integration reliability
 
 - Preserves task obligations, recovery state and specialist acceptance through remote changes and authorized revisions.

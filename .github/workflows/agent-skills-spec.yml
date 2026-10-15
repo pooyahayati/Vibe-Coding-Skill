@@ -7,23 +7,40 @@ on:
       - main
     paths:
       - "VERSION"
-      - ".github/workflows/release.yml"
+      - ".github/workflows/**"
+      - "scripts/ci_scope.py"
+      - "scripts/collect_release_checks.py"
+      - "scripts/release_readiness.py"
+      - "scripts/build_release.py"
+      - "scripts/sync_package.py"
+      - "scripts/validate_skill.py"
       - "SKILL.md"
       - "agents/openai.yaml"
       - "plugin.json"
       - "skills/vibe-coding-skill/**"
-      - ".github/workflows/agent-skills-spec.yml"
   pull_request:
     paths:
       - "VERSION"
-      - ".github/workflows/release.yml"
+      - ".github/workflows/**"
+      - "scripts/ci_scope.py"
+      - "scripts/collect_release_checks.py"
+      - "scripts/release_readiness.py"
+      - "scripts/build_release.py"
+      - "scripts/sync_package.py"
+      - "scripts/validate_skill.py"
       - "SKILL.md"
       - "agents/openai.yaml"
       - "plugin.json"
       - "skills/vibe-coding-skill/**"
-      - ".github/workflows/agent-skills-spec.yml"
   schedule:
     - cron: "13 6 1 * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   validate:

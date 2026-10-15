@@ -10,6 +10,7 @@ import os
 import signal
 import stat
 import subprocess
+import time
 import uuid
 import zipfile
 from datetime import datetime, timezone
@@ -20,6 +21,9 @@ import local_workspace
 
 MAX_FILES = 10000
 MAX_BYTES = 1024 * 1024 * 1024
+OUTPUT_BYTES_PER_STREAM = 32 * 1024
+OUTPUT_READ_BYTES = 8192
+OUTPUT_DRAIN_SECONDS = 1.0
 REQUIREMENT_FIELDS = {"id", "criterion_ids", "kind", "origin", "required", "input_paths", "input_excludes", "artifact_paths", "description"}
 
 
@@ -184,7 +188,155 @@ def persist(directory: Path, receipt: dict) -> dict:
         stream.write(json.dumps(receipt, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
     return {"receipt": receipt, "receipt_path": str(path), "receipt_ref": path.name,
             "receipt_root": str(directory), "receipt_sha256": behavior.digest(receipt),
-            "completion_verified": False}
+            "completion_verified": False,
+            **({"diagnostics_path": str(directory / receipt["log"]["path"])} if "log" in receipt else {})}
+
+
+class BoundedOutput:
+    """Keep a fixed prefix/tail while draining all bytes; never spool full output."""
+    def __init__(self):
+        self.head = bytearray()
+        self.tail = bytearray()
+        self.observed = 0
+        self.complete = False
+
+    def add(self, block: bytes):
+        self.observed += len(block)
+        remaining = OUTPUT_BYTES_PER_STREAM // 2 - len(self.head)
+        self.head.extend(block[:remaining])
+        self.tail.extend(block[remaining:])
+        del self.tail[:max(0, len(self.tail) - OUTPUT_BYTES_PER_STREAM // 2)]
+
+    def record(self) -> dict:
+        retained = len(self.head) + len(self.tail)
+        omitted = self.observed - retained
+        if omitted:
+            text = (self.head.decode("utf-8", errors="replace") +
+                    f"\n[... {omitted} output bytes omitted ...]\n" + self.tail.decode("utf-8", errors="replace"))
+        else:
+            text = (self.head + self.tail).decode("utf-8", errors="replace")
+        return {"text": text, "observed_bytes": self.observed, "retained_bytes": retained,
+                "omitted_bytes": omitted, "truncated": bool(omitted) or not self.complete, "complete": self.complete}
+
+
+def output_reader(streams: dict):
+    """Single-owner nonblocking reads, including Windows Python 3.10/3.11 pipes."""
+    if os.name == "nt":
+        import ctypes
+        import msvcrt
+        from ctypes import wintypes
+        peek = ctypes.WinDLL("kernel32", use_last_error=True).PeekNamedPipe
+        peek.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
+                         ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(wintypes.DWORD)]
+        peek.restype = wintypes.BOOL
+
+        def read(stream):
+            available = wintypes.DWORD()
+            if not peek(msvcrt.get_osfhandle(stream.fileno()), None, 0, None, ctypes.byref(available), None):
+                error = ctypes.get_last_error()
+                if error in (109, 232):  # Broken pipe / closing pipe: EOF.
+                    return b""
+                raise ctypes.WinError(error)
+            return os.read(stream.fileno(), min(OUTPUT_READ_BYTES, available.value)) if available.value else None
+    else:
+        for stream in streams.values():
+            os.set_blocking(stream.fileno(), False)
+
+        def read(stream):
+            try:
+                return os.read(stream.fileno(), OUTPUT_READ_BYTES)
+            except BlockingIOError:
+                return None
+    return read
+
+
+def collect_diagnostics(process: subprocess.Popen, receipt: dict, timeout_seconds: float) -> dict:
+    streams = {"stdout": process.stdout, "stderr": process.stderr}
+    buffers = {name: BoundedOutput() for name in streams}
+    active = dict(streams)
+    deadline = time.monotonic() + timeout_seconds
+    drain_deadline = None
+    timed_out = False
+    errors = []
+    natural_exit = None
+    try:
+        read = output_reader(streams)
+        while True:
+            progressed = False
+            for name, stream in list(active.items()):
+                block = read(stream)
+                if block == b"":
+                    buffers[name].complete = True
+                    del active[name]
+                elif block:
+                    buffers[name].add(block)
+                    progressed = True
+            current = time.monotonic()
+            code = process.poll()
+            if not timed_out:
+                natural_exit = code
+            if code is not None and not active:
+                break
+            if code is None and not timed_out and current >= deadline:
+                timed_out = True
+                receipt["termination_confirmed"] = terminate(process)
+                drain_deadline = time.monotonic() + OUTPUT_DRAIN_SECONDS
+            elif code is not None and drain_deadline is None:
+                drain_deadline = current + OUTPUT_DRAIN_SECONDS
+            if drain_deadline is not None and current >= drain_deadline:
+                errors.append("diagnostic streams did not close within the drain limit")
+                if not timed_out:
+                    receipt["termination_confirmed"] = terminate(process)
+                break
+            if not progressed:
+                time.sleep(0.01)
+    except (OSError, ValueError):
+        natural_exit = process.poll()
+        errors.append("diagnostic collection failed; inspect local pipe access")
+        receipt["termination_confirmed"] = terminate(process)
+    except BaseException:
+        terminate(process)
+        raise
+    finally:
+        for stream in streams.values():
+            try:
+                stream.close()
+            except OSError:
+                errors.append("diagnostic pipe cleanup incomplete")
+    receipt["command"]["exit_code"] = process.returncode
+    if timed_out:
+        receipt.update(result="timeout", reason="command exceeded its timeout")
+    elif errors and natural_exit in (None, 0):
+        receipt.update(result="error", reason="diagnostic collection incomplete")
+    else:
+        receipt["result"] = "pass" if process.returncode == 0 else "fail"
+        if receipt["result"] == "fail":
+            receipt["reason"] = "command exited with code " + str(process.returncode)
+    if errors:
+        receipt.setdefault("collection_errors", []).extend(errors)
+    return {"format": "vibe-execution-diagnostics", "schema_version": 1,
+            "encoding": "utf-8 with replacement", "byte_limit_per_stream": OUTPUT_BYTES_PER_STREAM,
+            **{name: buffer.record() for name, buffer in buffers.items()}}
+
+
+def write_diagnostics(directory: Path, receipt: dict, diagnostics: dict):
+    path = directory / (receipt["id"] + ".output.json")
+    # Escape control bytes and keep content out of CLI summaries. Windows uses
+    # inherited workspace ACLs; POSIX creation is owner-only.
+    data = (json.dumps(diagnostics, indent=2, ensure_ascii=True) + "\n").encode("utf-8")
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o600)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(data)
+    except OSError:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass  # The receipt still reports storage failure if cleanup is denied.
+        raise
+    receipt["log"] = {"path": path.name, "sha256": hashlib.sha256(data).hexdigest(),
+                      "truncated": any(diagnostics[name]["truncated"] for name in ("stdout", "stderr")),
+                      "redacted": False}
 
 
 def terminate(process: subprocess.Popen) -> bool:
@@ -210,7 +362,8 @@ def terminate(process: subprocess.Popen) -> bool:
 
 
 def capture(root: Path, contract: dict, requirement_id: str, argv: list[str], cwd: Path | None = None,
-            timeout_seconds: float = 60, context: dict | None = None, wordpress_artifacts: bool = False) -> dict:
+            timeout_seconds: float = 60, context: dict | None = None, wordpress_artifacts: bool = False,
+            diagnostics: bool = True) -> dict:
     root = root.resolve()
     contract = behavior.validate(contract)
     obligation = requirement(contract, requirement_id)
@@ -218,6 +371,8 @@ def capture(root: Path, contract: dict, requirement_id: str, argv: list[str], cw
         raise ValueError("explicit nonempty argv required")
     if isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float)) or not math.isfinite(timeout_seconds) or not 0 < timeout_seconds <= 86400:
         raise ValueError("timeout_seconds must be positive, finite and at most 86400")
+    if type(diagnostics) is not bool:
+        raise ValueError("diagnostics must be a boolean")
     cwd = checked_path(root, cwd if cwd is not None else root)
     if not cwd.is_dir():
         raise ValueError("command cwd must be an existing directory inside project")
@@ -241,21 +396,33 @@ def capture(root: Path, contract: dict, requirement_id: str, argv: list[str], cw
             receipt["artifacts_before"] = artifacts_before
         options = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
         try:
-            process = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                                       stderr=subprocess.DEVNULL, shell=False, **options)
-            receipt["process_started"] = True
-            try:
-                receipt["command"]["exit_code"] = process.wait(timeout=timeout_seconds)
-                receipt["result"] = "pass" if process.returncode == 0 else "fail"
-                if process.returncode != 0:
-                    receipt["reason"] = "command exited with code " + str(process.returncode)
-            except subprocess.TimeoutExpired:
-                stopped = terminate(process)
-                receipt.update({"result": "timeout", "reason": "command exceeded its timeout",
-                                "termination_confirmed": stopped})
-                receipt["command"]["exit_code"] = process.returncode
+            output = subprocess.PIPE if diagnostics else subprocess.DEVNULL
+            process = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=output,
+                                       stderr=output, bufsize=0, shell=False, **options)
         except OSError:
             receipt.update({"result": "error", "reason": "process could not start; check executable/cwd and host permissions"})
+        else:
+            receipt["process_started"] = True
+            if diagnostics:
+                captured = collect_diagnostics(process, receipt, timeout_seconds)
+            else:
+                try:
+                    receipt["command"]["exit_code"] = process.wait(timeout=timeout_seconds)
+                    receipt["result"] = "pass" if process.returncode == 0 else "fail"
+                    if process.returncode != 0:
+                        receipt["reason"] = "command exited with code " + str(process.returncode)
+                except subprocess.TimeoutExpired:
+                    stopped = terminate(process)
+                    receipt.update({"result": "timeout", "reason": "command exceeded its timeout",
+                                    "termination_confirmed": stopped})
+                    receipt["command"]["exit_code"] = process.returncode
+        if diagnostics and receipt["process_started"]:
+            try:
+                write_diagnostics(directory, receipt, captured)
+            except OSError:
+                receipt.setdefault("collection_errors", []).append("diagnostic storage incomplete; inspect local workspace access")
+                if receipt["result"] == "pass":
+                    receipt.update(result="error", reason="diagnostic storage incomplete")
         after = snapshot(root, paths, excludes)
         receipt["inputs"].update({"after": after, "after_sha256": behavior.digest(after)})
         receipt["artifacts"] = artifact_snapshot(root, artifacts, wordpress_artifacts)
@@ -298,6 +465,7 @@ def main() -> int:
             p.add_argument("--timeout", type=float, default=60)
             p.add_argument("--context", help="explicit JSON object with relevant runtime/dataset identity; no environment dump")
             p.add_argument("--wordpress-artifacts", action="store_true", help="reuse WordPress ZIP identity/version verification")
+            p.add_argument("--no-diagnostics", action="store_true", help="discard stdout/stderr before capture when command output may be sensitive")
             p.add_argument("argv", nargs=argparse.REMAINDER, help="explicit already-authorized command after --")
         else:
             p.add_argument("--reason", required=True)
@@ -309,7 +477,8 @@ def main() -> int:
             argv = ns.argv[1:] if ns.argv[:1] == ["--"] else ns.argv
             cwd = root / relative(ns.cwd) if ns.cwd else root
             result = capture(root, contract, ns.requirement, argv, cwd, ns.timeout,
-                             json.loads(ns.context) if ns.context else None, ns.wordpress_artifacts)
+                             json.loads(ns.context) if ns.context else None, ns.wordpress_artifacts,
+                             diagnostics=not ns.no_diagnostics)
         else:
             result = unavailable(root, contract, ns.requirement, ns.reason)
         print(json.dumps(result, indent=2, ensure_ascii=False))

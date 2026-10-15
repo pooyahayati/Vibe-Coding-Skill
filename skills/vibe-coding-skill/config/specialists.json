@@ -32,6 +32,7 @@
       "requirement": "required-on-match",
       "stages": ["discover", "define", "plan", "design", "build", "verify", "review"],
       "primary_stages": ["design", "build", "verify", "review"],
+      "guidance_only_concerns": ["ui", "ux"],
       "activation": {
         "concerns": ["ui", "ux", "accessibility", "responsive", "rtl", "design"],
         "extensions": [".css", ".scss", ".html", ".jsx", ".tsx", ".vue", ".svelte", ".dart", ".xaml"],

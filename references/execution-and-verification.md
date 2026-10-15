@@ -16,9 +16,9 @@ Do not build broad horizontal layers before one useful vertical slice works.
 
 Derive verification from:
 
-`changed behavior + important failure modes + integration boundaries + acceptance criteria`
+`accepted outcomes + material failure modes + affected boundaries + delivery stage + explicit project requirements`
 
-Do **not** derive the number of tests from changed file count, lines of code, project size, or a fixed coverage percentage.
+This is the canonical check-selection policy for the Head, capability packs and specialists. Do **not** derive a quota from changed file count, lines of code, project size, risk tier, evidence count/families or coverage percentage. A configured command is available, not automatically required for every edit. Packs contribute applicable risks and assertions; their activation does not require every listed check.
 
 "Test count" is ambiguous: commands, test functions, parameterized cases, and behavioral scenarios are different measures. Optimize for detection power, not count.
 
@@ -38,13 +38,15 @@ For each required outcome, identify the observable assertion and choose the chea
 
 Use the exact reported state/action for defects and the applicable boundary for material failures. Keep intended behavior separate from the actual result; a criterion stays unmet or unverified when its check fails or cannot run. Do not add new cases solely to populate an example, stage or risk-tier quota.
 
+Name the required outcome, changed risk/boundary, observed failure or explicit project rule that justifies expanding checks. Use the existing plan/requirement description when one exists; no per-edit checklist or new document is required. If a consequential risk or project rule requires independent corroboration, retain that specific review/observation as a required obligation linked to its outcome. Different evidence labels do not prove independence; assess the actual reviewer/source and detection value. This does not authorize another agent or model evaluation.
+
 For the supported legacy schema-2 route, keep observable required outcomes in the criterion `description`, with stable `id`, `required`, actual `met` and linked `evidence_ids`. Use separate criteria only for distinct required outcomes. This route validates declared linkage/provenance, not `behavior` fields or actual receipts; extra fields cannot substitute for a clear description, retained baseline or meaningful evidence. B2 preserves validated task behavior in plans/state/handoffs and labels imported schema-2 outcomes as reported, never receipt-verified. New structured completion uses the [E2 schema-3 route](#receipt-backed-completion-e2) with independently retained criteria and local receipts; it still requires Head judgment about check relevance.
 
 ## Verification by change type
 
 | Change type | New tests usually needed | Checks to execute |
 |---|---|---|
-| Text/copy/isolated visual spacing | usually zero | focused rendered/visual check + directly relevant existing check if any |
+| Text/copy/isolated visual spacing | usually zero | one focused source/rendered observation; another check only if it adds needed detection value |
 | Reproducible bug fix | regression scenario for the defect; extra edges only when root cause justifies them | failing reproduction/new regression + affected existing tests |
 | New local logic | uncovered meaningful input/boundary classes | lowest suitable unit/component tests |
 | API/integration change | contract and important failure/timeout/auth cases not already covered | component/contract tests + focused integration check |
@@ -58,21 +60,16 @@ The table sets a floor only where the concern exists. Do not add every listed te
 
 ## Stage-specific execution
 
-### During implementation
-
-Run the smallest test/check that can falsify the change quickly. Prefer focused unit/component/reproduction checks over repeatedly running the entire suite.
-
-### Before integration
-
-Run the affected-area regression set plus checks for changed contracts, data boundaries, security boundaries, or integrations.
-
-### Before release/deployment
-
-Run release-relevant build, migration, security, integration, smoke/health, and recovery checks according to risk and what changed.
+| Stage / target | Select | Expand only for |
+|---|---|---|
+| Build / defect correction | Cheapest existing observation or focused regression that can falsify the change. | An uncovered outcome, failure, changed boundary or explicit project requirement. |
+| Verify / Review / integration | Evidence for all accepted outcomes and affected contracts/invariants; reuse valid earlier results. | Missing coverage, an identified risk needing independent corroboration, or mandatory project checks. |
+| Ship / publication | Relevant production build, final-artifact/security and core-flow evidence; installation, migration/recovery when applicable. | The actual delivery target and its retained requirements. Implementation completion does not establish release readiness. |
+| Sensitive behavior at any stage | Relevant denial, state integrity, idempotency or recovery cases. | Do not postpone an affected security/data control until publication. |
 
 Publication additionally requires the [native Trivy release gate](security-and-dependencies.md#native-release-gate), bound to the final delivery source/artifact as required security evidence. A successful compatibility smoke or an install warning does not qualify. Keep native application security checks; tool/scan unavailability blocks publication without blocking unrelated development.
 
-Do not repeat an expensive full suite after every edit when no affected behavior has changed since the last run.
+An activity-stage change alone does not invalidate evidence. Reuse it while its scoped source, test definitions, configuration/dependencies, artifact and relevant runtime/dataset context still match. Recheck affected evidence after those inputs change; unrelated edits do not force reruns. Do not change a retained contract or runtime context merely to record a new activity stage. Changing the actual outcome or delivery target does require explicit reconciliation; old task receipts cannot be relabeled to satisfy new release obligations.
 
 ## Verification priority
 
@@ -129,47 +126,17 @@ For roadmap implementation, [shared improvement contracts](shared-improvement-co
 
 ### Local execution receipts (E1)
 
-Use `scripts/evidence_capture.py` only for a relevant, already-authorized local check whose retained task contract has an `origin: collected` obligation. It never executes command text from a contract/report, grants permissions, starts remote verification or changes task completion. A tiny visual/manual task need not use this runner or add an automated test.
+For an already-authorized check with a retained collected-evidence obligation, read [local execution receipts](execution-receipts.md#local-execution-receipts-e1). Tiny/manual work does not acquire a runner or new automated test merely from this format.
 
-The requirement's `input_paths` must cover relevant source, configuration, dependencies and test definitions; `input_excludes` are explicit justified subtree exclusions. Use concrete project-relative forward-slash paths, not globs, absolute input paths or parent traversal. Square brackets in names such as `app/[id]/page.tsx` and `app/[...slug]/page.tsx` are literal; they never select matching alternatives. Capture includes relevant untracked/ignored files and directory membership. At least one regular file must be in scope; missing expected files are recorded alongside it. Do not include secrets or generated receipts/logs. Scope/check relevance belongs to the Head, not a hashing algorithm.
-
-Example contract obligation (within an accepted version-1 task contract):
-
-```json
-{"id":"settings-check","criterion_ids":["settings-preserved"],"kind":"unit-test","origin":"collected","required":true,"input_paths":["src/settings","tests/settings_test.py","pyproject.toml"],"input_excludes":[]}
-```
-
-Run the explicit command after `--`, from an explicit project root (optional `--cwd` stays inside it):
-
-```bash
-python /path/to/skill/scripts/evidence_capture.py run --root /path/to/project --task-contract /path/to/local/task.json --requirement settings-check --timeout 60 -- python -m unittest tests.settings_test
-```
-
-The runner uses argument-list execution with `shell=False`, closed stdin and discarded stdout/stderr; it does not use an output pipe or unlimited log. Prefer a checked-in test script rather than a long inline command. Never put credentials in command arguments, contract/context values or unavailable reasons: these are stored exactly. The command inherits the current environment without recording it; use existing host controls for secret access. Optional `--context` accepts an explicit JSON object with relevant runtime/check/dataset identity, not an environment dump. Hashes cannot identify mutable remote service/dataset state unless the Head supplies the relevant identity and check.
-
-Results are `pass`, `fail`, `timeout`, `error` or `unavailable`. A pass requires exit code zero, unchanged scoped input/artifact snapshots and complete collection. A zero exit code does not prove assertion relevance, coverage or product acceptance. Timeout attempts terminate the launched process group/tree and record whether termination was confirmed; this runner is not a sandbox against a process escaping that group/tree. No automatic retry follows. The command timeout defaults to 60 seconds and must be finite, positive and at most 86,400 seconds. Collection is bounded to 10,000 manifest entries and 1 GiB of hashed input bytes per snapshot; exceeding a limit is an error, never a narrower successful receipt.
-
-`artifact_paths` names the exact preexisting files being checked, either relative to the project or explicit authorized absolute files. Capture hashes them before and after; a missing/changed artifact is an error. Build/package first, then run the check against those exact bytes. Artifact lists have the same count/total hashing bound. For an installable WordPress ZIP, add `--wordpress-artifacts` to reuse `wordpress_artifact.py` validation/version identity; ZIP inspection is bounded to 10,000 entries, 1 GiB expanded size and 8 MiB per PHP member. Packaging/version evidence does not establish installation, runtime or seeded-data preservation.
-
-Receipts are unique JSON files under the existing external local project workspace, `test-artifacts/receipts/<task-hash>/`. Task IDs are hashed for safe, short paths, with full task/contract identities retained in each receipt. An explicitly configured local workspace inside product source is rejected. The command returns receipt identity/digest and its local reference/root; it does not write product documents, modify Git excludes, invoke another agent or claim completion. Store referenced receipts under project retention rules; host write controls remain necessary because a privileged writer can forge records and inputs.
-
-When a collected check cannot run, record the actual limitation without inventing a command, exit code or input snapshot:
-
-```bash
-python /path/to/skill/scripts/evidence_capture.py unavailable --root /path/to/project --task-contract /path/to/local/task.json --requirement settings-check --reason "Required runtime is unavailable on this host"
-```
-
-The CLI exits zero only for a collected pass, and two for other results/configuration errors. E1 does not relabel manual/reported obligations, import CI results, or treat its receipts as schema-2 completion evidence automatically. Manual/legacy routes remain available under their existing rules. E2 must resolve receipt/contract/requirement identities and recompute relevant input/artifact/context bindings at delivery; E1 collection alone cannot establish later freshness.
-
-`Done` requires at least one required acceptance criterion; an all-optional checklist cannot pass. For Tier 2/3 or scope-changing work, retain the approved criteria before implementation and pass that independently retained JSON array to `completion_gate.py report.json --acceptance-baseline approved-criteria.json --json`. The gate blocks removed, downgraded, or rewritten required outcomes. The caller must protect that baseline from implementation edits; the gate reports whether it was supplied and does not authenticate an agent-written checklist by itself.
+`Done` requires at least one required acceptance criterion; an all-optional checklist cannot pass. Schema 3 uses its independently retained task contract. For legacy schema-2 Tier 2/3 or scope-changing work, supply the approved criteria with `--acceptance-baseline`; the gate rejects removed, downgraded or rewritten required outcomes. Protect the baseline from implementation edits: structural checks do not authenticate an agent-written checklist.
 
 ### Completion evidence kinds
 
 The Completion Gate accepts a controlled semantic evidence taxonomy rather than arbitrary free-form kind names. Supported kinds map into broader families such as verification, integration, delivery, review, security, runtime, data, recovery, performance, static analysis, and manual/visual checks.
 
-For higher-risk completion, diversity is measured by **semantic evidence family**, not by raw labels. For example, `test` and `regression-test` both belong to the verification family and cannot satisfy a two-family requirement by themselves. Unknown evidence kinds do not qualify.
+The gate reports counts and families for interpretation, not quotas. One relevant, qualified check can cover a required outcome; multiple integration/contract checks may cover distinct outcomes without adding an unrelated review or test type. Every explicitly required check and schema-3 retained obligation must still qualify. Failed, missing or stale required evidence cannot be offset by extra passing items; required provenance remains risk-dependent. Unknown evidence kinds do not qualify.
 
-This prevents unrelated or invented labels from manufacturing evidence diversity while still allowing the evidence type appropriate to the actual change.
+Results identify `verification_policy: outcome-and-obligation-v1` and a task/criteria `completion_scope`. A pass covers only those accepted outcomes, not later merge/publication/deployment targets or permission to perform them.
 
 ## Review
 
@@ -185,7 +152,7 @@ For code-structure review, check only observable properties relevant to the chan
 - concern-specific controls (timeouts/retries, transactions, tenant isolation, performance structure) exist only when that concern is present;
 - no unused interface/repository/service/layer/message-bus/deployment abstraction was added for ceremony.
 
-For Tier 2/3 work, prefer an independent reviewer/agent when available.
+Use independent corroboration for a named consequential risk or explicit project requirement, as defined in the testing policy above. Retain already accepted review obligations; do not add another review merely to create a second evidence family.
 
 ## Change budget
 
@@ -217,31 +184,7 @@ Destructive migrations require explicit approval and recovery planning.
 
 ### Receipt-backed completion (E2)
 
-For new structured-completion tasks, retain the accepted version-1 contract outside product source before implementation. Use schema 3 at completion, supplying that contract and the actual intended delivery root independently of the report:
-
-```bash
-python /path/to/skill/scripts/completion_gate.py /path/to/local/report.json --task-contract /path/to/local/task.json --root /path/to/project --json
-```
-
-The report has `schema_version: 3`, `status`, `risk_tier`, `task_id`, `contract_sha256`, existing criteria with actual `met`/`evidence_ids`, evidence and blockers. Tier 2/3 also names the actual delivery `commit`. Every evidence entry carries `id`, `kind`, `origin`, `result`, `required`, `requirement_id`, `receipt_ref` and `receipt_sha256` from the capture/observation result. References stay inside the task receipt workspace; report-controlled absolute paths, parent traversal, links, oversized files and unknown versions cannot qualify. Hashes detect mismatches, not user approval or privileged forgery.
-
-Every required obligation needs its own qualifying receipt. Required outcomes must retain their description, behavior, required status and actual evidence links. Resolution checks task/contract/obligation/origin/result identity, actual launch/exit or concrete observation, ordered timestamps, matching before/after manifests and the current scoped inputs/artifacts. A partial scope, changed required input/artifact, failed/timeout/unavailable check or unresolved external claim blocks completion. An unrelated excluded change does not require rerunning an unchanged relevant check. Optional failed/unverified evidence needs a real justification and cannot satisfy a required outcome.
-
-Pass independent current runtime/dataset identity via `--context '<JSON object>'` when relevant; it must match the receipt. The runner/gate cannot infer mutable remote state or inspect all host dependencies. Missing adequate context is a Head evidence gap; refresh it from actual project evidence rather than copying the receipt's old claim.
-
-Resolved provenance binds the current delivery HEAD through fresh scoped hashes. `receipt_resolution[].tested_commit` preserves the original observed test revision; the receipt is not rewritten to claim the command ran on a later commit. A report's target commit must equal actual delivery HEAD. Head review must still establish the scope/check covers the criterion; successful exit and metadata validity do not prove assertion quality or all vulnerabilities absent.
-
-A tiny manual/visual task can record an actual observation without running a command:
-
-```bash
-python /path/to/skill/scripts/receipt_validation.py --root /path/to/project --task-contract /path/to/local/task.json --requirement label-view --observation '{"description":"Observed the corrected label with settings unchanged","method":"Rendered settings inspection","environment":"Test browser and seeded account"}'
-```
-
-Use this only for an accepted `origin: manual` obligation and an observation actually performed. The writer binds current scoped files/artifacts and stores no exit code; `receipt_verified` may be true while `execution_verified` stays false for manual evidence. If the requirement lacks `input_paths`, a manual observation uses the retained task scope. Do not replace collected requirements with manual claims. Remote `reported` metadata, even `resolution: verified`, needs a separately authorized resolver; this gate has no remote resolver and labels it unverified rather than fetching arbitrary URLs.
-
-New structured contracts in `project_state.py capture` or `handoff`, including `--new-task`, default to schema 3. Supply independent `--delivery-context` when relevant. Existing retained legacy tasks (including older snapshots without `completion_schema`) keep schema 2 until the Head reconciles criteria/obligations and explicitly migrates with `--receipt-completion`. The selected receipt workflow survives capture/handoff/resume; omitting the flag cannot revert it. Migration creates no evidence or permission; collect missing/stale evidence only. Schema-2 `PASS` is never receipt-verified. Non-Done states may report limitations without qualifying receipts and do not establish completion.
-
-Schema-3 state/resume re-resolves current scoped receipt bindings and shows `receipt-qualified`, `unmet` or `unverified`. It replaces B2's broad whole-tree staleness guard for this workflow; legacy schema-2 snapshots retain that conservative guard. Local acceptance/receipts are editable files, not an independent security boundary; retain host writer controls where needed.
+For schema-3 completion, manual observations or retained schema-2 migration, read [receipt resolution and compatibility](execution-receipts.md#receipt-backed-completion-e2). All retained required obligations still apply; task acceptance does not imply publication readiness.
 
 Before release, verify only what is relevant to the changed product: core workflow, affected regression, integrations, build/deployment, security, migrations, recovery, environment documentation, and repository state.
 

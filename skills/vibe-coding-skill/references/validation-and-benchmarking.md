@@ -86,7 +86,9 @@ Channels are evidence classes:
 - `rc`: requires the complete baseline on the target commit: `Validate Skill`, `Cross Platform Smoke`, `Real World Repository Validation`, `Agent Skills Spec Compatibility`, `Tool Contract Tests`, and `WordPress Artifact Contract`.
 - `stable`: requires the same complete baseline on the exact target commit.
 
-For every channel, use the latest result for each required workflow. Missing, stale, failed, or different-commit checks block publication. Provider credentials, model versions, model comparison results, and real-agent benchmark aggregates are not release requirements. Credentialed automatic benchmark workflows have been removed.
+Readiness reports use `schema_version: 2`. For every channel, use the latest run and attempt for each required workflow on the exact target commit. `Validate Skill` and `Cross Platform Smoke` additionally require per-check `validation_scope: full`; a successful partial development workflow is insufficient. The maintainer collector `scripts/collect_release_checks.py` derives this from actual successful `Full validation completed` steps, including all four platform jobs, and excludes PR/fork evidence. Missing, skipped, cancelled, failed, different-commit or unverified-scope results block publication. Older reports must be recollected from actual runs, not relabeled or migrated by inventing full-scope flags. Use full manual runs on the unchanged target revision when development checks were partial; rerun all jobs if the latest attempt has incomplete platform evidence. [Current rollout status](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/main/ROADMAP.md) separates local implementation from hosted CI and delivery.
+
+Provider credentials, model versions, model comparison results, and real-agent benchmark aggregates are not release requirements. Credentialed automatic benchmark workflows have been removed.
 
 Repository branch protection is not part of this gate.
 

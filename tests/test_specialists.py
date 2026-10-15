@@ -60,6 +60,60 @@ class SpecialistTests(unittest.TestCase):
         self.assertEqual(len(explicit), 2)
         self.assertFalse(next(row for row in explicit if row["id"] == "debugging-and-error-recovery")["active_in_stage"])
 
+    def test_verified_mechanical_edits_use_guidance_but_material_decisions_keep_handoffs(self):
+        facts = {"operation": "tiny", "environment": "local", "data_sensitivity": "none", "change_boundary": "local"}
+        evidence = "Inspected the diff against the accepted design: existing label/spacing tokens only; flows, accessibility and contracts unchanged."
+        for task, paths in [("Correct the label", ["src/Button.tsx"]), ("Adjust spacing", ["styles/site.css"])]:
+            with self.subTest(task=task):
+                selected = manager.select_specialists(task, paths, {"concern": ["ui"]}, stage="build",
+                                                      risk_facts=facts, guidance_evidence=evidence)
+                self.assertEqual([s["id"] for s in selected], ["ui-ux-skill"])
+                self.assertEqual(selected[0]["participation"], "guidance-only")
+                self.assertFalse(selected[0]["handoff_required"])
+                self.assertTrue(selected[0]["required"])
+        comments = dict(facts, change_effect="non-runtime", scope_evidence="Inspected auth.py: comment spelling only; access behavior unchanged.")
+        selected = manager.select_specialists("Correct comment spelling", ["src/auth/session.py"], risk_facts=comments)
+        self.assertFalse(selected[0]["handoff_required"])
+        for task, path, risk, concerns in [
+                ("Add a UI flow", "src/Form.tsx", dict(facts, operation="feature"), ["ui"]),
+                ("Small label fix", "src/auth/check.py", dict(facts, operation="auth"), ["auth"]),
+                ("Small API comment", "src/api.py", dict(facts, operation="external-integration"), ["contracts"]),
+                ("Small text fix", "src/Form.tsx", facts, ["accessibility"]),
+                ("Correct the label", "src/Button.tsx", {}, ["ui"])]:
+            with self.subTest(task=task, risk=risk):
+                rows = manager.select_specialists(task, [path], {"concern": concerns}, stage="build",
+                                                   risk_facts=risk, guidance_evidence=evidence)
+                self.assertTrue(rows and all(s["handoff_required"] for s in rows))
+        self.assertTrue(manager.select_specialists("Correct label", ["src/Button.tsx"], risk_facts=facts)[0]["handoff_required"])
+        self.assertTrue(manager.select_specialists("Correct label", ["src/Button.tsx"], explicit=["ui-ux-skill"],
+                                                  risk_facts=facts, guidance_evidence=evidence)[0]["handoff_required"])
+        # Structured boundaries still route even when wording and extensions do not.
+        for operation, expected in [("auth", {"security-and-hardening"}),
+                                    ("public-api", {"api-and-interface-design", "security-and-hardening"}),
+                                    ("payment", {"security-and-hardening", "api-and-interface-design"})]:
+            selected = manager.select_specialists("Small correction", ["policy.md"],
+                                                  risk_facts=dict(facts, operation=operation), guidance_evidence=evidence)
+            self.assertEqual({s["id"] for s in selected}, expected)
+            self.assertTrue(all(s["handoff_required"] for s in selected))
+
+    def test_router_and_plan_keep_guidance_separate_and_incomplete_inspection_formal(self):
+        spec = importlib.util.spec_from_file_location("guidance_planner_test", ROOT / "scripts/execution_plan.py")
+        planner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(planner)
+        path = self.root / "src/Button.tsx"
+        path.parent.mkdir()
+        path.write_text("export const Label = () => <span>Save</span>;", encoding="utf-8")
+        args = {"paths": ["src/Button.tsx"], "stage": "build", "context_facts": {"concern": ["ui"]},
+                "risk_facts": {"operation": "tiny", "environment": "local", "data_sensitivity": "none", "change_boundary": "local"},
+                "guidance_evidence": "Compared with accepted design: label spelling only, same layout, flow and accessibility."}
+        result = planner.draft(self.root, "Correct label spelling", **args)
+        self.assertEqual(result["specialist_assignments"], [])
+        self.assertEqual([s["id"] for s in result["specialist_guidance"]], ["ui-ux-skill"])
+        path.unlink()
+        result = planner.draft(self.root, "Correct label spelling", **args)
+        self.assertEqual(result["specialist_guidance"], [])
+        self.assertTrue(result["specialist_assignments"][0]["handoff_required"])
+
     def test_domain_semantics_docs_and_sensitive_risk_do_not_select_unrelated_skills(self):
         self.assertEqual(manager.select_specialists("Describe API authentication", ["docs/API.md"]), [])
         self.assertEqual(manager.select_specialists("Fix isolated calculation", ["lib/math.py"]), [])

@@ -42,8 +42,42 @@ class ReceiptCompletionTests(unittest.TestCase):
             "evidence": [{"id": self.r["receipt"]["id"], "kind": "unit-test", "origin": "collected", "result": "pass", "required": True,
                           "requirement_id": "check", "receipt_ref": self.r["receipt_ref"], "receipt_sha256": self.r["receipt_sha256"]}]}
 
+    def test_explicit_incidental_risk_correction_invalidates_old_completion_binding(self):
+        first = project_state.capture(self.root, task_contract=self.c, completion_report=self.report)
+        self.assertEqual(first["acceptance"]["gate"], "PASS")
+        corrected = dict(copy.deepcopy(self.c), risk_tier=0,
+                         risk_facts={"operation": "tiny", "environment": "local", "data_sensitivity": "none",
+                             "change_boundary": "local", "change_effect": "non-runtime",
+                             "scope_evidence": "Inspected source fixture: descriptive text only; stored setting and executable check unchanged."})
+        state = project_state.capture(self.root, task_contract=corrected,
+                                      reclassify_risk="Head confirmed the previous standard floor was incidental")
+        self.assertEqual(state["task_contract"], corrected)
+        self.assertEqual(state["acceptance"]["gate"], "BLOCK")
+        self.assertFalse(state["acceptance"]["execution_verified"])
+        self.assertEqual(state["contract_revisions"][-1]["previous_sha256"], behavior.digest(self.c))
+        # A resume cannot implicitly recover the old completion claim.
+        self.assertEqual(project_state.capture(self.root)["acceptance"]["gate"], "BLOCK")
+
     def evaluate(self, report=None, contract=None, **options):
         return gate.evaluate(report or self.report, task_contract=contract or self.c, root=self.root, **options)
+
+    def test_diagnostics_integrity_and_receipts_without_logs_remain_supported(self):
+        self.assertTrue(self.evaluate()["receipt_verified"])
+        path = Path(self.r["diagnostics_path"])
+        original = path.read_bytes()
+        path.write_bytes(original + b"altered")
+        self.assertFalse(self.evaluate()["receipt_verified"])
+        path.write_bytes(original)
+        self.assertTrue(self.evaluate()["receipt_verified"])
+        path.unlink()
+        self.assertFalse(self.evaluate()["receipt_verified"])
+        # Same existing receipt format without the optional log, as before T4.
+        legacy = capture.capture(self.root, self.c, "check", [sys.executable, "check.py"], diagnostics=False)
+        report = copy.deepcopy(self.report)
+        report["acceptance_criteria"][0]["evidence_ids"] = [legacy["receipt"]["id"]]
+        report["evidence"][0].update(id=legacy["receipt"]["id"], receipt_ref=legacy["receipt_ref"],
+                                     receipt_sha256=legacy["receipt_sha256"])
+        self.assertTrue(self.evaluate(report)["receipt_verified"])
 
     def test_workspace_and_receipts_survive_remote_changes_and_legacy_adoption(self):
         import local_workspace as workspace
@@ -362,7 +396,7 @@ class ReceiptCompletionTests(unittest.TestCase):
         # A pre-reconciliation receipt cannot qualify against the new digest.
         self.assertEqual(project_state.capture(self.root, completion_report=pending_report)["acceptance"]["gate"], "BLOCK")
 
-    def test_high_risk_requires_all_obligations_and_distinct_families(self):
+    def test_high_risk_requires_explicit_review_even_when_outcome_has_a_passing_check(self):
         c = copy.deepcopy(self.c)
         c["risk_tier"] = 2
         c["evidence_requirements"].append({"id": "review", "criterion_ids": ["setting"], "kind": "code-review", "origin": "manual", "required": True})
@@ -379,6 +413,30 @@ class ReceiptCompletionTests(unittest.TestCase):
         self.assertEqual(self.evaluate(report, c)["gate"], "PASS")
         report["evidence"].pop()
         self.assertEqual(self.evaluate(report, c)["gate"], "BLOCK")
+
+    def test_high_risk_single_relevant_receipt_is_sufficient_but_failures_and_staleness_block(self):
+        check = self.root / "check.py"
+        check.write_text("from pathlib import Path\nassert Path('src/value.txt').read_text() == 'accepted'\n", encoding="utf-8")
+        for tier in (2, 3):
+            with self.subTest(tier=tier):
+                c = dict(copy.deepcopy(self.c), risk_tier=tier)
+                c["evidence_requirements"][0]["kind"] = "integration"
+                captured = capture.capture(self.root, c, "check", [sys.executable, "check.py"])
+                report = copy.deepcopy(self.report)
+                report.update(risk_tier=tier, commit=capture.local_workspace.run_git(self.root, "rev-parse", "HEAD")[1],
+                              contract_sha256=behavior.digest(c))
+                r = captured["receipt"]
+                report["evidence"][0].update(id=r["id"], kind=r["kind"], receipt_ref=captured["receipt_ref"], receipt_sha256=captured["receipt_sha256"])
+                report["acceptance_criteria"][0]["evidence_ids"] = [r["id"]]
+                self.assertTrue(self.evaluate(report, c)["receipt_verified"])
+                (self.root / "src/value.txt").write_text("wrong", encoding="utf-8")
+                self.assertEqual(self.evaluate(report, c)["gate"], "BLOCK")
+                failed = capture.capture(self.root, c, "check", [sys.executable, "check.py"])
+                self.assertEqual(failed["receipt"]["result"], "fail")
+                report["evidence"][0].update(id=failed["receipt"]["id"], result="fail", receipt_ref=failed["receipt_ref"], receipt_sha256=failed["receipt_sha256"])
+                report["acceptance_criteria"][0]["evidence_ids"] = [failed["receipt"]["id"]]
+                self.assertEqual(self.evaluate(report, c)["gate"], "BLOCK")
+                (self.root / "src/value.txt").write_text("accepted", encoding="utf-8")
 
     def test_reported_claim_stays_unverified_and_non_done_needs_no_receipt(self):
         c = copy.deepcopy(self.c)
