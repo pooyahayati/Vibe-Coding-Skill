@@ -1,99 +1,55 @@
 # Improvement Roadmap
 
-Canonical current status; closed specifications and historical verification live in the [roadmap archive](docs/archive/improvement-roadmap-through-1.4.0.md). Reviewed: 2026-10-07, Asia/Tehran.
+Canonical current status. Reviewed: 2026-10-15, Asia/Tehran. This cycle addresses unnecessary verification and coordination overhead while preserving evidence for real risks.
 
 ## Current position
 
 | State | Position |
 |---|---|
-| Published runtime | Stable `1.5.0`, release commit `0509f53d274e63ae47077dfd4656310281f9bd05`; verified local installation is also `1.5.0`. |
-| Completed improvement work | Original nine packages + F1 shipped in `1.3.0`; R1-R4 shipped in `1.3.1`; three approved follow-ups shipped in `1.4.0`; A1-A5 shipped in `1.5.0`. |
-| Current phase | **1.5.0 delivered**; A1-A5 complete and merged in PRs #90-94, published through [PR #96](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/96). |
-| Scope | Approved remediation, stable publication and local installation are complete. |
-| Next action | No pending action in this cycle; new work requires a separately selected scope. |
-| Remaining work | **5/5 packages merged; 0/7 confirmed findings open.** F1-F7 closed by verified A1-A5 integration. Package status is maintained only in this roadmap. |
+| Published runtime | Stable [1.5.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.5.0); release commit `0509f53d274e63ae47077dfd4656310281f9bd05`. |
+| Local installation | `1.5.0`; local VERSION rechecked on 2026-10-15. This planning update changes no installed runtime. |
+| Audit baseline | Main `e75a8cae9f27c3e5f6305fb5e14523ed9fe06401`; targeted code tracing, in-memory reproductions and prior CI-run evidence. No full-suite or live-agent benchmark claim. |
+| Current phase | **T1-T5 planned; implementation not started.** Scope and acceptance criteria are ready. |
+| Scope | Five approved corrections: actual-change risk, lightweight specialist participation, stage-aware verification/completion, execution diagnostics, and selective CI. |
+| Next action | Start **T1**, reproduce the false risk escalation, then implement its bounded correction and focused acceptance checks. |
+| Progress | **0/5 implemented and merged; 5 remaining.** Planning does not close a finding. |
+| Blockers | None identified for starting T1. Project-specific latency and the percentage of improvement remain unmeasured. |
+| Preparation | Roadmap and acceptance plan ready for sequential implementation; no runtime implementation or release selected. |
 
-## Deep-audit remediation cycle A1-A5
+## Active cycle: proportionate verification T1-T5
 
-Audit baseline: `a6e43fe73500367e52a257e0f9f725166d9c79dc` on 2026-10-07. The existing suite reported 287 tests, zero failures and three skips; structure validation and 16 deterministic scenarios passed. All 79 published runtime files matched the current portable mirror and local installation. These results establish the baseline, not acceptance of the corrections below.
+Priority combines impact, expected frequency and confidence. Execute **T1 -> T2 -> T3 -> T4 -> T5**, with one package in progress. Detailed evidence, components and acceptance criteria live in the [implementation plan](docs/improvement-implementation-plan.md#confirmed-audit-findings).
 
-Finding IDs **F1-F7** refer to the latest deep audit; they are separate from the historical **F1 feedback package** shipped in 1.3.0. Reproduction evidence, affected components and verification methods are retained in the [active implementation plan](docs/improvement-implementation-plan.md#confirmed-audit-findings).
+| Order | Package | Intended result | Priority | Dependency | Status |
+|---|---|---|---|---|---|
+| 1 | [T1: Risk grounded in actual change](docs/improvement-implementation-plan.md#t1-risk-grounded-in-actual-change) | Documentation/comments do not acquire sensitive-operation controls solely from words or paths; real sensitive changes retain their risk floor. | Very high | None | **Not started** |
+| 2 | [T2: Lightweight specialist participation](docs/improvement-implementation-plan.md#t2-lightweight-specialist-participation) | Mechanical edits reuse accepted guidance; meaningful specialist work retains scoped acceptance; same-assignment preflight is reused when valid. | High | T1 risk semantics | **Not started** |
+| 3 | [T3: Outcome- and stage-based verification](docs/improvement-implementation-plan.md#t3-outcome--and-stage-based-verification) | Required checks follow outcomes, risks and delivery stage; a fixed evidence-family quota does not manufacture extra work. | High | T1/T2 scope and participation rules | **Not started** |
+| 4 | [T4: Bounded execution diagnostics](docs/improvement-implementation-plan.md#t4-bounded-execution-diagnostics) | One failed execution provides usable local diagnostics without another run merely to recover its output. | Medium | T3 evidence contract; reuse existing receipt format where possible | **Not started** |
+| 5 | [T5: Change-aware CI and release checks](docs/improvement-implementation-plan.md#t5-change-aware-ci-and-release-checks) | Documentation, affected runtime changes and publication get appropriate checks; overlapping branch/PR runs are removed. | Medium | Follow T4; no runtime dependency on it | **Not started** |
 
-| Order | Package | Intended correction | Audit findings / severity | Status |
-|---|---|---|---|---|
-| 1 | [A1: Retained-state and contract continuity](docs/improvement-implementation-plan.md#a1-retained-state-and-contract-continuity) | Preserve obligations through remote changes, recovery and authorized contract revisions; reconcile specialist assignments without losing findings. | F1, F2 / High | **Complete**; [PR #90](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/90), merge `50144bf0c8d3532a11ffec21167ac71b613a721b`. All 12 PR checks passed; local 297 tests: 294 passed, 3 environment skips. Delivered in `1.5.0`; see delivery evidence below. |
-| 2 | [A2: Reliable routing and graph inputs](docs/improvement-implementation-plan.md#a2-reliable-routing-and-graph-inputs) | Preserve literal hidden paths and governing instructions; bind graph freshness to the source actually analyzed. | F3 / High; F4 / Medium | **Complete**; [PR #91](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/91), merge `43f1ad2e5f36b65839981d863f26f8b7d84796bd`. All 12 PR checks passed; focused routing/graph and extracted-package checks passed. Delivered in `1.5.0`; see delivery evidence below. |
-| 3 | [A3: Version-bound dependency decisions](docs/improvement-implementation-plan.md#a3-version-bound-dependency-decisions) | Use selected-version metadata and apply compound license policy without false acceptance. | F5 / Medium | **Complete**; [PR #92](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/92), merge `941e22cd8f106871e0478dd2b930215d41474231`. All 14 PR checks passed; 17 focused local tests and package/structure checks passed. Delivered in `1.5.0`; see delivery evidence below. |
-| 4 | [A4: WordPress command output integrity](docs/improvement-implementation-plan.md#a4-wordpress-command-output-integrity) | Parse complete structured stdout separately from diagnostic output. | F6 / Medium | **Complete**; [PR #93](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/93), merge `1f9f95ea2a7b849b73b59bc412dced1d2e7b9af4`. All 12 PR checks passed, including real WordPress Artifact Contract. Local: 12 tests passed, 1 Windows symlink skip. Delivered in `1.5.0`; see delivery evidence below. |
-| 5 | [A5: Stage-aware integration controls](docs/improvement-implementation-plan.md#a5-stage-aware-integration-controls) | Align development health checks with the native publication gate and conditional graph requirements. | F7 / Medium | **Complete**; [PR #94](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/94), merge `54574b2dea8faaf5ce34c0b2b88ed3e9c604652a`. All 14 PR checks passed; 16 focused tests, 5 project scenarios and 9 failure injections passed locally, including portable CLI/install validation. Delivered in `1.5.0`; see delivery evidence below. |
+## Execution and completion rules
 
-Default execution order is A1 -> A2 -> A3 -> A4 -> A5, with focused review at each package. A1 establishes the state/migration decisions first. A2-A5 have no mutual implementation dependency; keep one active package unless a different order is explicitly selected. If A1 changes workspace identity, verify A2's graph storage against that accepted identity.
+- At package start, mark only that row **In progress** and record its branch/PR and next action. Reconfirm the affected reproduction against current source.
+- Choose the smallest relevant checks. Reuse sufficient current evidence; broaden only for changed impact, a failure or an uncovered material risk. Existing required project/CI checks still apply until T5 is implemented.
+- Add or adjust regressions for actual uncovered behavior, including unnecessary escalation and missed real risk. No test-count target, fixed coverage quota, new test framework, model evaluation or new scanner.
+- Keep Head ownership, the sole UI/UX specialist, current-source policy, required findings, truthful manual/collected evidence and scoped freshness. Retain native Trivy before publication and exact-artifact installation checks where applicable.
+- **Complete** requires accepted behavior and merged implementation, with PR/commit and relevant evidence. A tested local fix or successful command alone is not completion. For partial/blocked work, name the remaining criterion or blocker and resolving action.
+- Synchronize changed runtime resources with the portable mirror. Shared format/policy changes need explicit compatibility and retained-task reconciliation; do not silently discard obligations or reuse stale evidence.
+- Release and local installation remain separate authorized delivery steps after implementation. No new version number is assigned by this plan.
 
-A1 local evidence (Windows, 2026-10-07): added regressions for remote/legacy identity continuity and isolation, atomic interruption, corrupt/missing-state restoration or explicit reconstruction, accepted/active specialist revision with retained findings, and safe retirement. Extracted-package routes exercised remote-change recovery and renewed specialist acceptance. Full existing suite passed apart from three environment skips (two PHP CLI checks and one symlink fixture); no live model evaluation or production claim. Runtime/release/local installation remains `1.4.0`.
+## Delivered history
 
-A2 local evidence (Windows, 2026-10-07): F3/F4 reproduced before correction. Focused runs cover 95 distinct tests across context routing/planning, graph provider, portable integration, state capture/recovery and receipt validation; corrected new fixture assertions were rerun successfully. Hidden/bracketed/root paths, nested instruction selection, unsafe/missing inputs, live/copy/provider drift, prior-output retention and graph-cache migration passed. All 16 deterministic risk scenarios passed. No live Graphify installation, model evaluation, publication or host installation update was performed.
+A1-A5 and its seven findings remain closed and shipped in `1.5.0`; T1-T5 is a separate approved improvement cycle.
 
-A3 local evidence (Windows, 2026-10-07): reproduced both F5 false-acceptance paths before correction. Deterministic cases cover selected/missing/conflicting npm metadata, same-version independent supplementation, compound/exception/denied/unresolved license expressions, parser limits, legacy match-summary bypass and existing risk-required evidence. The extracted package verifies CLI decisions and exit codes with fixture providers; no live registry availability or legal compatibility claim. No new dependency, publication or host installation update.
-
-A4 local evidence (Windows, 2026-10-07): reproduced long-list truncation and stderr contamination before correction. Focused fixtures cover full plugin JSON with separate warnings, complete version stdout, diagnostic truncation flags, the explicit stdout limit, invalid JSON, nonzero exits, timeouts and version mismatch. Existing exact-artifact upgrade, initial-state and uninstall/data safeguards passed; the extracted package exercised the corrected CLI with stub WP-CLI responses. These local fixtures are not live WordPress execution; the separate real-environment contract CI passed before PR #93 merged. No publication or host installation update.
-
-A5 local evidence (Windows, 2026-10-07): reproduced unconditional Tier 3 failures for absent Trivy and stale graphs before correction. Focused cases distinguish health/development from publication, authoritative graph use from source fallback, and tool presence from fresh target-bound scan evidence. Existing native scanner tests retain blocking findings, invalid/stale reports, timeouts and immutable-image requirements; required task security evidence remains enforced by completion. Legacy/strict exits and extracted-package routes passed. Scenario health results do not authorize production migration. No actual publication scan, release or host installation update was performed.
-
-### Start and completion boundaries
-
-- At package start, mark that row **In progress**, record the working branch/PR when available, and make its next action the single current objective. Reconfirm the affected reproduction against the current source before editing.
-- A package becomes **Complete** only after its acceptance criteria pass and its implementation is merged. Record the PR/commit and relevant checks in its status cell; do not infer completion from test counts or a drafted fix.
-- Keep unresolved findings visible. For a partial package, name the remaining finding/criterion; for a block, record the cause and resolving action. Update the open-finding count only when the linked criteria are satisfied and merged.
-- Runtime changes must update canonical resources and the portable mirror together. Reuse relevant evidence and run affected regressions/integration plus existing required CI; no fixed test quota, model evaluation, new scanner or unrelated suite reruns.
-- Preserve lightweight/manual and supported legacy routes, Head authority, required findings, scope-bound evidence and native Trivy before publication. Never regain a passing result by dropping obligations or weakening a gate.
-- Release version, publication and local installation are separate delivery decisions after implementation; local validation is not a published or installed update.
-
-The pre-existing-tag/partial-release retry concern remains **needs verification**, outside these seven confirmed findings and five packages. Live external-tool compatibility and full WordPress environment execution were not re-established by the local audit; temporary fixtures are not substitutes for that evidence. Do not expand the cycle on an unconfirmed concern.
-
-## 1.5.0 delivery evidence
-
-| Delivery | Verified snapshot |
+| History | Retained record |
 |---|---|
-| Release | [Stable v1.5.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.5.0), latest stable, published 2026-10-07 at 08:10:18 UTC; tag resolves to `0509f53d274e63ae47077dfd4656310281f9bd05`. |
-| Required checks | All six baseline workflows passed on that exact commit. [Publication run](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37591957444) passed readiness enforcement, native Trivy setup and the final extracted-package scan/build. |
-| Published ZIP | 79 files, 244,377 bytes; SHA-256 `eb3692a27427c77ac3c8aa2abee231a595d63d3cf3b2a7ce54e404b8e01696c6`. Downloaded ZIP, official checksum, validated candidate and exact-tag installer staging matched. |
-| Local host, 2026-10-07 | `C:\Users\Pooya\.codex\skills\vibe-coding-skill`: `1.5.0`, all 79 installed files match the published archive byte-for-byte with no extra files. Active installation check: PASS, zero failures/warnings. The prior installation was moved outside active skills for rollback. This is a verified host snapshot, not a claim that already-running agents reloaded their context. |
+| A1-A5 specifications, reproductions and acceptance | [Implementation archive through 1.5.0](docs/archive/improvement-plan-through-1.5.0.md) |
+| Merges, checks, release hashes and installation snapshots | [Roadmap archive through 1.5.0](docs/archive/improvement-roadmap-through-1.5.0.md) |
+| Earlier B/E/S/I, R1-R4 and delivery follow-ups | [Earlier roadmap](docs/archive/improvement-roadmap-through-1.4.0.md) and [implementation archive](docs/archive/improvement-plan-through-1.4.0.md) |
 
-## Approved delivery follow-ups — 1.4.0
-
-| Work | Status / evidence |
-|---|---|
-| Native Trivy publication gate | Complete; PR #83 merged through [PR #85](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/85). Native scan/target-binding checks passed. |
-| Document/runtime and excluded-domain routing | Complete; PR #84 merged through PR #85. Affected routing and portable checks passed. |
-| Product installation / local Docker Compose | Complete; PR #85. Instructions/package integration verified; this is not execution of a separate product. |
-
-## 1.4.0 delivery evidence
-
-| Delivery | Verified snapshot |
-|---|---|
-| Release | [Stable v1.4.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.4.0), published 2026-10-04, 13:35:08 UTC; source commit above. |
-| Required checks | All six baseline workflows passed on that commit: [release-commit checks](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/9aa2c9db69ab14cb6530f7b1e84dd8effeb56ccb/checks). Final portable package also passed the actual native Trivy gate. |
-| Published ZIP | 79 files, 232,619 bytes; SHA-256 `1fca6cfe376685bc5a605664ada57067c06d7c9ea446c98f3c8fa11efe212387`. Downloaded archive, official checksum and validated candidate matched. |
-| Local host, 2026-10-04 | `C:\Users\Pooya\.codex\skills\vibe-coding-skill`: `1.4.0`, all 79 release files matched; installation PASS with zero failures/warnings. Native Trivy `0.75.0` was available. This is a historical host snapshot, not automatic updates to every user or loaded agent. |
-
-Roadmap/README-only changes do not change the released runtime. The [banner delivery](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/87) merged separately. Source completion, merge, publication and installation are separate claims.
-
-## Completed audit packages
-
-| Package | Correction | Delivery |
-|---|---|---|
-| <a id="r1-retained-contract-and-required-completion-controls"></a>R1 | New structured tasks use receipts; required specialist commitments survive handoff/completion. | [PR #77](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/77), `1.3.1`. |
-| <a id="r2-bounded-discovery-without-silent-platform-loss"></a>R2 | Bounded discovery preserves large-file platform evidence and exposes incomplete inspection. | [PR #78](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/78), `1.3.1`. |
-| <a id="r3-consistent-project-root-ownership"></a>R3 | Project-root ownership/containment and drift checks agree. | [PR #79](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/79), `1.3.1`. |
-| <a id="r4-one-accurate-operational-validation-path"></a>R4 | Release/portable guidance matches actual tooling; obsolete benchmark mandates removed. | [PR #80](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/80), `1.3.1`. |
-
-Specifications, reproductions, acceptance criteria and prior delivery hashes remain in the [closed roadmap](docs/archive/improvement-roadmap-through-1.4.0.md#package-specifications) and [original implementation plan](docs/archive/improvement-plan-through-1.4.0.md). Current runtime contracts remain in the [implementation index](docs/improvement-implementation-plan.md).
+Historical dates, counts and installation statements are snapshots, not current pending work. The earlier partial-release retry concern remains unconfirmed and outside this cycle.
 
 ## How progress stays current
 
-- Update this file when approved work starts, a blocker changes, implementation is merged or delivery is verified; it is not an automatic monitor.
-- Use **Not started**, **In progress**, **Blocked**, **Complete**. Complete requires relevant acceptance evidence and merged implementation; show release/installation separately.
-- Keep one current phase and next action consistent with the tracker. State the cause and resolving action for blockers; counts are not quality scores.
-- Keep future scope/dependencies/acceptance in the implementation index; archive closed detail instead of appending a diary. [Contributor rule](CONTRIBUTING.md#roadmap-progress).
-
-Improve actual software outcomes with proportionate checks. Receipts establish tested bindings/results; the Head still assesses relevance, semantic compatibility and evidence sufficiency. The active cycle is limited to A1-A5; no model evaluation, fixed test quota or speculative feature is planned.
+Maintain status, blockers, branch/PR, merge evidence and the next action only here. Keep implementation scope and acceptance in the linked plan; archive closed detail instead of adding an execution diary. Update on meaningful transitions, not every command. Use **Not started**, **In progress**, **Blocked**, **Complete**. This file is maintained documentation, not an automatic monitor. See [contributor rules](CONTRIBUTING.md#roadmap-progress).
