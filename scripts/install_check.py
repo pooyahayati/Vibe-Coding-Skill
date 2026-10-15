@@ -60,6 +60,7 @@ REQUIRED_REFS = [
     "security-and-dependencies.md",
     "project-state-and-traceability.md",
     "execution-and-verification.md",
+    "execution-receipts.md",
     "bootstrap-and-evals.md",
     "risk-classifier-and-integrations.md",
     "validation-and-benchmarking.md",
