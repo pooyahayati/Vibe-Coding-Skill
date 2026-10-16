@@ -4,6 +4,12 @@ User-facing release summaries; [CHANGELOG.md](CHANGELOG.md) retains technical hi
 
 From `1.0.0`, publication requires no model evaluation/provider key. Recent releases include a verified portable ZIP and checksum; publication does not update local installations. The pre-1.0 entries below describe historical policies, not current release requirements.
 
+## 1.7.1 — Consistent task entry and less repeated preparation
+
+- Use the same inspected change and risk assessment to choose specialists during routing, planning and task preparation. Verified mechanical edits stay lightweight; missing inspection and changed behavior keep formal handling.
+- Check only the Head and required specialists at task start. Run periodic installed-skill maintenance at completed task boundaries, with bounded retries and visible failures instead of repeating unrelated checks on each task.
+- Keep valid assignment preparation despite unrelated inventory warnings. Required freshness, compatibility, resource changes, expiry and release security still enforce their existing controls.
+
 ## 1.7.0 — Focused specialists and uninterrupted skill updates
 
 - Keep inspected mechanical UI edits lightweight when RTL/responsive behavior is preserved. Changed or uncertain behavior and material risks still require formal specialist work.
