@@ -6,15 +6,15 @@ Canonical progress tracker. Reviewed: 2026-10-16, Asia/Tehran. All documented im
 
 | State | Position |
 |---|---|
-| Published runtime | Stable [1.7.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.7.0), release commit `e556f0a1b41b43c6001d03739905001249be574d`. |
-| Local installation | Active **1.7.0**, verified on 2026-10-16. All 81 installed files match the published ZIP byte-for-byte; offline installation check passed without failures or warnings. Previous installation retained as a backup outside skill discovery. |
+| Published runtime | Stable [1.7.1](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.7.1), release commit `74a57bc9397e41e919cc59d25b4dd6009676a9bd`. |
+| Local installation | Active **1.7.1**, verified on 2026-10-16. All 81 installed files match the published ZIP byte-for-byte; offline installation check and fresh installed Head preflight passed without failures or warnings. Previous installation retained as a backup outside skill discovery. |
 | Review baseline | Main `1204b41fced7cb144721bebc90a5ec03d84dad50`, runtime 1.7.0; inspected source and bounded reproductions of selection disagreement and repeated unrelated inventory checks. |
-| Overall progress | **R1-R32 complete; R33-R34 accepted locally.** The counts track packages, not quality or coverage. |
-| Current phase | Both packages passed scoped source and extracted-package acceptance on `codex/r33-r34`; merge pending. |
-| Next action | Prepare 1.7.1, pass required hosted checks, merge, publish and update the local Head. |
+| Overall progress | **R1-R34 complete.** The counts track packages, not quality or coverage. |
+| Current phase | R33-R34 accepted, merged in [PR #107](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/107), released and installed locally. |
+| Next action | No approved implementation remains. Allocate R35 only after a meaningful follow-up is approved. |
 | Next unallocated ID | **R35**. Continue the same sequence for later improvements. |
-| Delivery state | R33-R34 implementation, merge, release and local update are authorized. Runtime acceptance and new delivery remain pending; latest verified delivery is 1.7.0 below. |
-| Blockers / limits | No known planning blocker. Runtime acceptance is pending. Legacy or unverifiable assignment bindings retain their update guard; project speed gains remain unmeasured. |
+| Delivery state | Implementation, exact-commit hosted checks, stable publication and local activation completed; see verified 1.7.1 delivery below. |
+| Blockers / limits | No known delivery blocker. Legacy or unverifiable assignment bindings retain their update guard; project speed gains remain unmeasured. |
 
 ## Current cycle: R33-R34
 
@@ -22,7 +22,7 @@ Canonical progress tracker. Reviewed: 2026-10-16, Asia/Tehran. All documented im
 
 **R34, second / high priority:** Separate required task preparation from periodic checks of unrelated installed specialists. Bound retries of unrelated failures without weakening current-source checks before use, compatibility or active-assignment safeguards. [Scope and acceptance](docs/improvement-implementation-plan.md#r34).
 
-Implement sequentially: R33 first establishes consistent required-specialist selection; R34 then changes preparation scheduling around that selection. R34 has no separate feature dependency, but shares preparation code and follows R33 acceptance. Neither package authorizes a new workflow framework, broad instruction rewrite or testing-policy expansion.
+Implemented sequentially: R33 established consistent required-specialist selection before R34 changed preparation scheduling around it. R34 shared preparation code and followed R33 acceptance. Neither package introduced a new workflow framework, broad instruction rewrite or testing-policy expansion.
 
 ## Roadmap register
 
@@ -64,8 +64,8 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 | R30 | H3 | [Verified release recovery](docs/archive/improvement-roadmap-through-1.6.1.md#r30) | **Complete** | `1.6.1` / [PR #102](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/102) |
 | R31 | W1 (planning draft) | [Effect-based specialist participation](docs/improvement-implementation-plan.md#r31) | **Complete** | `1.7.0` / [PR #104](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/104); scoped selection, extracted route and full hosted checks passed. |
 | R32 | W2 (planning draft) | [Assignment-isolated skill updates](docs/improvement-implementation-plan.md#r32) | **Complete** | `1.7.0` / [PR #104](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/104); two-project continuation/migration, retained history, interruption protection, cleanup and extracted-package checks passed. |
-| R33 | None | [Consistent inspected specialist selection](docs/improvement-implementation-plan.md#r33) | **Accepted locally** | Existing specialist/routing suites and affected extracted-package route passed; merge pending. |
-| R34 | None | [Bounded periodic specialist inventory](docs/improvement-implementation-plan.md#r34) | **Accepted locally** | Bounded retry, required-selection failure, interrupted/legacy inventory and preparation reuse/invalidation checks passed; merge pending. |
+| R33 | None | [Consistent inspected specialist selection](docs/improvement-implementation-plan.md#r33) | **Complete** | `1.7.1` / [PR #107](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/107); specialist/routing agreement, affected extracted-package route and full hosted checks passed. |
+| R34 | None | [Bounded periodic specialist inventory](docs/improvement-implementation-plan.md#r34) | **Complete** | `1.7.1` / [PR #107](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/107); bounded retry, required-selection failure, interrupted/legacy inventory, preparation reuse/invalidation and full hosted checks passed. |
 
 ## Numbering policy
 
@@ -76,7 +76,7 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 
 ## Scope and execution rules
 
-- Current authorization covers sequential R33-R34 implementation, commit, push, merge, new-version publication and local Head installation. Preserve real assignments and unrelated specialist installations; their closure/update is not part of this request.
+- The authorized R33-R34 implementation, merge, publication and local Head installation are complete. Real assignments and unrelated specialist installations were preserved; new implementation needs its own authorization.
 - Work on one package at a time. Record its branch/PR, relevant checks, acceptance, blocker and next action at meaningful transitions.
 - Preserve Head authority, the sole UI/UX specialist, risk floors, required findings, scoped evidence freshness and current-source checks for new tasks.
 - Reuse existing preparation caching, test selection and valid evidence. Add only meaningful missing regressions; no test-count target, coverage quota, model evaluation or new framework.
@@ -95,7 +95,18 @@ Broad instruction slimming is not a separate stage: R33 may clarify only the tas
 | R33 | 98 existing specialist/routing tests passed, including the extended manager/router/planner agreement case for readable/missing source, changed effects and explicit selection. The affected extracted-package route passed, including the same manager-entry scenario and existing preparation reuse. Structure and portable mirror checks passed. |
 | R34 | 58 specialist/handoff tests passed. Extended fixtures cover consecutive prepares, bounded/explicit inventory retry, a failed specialist becoming required, preserved last-success time, interrupted/reload/legacy records and valid required preparation despite unrelated warnings. The affected extracted-package route and all 16 existing deterministic policy scenarios passed. |
 
-These are bounded mechanism checks, not model evaluation or a project-speed measurement. Integration, release and local activation evidence remain pending.
+These are bounded mechanism checks, not model evaluation or a project-speed measurement. Integration, release and local activation evidence are recorded below.
+
+## Verified delivery: 1.7.1
+
+All release evidence below belongs to `74a57bc9397e41e919cc59d25b4dd6009676a9bd`; subsequent tracker-only commits do not change the immutable release target.
+
+| Outcome | Evidence |
+|---|---|
+| Full hosted baseline | [Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38913789737), [four platform jobs](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38913789554), [repository validation](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38913789852), [Skill specification](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38913790531), [tool contracts](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38913789736) and [WordPress artifact](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38913789841) passed on the release commit. |
+| Publication | [Release workflow, attempt 2](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38914089657/attempts/2) passed readiness, native Trivy, extracted-package verification and publication. The first attempt stopped at publication after creating a draft; bounded recovery completed that draft without moving the tag or replacing assets. |
+| Consumer package | Latest stable `v1.7.1` resolves to the release commit. Downloaded ZIP/checksum verified; all 81 files match canonical release resources, and the official installer's staged resources match the published package. ZIP SHA-256: `44651ab34e86d7d81be53a6b0c3a7c36f855e6578b288015c76b423ca9892ae5`. |
+| Local activation | Managed Head update completed with backup/provenance and active-assignment protection. All 81 installed files match the downloaded ZIP; installed offline check and fresh Head preflight PASS, no failures or warnings. No unrelated specialist was updated and no real assignment was closed. |
 
 ## Retained local acceptance evidence: R31-R32
 
