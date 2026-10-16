@@ -33,6 +33,7 @@
       "stages": ["discover", "define", "plan", "design", "build", "verify", "review"],
       "primary_stages": ["design", "build", "verify", "review"],
       "guidance_only_concerns": ["ui", "ux"],
+      "context_only_concerns": ["rtl", "responsive"],
       "activation": {
         "concerns": ["ui", "ux", "accessibility", "responsive", "rtl", "design"],
         "extensions": [".css", ".scss", ".html", ".jsx", ".tsx", ".vue", ".svelte", ".dart", ".xaml"],

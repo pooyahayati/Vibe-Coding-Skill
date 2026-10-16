@@ -1,47 +1,53 @@
 # Closed improvement history through 1.4.0
 
-Historical snapshot preserved from source commit `95296ca44b18d58d533cad29864cb05a0d0aeada` during the 2026-10-07 documentation cleanup. This is closed history, not active work or current installation evidence. Use the [current roadmap](../../ROADMAP.md) and [implementation index](../improvement-implementation-plan.md) for present status and runtime guidance. Relative links have been relocated; recorded specifications, outcomes and delivery hashes are retained.
+Roadmap IDs were normalized on 2026-10-16 to the permanent R sequence. See the [canonical register](../../ROADMAP.md#roadmap-register) for legacy aliases. Recorded outcomes, evidence and delivery identities are unchanged; old heading anchors remain available. Finding IDs and runtime/schema identifiers retain their separate meaning.
+
+Historical snapshot preserved from source commit `95296ca44b18d58d533cad29864cb05a0d0aeada` during the 2026-10-07 documentation cleanup. This is closed history, not active work or current installation evidence. Use the [current roadmap](../../ROADMAP.md) and [implementation index](../improvement-implementation-plan.md) for present status and runtime guidance. Relative links and roadmap package IDs have been normalized; recorded specifications, outcomes and delivery hashes are retained.
 
 # Vibe Coding Skill Improvement Implementation Plan
 
-Status: The original cycle and feedback F1 are complete and delivered in `1.3.0`. The hardening scope contains `R1`-`R4`; current package/phase/merge and separate delivery status are maintained only in [ROADMAP.md](improvement-roadmap-through-1.4.0.md).
+Status: The original cycle and feedback R10 are complete and delivered in `1.3.0`. The hardening scope contains `R11`-`R14`; current package/phase/merge and separate delivery status are maintained only in [ROADMAP.md](improvement-roadmap-through-1.4.0.md).
 Hardening baseline: `1.3.0`, audited main `156676d502fae98c5c0b3a9bafdf5497698a062e`. Original-cycle baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`.
 Direction and scope: [Roadmap](improvement-roadmap-through-1.4.0.md).
 
-## Targeted hardening cycle R1-R4
+## Targeted hardening cycle R11-R14
+
+<a id="targeted-hardening-cycle-r1-r4"></a>
 
 The final audit justified five findings grouped into four reviewable corrections. Preserve the existing architecture, risk-adaptive light route and authorization boundaries. Full package specifications, acceptance criteria and current progress are canonical in the [active roadmap](improvement-roadmap-through-1.4.0.md#completed-audit-packages); this table records implementation scope and dependencies.
 
 | ID | Implementation scope | Acceptance boundary | Dependency |
 |---|---|---|---|
-| R1 | State/workflow defaults and retained specialist IDs; affected contract, plan, handoff/resume and completion callers. | Fresh structured tasks use receipts; supported legacy tasks remain compatible; required specialist commitments survive unless explicitly reconciled. [Criteria](improvement-roadmap-through-1.4.0.md#r1-retained-contract-and-required-completion-controls). | Existing contract/receipt mechanisms. First in priority order. |
-| R2 | Bounded platform-content discovery and visible inspection limitations in the context router. | Large plugin headers retain WordPress routing; unrelated PHP stays unclassified as WordPress; incomplete relevant scans are visible. [Criteria](improvement-roadmap-through-1.4.0.md#r2-bounded-discovery-without-silent-platform-loss). | None of the other hardening packages. |
-| R3 | Ownership overlap and drift scope semantics in the execution planner; shared normalization/containment in the existing behavior-contract helper. | Project root covers nested paths and overlaps nested writers; disjoint ownership and equivalent retained root forms remain valid. Preserve literal paths and retained fingerprints. [Criteria](improvement-roadmap-through-1.4.0.md#r3-consistent-project-root-ownership). | None of the other hardening packages. |
-| R4 | Active benchmark/agent-output guidance and its runtime mirror, where included. | Release rules match actual gates; portable commands resolve or are clearly optional maintainer routes. [Criteria](improvement-roadmap-through-1.4.0.md#r4-one-accurate-operational-validation-path). | None of the other hardening packages. |
+| <a id="r11"></a>R11 | State/workflow defaults and retained specialist IDs; affected contract, plan, handoff/resume and completion callers. | Fresh structured tasks use receipts; supported legacy tasks remain compatible; required specialist commitments survive unless explicitly reconciled. [Criteria](improvement-roadmap-through-1.4.0.md#r11-retained-contract-and-required-completion-controls). | Existing contract/receipt mechanisms. First in priority order. |
+| <a id="r12"></a>R12 | Bounded platform-content discovery and visible inspection limitations in the context router. | Large plugin headers retain WordPress routing; unrelated PHP stays unclassified as WordPress; incomplete relevant scans are visible. [Criteria](improvement-roadmap-through-1.4.0.md#r12-bounded-discovery-without-silent-platform-loss). | None of the other hardening packages. |
+| <a id="r13"></a>R13 | Ownership overlap and drift scope semantics in the execution planner; shared normalization/containment in the existing behavior-contract helper. | Project root covers nested paths and overlaps nested writers; disjoint ownership and equivalent retained root forms remain valid. Preserve literal paths and retained fingerprints. [Criteria](improvement-roadmap-through-1.4.0.md#r13-consistent-project-root-ownership). | None of the other hardening packages. |
+| <a id="r14"></a>R14 | Active benchmark/agent-output guidance and its runtime mirror, where included. | Release rules match actual gates; portable commands resolve or are clearly optional maintainer routes. [Criteria](improvement-roadmap-through-1.4.0.md#r14-one-accurate-operational-validation-path). | None of the other hardening packages. |
 
-Implement in priority order `R1` -> `R2` -> `R3` -> `R4`; do not treat this sequence as a technical prerequisite. Extend affected existing regressions with the confirmed failures and necessary positive controls. No new orchestration layer, specialist, model evaluation, provider credential, fixed test count or broad unrelated refactor is in scope. Existing required CI and relevant package consistency still apply at their normal gates. Completion, merge, release and installation remain distinct actions.
+Implement in priority order `R11` -> `R12` -> `R13` -> `R14`; do not treat this sequence as a technical prerequisite. Extend affected existing regressions with the confirmed failures and necessary positive controls. No new orchestration layer, specialist, model evaluation, provider credential, fixed test count or broad unrelated refactor is in scope. Existing required CI and relevant package consistency still apply at their normal gates. Completion, merge, release and installation remain distinct actions.
 
-The sections below retain the completed original cycle's design and evidence; they do not imply implementation of `R1`-`R4`.
+The sections below retain the completed original cycle's design and evidence; they do not imply implementation of `R11`-`R14`.
 
 ## Work packages
 
-| ID | Phase | Work | Main existing surfaces | Dependency | Acceptance |
+| ID | Area | Work | Main existing surfaces | Dependency | Acceptance |
 |---|---|---|---|---|---|
-| P0 | 0 | Define shared formats, evidence trust limits and migration. | `completion_gate.py`, `execution_plan.py`, `specialist_manager.py`, operating references. | None. | Versioned formats are minimal; legacy behavior and stricter new-task behavior are explicit; no unapproved breaking change. |
-| B1 | 1 | Define a short behavior contract and conditional persistence. | `references/operating-model.md`, `references/execution-and-verification.md`. | P0. | User action, observable result and relevant failure behavior are sufficient to choose a check. Reuse existing criteria; do not require a new document for every task. |
-| B2 | 1 | Carry scenario/acceptance IDs into plans and handoffs. | `scripts/execution_plan.py`, `scripts/project_state.py`; affected planning tests. | B1. | IDs and protected outcomes survive downstream use; a handoff explains what works and how to use/check it. Tiny tasks remain light. |
-| E1 | 2 | Add a small execution-receipt collector. | Implemented `scripts/evidence_capture.py`; existing local-workspace and artifact helpers. | P0, B1. | Actual exit result, time, tested inputs and applicable artifact digest are recorded; execution stays authorized and bounded. |
-| E2 | 2 | Resolve and validate receipts at completion. | `scripts/completion_gate.py`; existing completion/regression tests. | B2, E1. | Missing, failed, stale or mismatched required execution evidence cannot qualify. Declared/manual evidence is not relabeled as collected execution. |
-| S1 | 3 | Assess changed specialist instructions before delegation. | `scripts/specialist_manager.py`, `references/specialist-composition.md`, `references/specialist-authority.md`. | P0, E2. | Package validity and behavioral compatibility are separate states; changed instructions get a bounded Head assessment. Unchanged accepted revisions reuse it. |
-| S2 | 3 | Validate stage-specific specialist return and Head acceptance. | `scripts/specialist_handoff.py`, planner links, specialist manager and completion checks. | B2, E2, S1. | Changed surfaces, contract decisions and required findings are reconciled against the assignment before integration. A valid form alone is not acceptance. |
-| I1 | 4 | Run affected-route regressions and package checks. | Existing tests/validation fixtures, `sync_package.py`, `validate_skill.py`, `install_check.py`. | B2, E2, S2. | Relevant behavior passes; required runtime resources are included in the mirrored package and offline install check. |
-| D1 | 4 | Update concise user and maintainer guidance. | `SKILL.md`, README, relevant references; changelog/update notes at delivery preparation. | I1. | Documentation describes actual behavior and limits; author/footer, project-size tables and existing important links remain intact. |
+| <a id="r1"></a>R1 | Contracts | Define shared formats, evidence trust limits and migration. | `completion_gate.py`, `execution_plan.py`, `specialist_manager.py`, operating references. | None. | Versioned formats are minimal; legacy behavior and stricter new-task behavior are explicit; no unapproved breaking change. |
+| <a id="r2"></a>R2 | Behavior | Define a short behavior contract and conditional persistence. | `references/operating-model.md`, `references/execution-and-verification.md`. | R1. | User action, observable result and relevant failure behavior are sufficient to choose a check. Reuse existing criteria; do not require a new document for every task. |
+| <a id="r3"></a>R3 | Behavior | Carry scenario/acceptance IDs into plans and handoffs. | `scripts/execution_plan.py`, `scripts/project_state.py`; affected planning tests. | R2. | IDs and protected outcomes survive downstream use; a handoff explains what works and how to use/check it. Tiny tasks remain light. |
+| <a id="r4"></a>R4 | Evidence | Add a small execution-receipt collector. | Implemented `scripts/evidence_capture.py`; existing local-workspace and artifact helpers. | R1, R2. | Actual exit result, time, tested inputs and applicable artifact digest are recorded; execution stays authorized and bounded. |
+| <a id="r5"></a>R5 | Evidence | Resolve and validate receipts at completion. | `scripts/completion_gate.py`; existing completion/regression tests. | R3, R4. | Missing, failed, stale or mismatched required execution evidence cannot qualify. Declared/manual evidence is not relabeled as collected execution. |
+| <a id="r6"></a>R6 | Specialists | Assess changed specialist instructions before delegation. | `scripts/specialist_manager.py`, `references/specialist-composition.md`, `references/specialist-authority.md`. | R1, R5. | Package validity and behavioral compatibility are separate states; changed instructions get a bounded Head assessment. Unchanged accepted revisions reuse it. |
+| <a id="r7"></a>R7 | Specialists | Validate stage-specific specialist return and Head acceptance. | `scripts/specialist_handoff.py`, planner links, specialist manager and completion checks. | R3, R5, R6. | Changed surfaces, contract decisions and required findings are reconciled against the assignment before integration. A valid form alone is not acceptance. |
+| <a id="r8"></a>R8 | Integration | Run affected-route regressions and package checks. | Existing tests/validation fixtures, `sync_package.py`, `validate_skill.py`, `install_check.py`. | R3, R5, R7. | Relevant behavior passes; required runtime resources are included in the mirrored package and offline install check. |
+| <a id="r9"></a>R9 | Documentation | Update concise user and maintainer guidance. | `SKILL.md`, README, relevant references; changelog/update notes at delivery preparation. | R8. | Documentation describes actual behavior and limits; author/footer, project-size tables and existing important links remain intact. |
 
 The table identifies the implementation surfaces and acceptance boundaries. The shared behavior, receipt and specialist-handoff modules serve actual callers; documentation adds no parallel validator or new runtime framework.
 
-## P0: contracts and compatibility
+## R1: contracts and compatibility
 
-The design decisions below are settled in [Shared improvement contracts](../../references/shared-improvement-contracts.md). That reference is canonical for field names, identity/binding, origin classification, storage/trust limits and migration. P0 defined the version-1 record formats and completion version 3 without changing schema-2 behavior. E1/E2 now implement local receipt collection and schema-3 completion; S1 instruction compatibility and S2 scoped task-output acceptance are implemented.
+<a id="p0-contracts-and-compatibility"></a>
+
+The design decisions below are settled in [Shared improvement contracts](../../references/shared-improvement-contracts.md). That reference is canonical for field names, identity/binding, origin classification, storage/trust limits and migration. R1 defined the version-1 record formats and completion version 3 without changing schema-2 behavior. R4/R5 now implement local receipt collection and schema-3 completion; R6 instruction compatibility and R7 scoped task-output acceptance are implemented.
 
 The shared design and implemented callers cover three areas:
 
@@ -49,13 +55,15 @@ The shared design and implemented callers cover three areas:
 - **Receipt:** format version, evidence/scenario IDs, origin (`collected`, `reported` or `manual`), authorized command context, exit/result, timestamps, relevant source/input fingerprint and artifact SHA-256 when applicable. Record an unavailable check explicitly rather than manufacture success.
 - **Specialist return:** assignment/stage ID, observed upstream revision, assigned and changed surfaces, contract decisions, protected invariants, evidence references, required/optional findings and unresolved conflicts. Head acceptance is a separate decision.
 
-E2 implements completion version 3 for new structured-completion tasks, with retained task contracts and receipt resolution; tiny tasks can use an accepted manual obligation. In-flight version-2 tasks retain their supported legacy route and make no receipt-verification claim. Migration requires reconciliation and cannot manufacture collected evidence. The expected workflow comes from retained task context, preventing report-controlled downgrade. Review release compatibility separately; no version bump is implied by local implementation.
+R5 implements completion version 3 for new structured-completion tasks, with retained task contracts and receipt resolution; tiny tasks can use an accepted manual obligation. In-flight version-2 tasks retain their supported legacy route and make no receipt-verification claim. Migration requires reconciliation and cannot manufacture collected evidence. The expected workflow comes from retained task context, preventing report-controlled downgrade. Review release compatibility separately; no version bump is implied by local implementation.
 
 For significant/critical or scope-changing work, retain the accepted criteria before implementation using the existing acceptance-baseline mechanism. Detect meaningful criterion changes against that baseline. A checksum detects differences; it is not proof of user approval or a tamper-resistant boundary. Use host/writer controls when independent protection is required. Reopen only a material user-owned decision, once, with a concrete option.
 
-## Phase 1: behavior before broad implementation
+## Behavior: R2-R3
 
-B1's guidance is implemented in the [observable behavior contract](../../references/operating-model.md#observable-behavior-contract) and [criterion-to-check mapping](../../references/execution-and-verification.md#from-observable-criterion-to-a-check). B2 implements optional task-contract validation, plan workstream links, local state/handoff/resume preservation and explicit reported-outcome labeling; legacy schema-2 completion remains declared evidence while E2 supplies the stricter schema-3 route. `behavior_contract.py` is shared by the actual callers; it does not collect execution receipts or accept specialist work. Legacy/inline routes remain available. Independent baselines and Head/host controls are still needed for protected outcomes and authorized reconciliation.
+<a id="phase-1-behavior-before-broad-implementation"></a>
+
+R2's guidance is implemented in the [observable behavior contract](../../references/operating-model.md#observable-behavior-contract) and [criterion-to-check mapping](../../references/execution-and-verification.md#from-observable-criterion-to-a-check). R3 implements optional task-contract validation, plan workstream links, local state/handoff/resume preservation and explicit reported-outcome labeling; legacy schema-2 completion remains declared evidence while R5 supplies the stricter schema-3 route. `behavior_contract.py` is shared by the actual callers; it does not collect execution receipts or accept specialist work. Legacy/inline routes remain available. Independent baselines and Head/host controls are still needed for protected outcomes and authorized reconciliation.
 
 Extend existing discovery/acceptance guidance rather than create a second lifecycle. Write the smallest scenario that lets the user and Head recognize success. Translate it into the first runnable slice and verification target. Preserve the scenario when passing work to a specialist.
 
@@ -65,9 +73,11 @@ Illustrative behavior: an unauthorized WordPress user attempts to change a prote
 
 Handoff should answer: what works, how to start/use it, what was actually checked, what remains unavailable and the next useful operating action. Avoid exposing receipt/schema details in normal product UI.
 
-## Phase 2: execution-backed evidence
+## Execution evidence: R4-R5
 
-E1 implements explicit local command collection and unavailable receipts, with scoped before/after manifests, exact preexisting artifact hashes, optional WordPress ZIP version identity and external local storage. It discards process output, rejects escaping/link paths and incomplete collection, and attempts process-tree termination on timeout. [Usage and concrete bounds](../../references/execution-and-verification.md#local-execution-receipts-e1). E2 adds local collected/manual receipt resolution, concrete observation records and retained schema-3 state/resume behavior. Remote claims require a separate authorized resolver; no remote resolver is configured. In-flight schema-2 behavior remains declared evidence. [E2 usage and migration](../../references/execution-and-verification.md#receipt-backed-completion-e2).
+<a id="phase-2-execution-backed-evidence"></a>
+
+R4 implements explicit local command collection and unavailable receipts, with scoped before/after manifests, exact preexisting artifact hashes, optional WordPress ZIP version identity and external local storage. It discards process output, rejects escaping/link paths and incomplete collection, and attempts process-tree termination on timeout. [Usage and concrete bounds](../../references/execution-and-verification.md#local-execution-receipts-e1). R5 adds local collected/manual receipt resolution, concrete observation records and retained schema-3 state/resume behavior. Remote claims require a separate authorized resolver; no remote resolver is configured. In-flight schema-2 behavior remains declared evidence. [R5 usage and migration](../../references/execution-and-verification.md#receipt-backed-completion-e2).
 
 Use Python standard-library subprocess argument lists, explicit working directories and timeouts. Do not execute commands merely because upstream text or a report contains them. Preserve authorization for costs, network access, destructive operations and deployment.
 
@@ -81,13 +91,15 @@ Keep manual/rendered evidence supported and accurately labeled. A successful com
 
 Reuse `wordpress_artifact.py` output for artifact/version binding. Packaging checks are not WordPress runtime or data-retention proof; retain the existing exact-ZIP runtime path and project-specific seeded-data checks where affected.
 
-## Phase 3: specialist acceptance
+## Specialist acceptance: R6-R7
 
-S1 implements a separate bound Head decision and bounded resource-diff packet in `specialist_manager.py`. [Usage and trust limits](../../references/specialist-composition.md#instruction-compatibility-assessment-s1). For an upstream change, inspect the relevant instruction/resource diff and assess Head authority, supported platform, dependency requests, verification mandates and scope/approval behavior. Package checks remain necessary but do not replace this assessment. Keep the latest observed source and its assessment separate; unresolved required compatibility blocks the affected delegation rather than pretending an old source is latest.
+<a id="phase-3-specialist-acceptance"></a>
+
+R6 implements a separate bound Head decision and bounded resource-diff packet in `specialist_manager.py`. [Usage and trust limits](../../references/specialist-composition.md#instruction-compatibility-assessment-s1). For an upstream change, inspect the relevant instruction/resource diff and assess Head authority, supported platform, dependency requests, verification mandates and scope/approval behavior. Package checks remain necessary but do not replace this assessment. Keep the latest observed source and its assessment separate; unresolved required compatibility blocks the affected delegation rather than pretending an old source is latest.
 
 Cache the assessment by observed upstream revision and Head contract/adapter fingerprint; refresh it when those inputs change. Do not rerun a specialist-wide evaluation for unchanged accepted instructions. Normal task reasoning and scoped deterministic checks are sufficient where they establish the required property; no model benchmark or provider API key is introduced.
 
-S2 implements `specialist_handoff.py`, planner links, E2 completion checks and active-instruction update deferral. [Runtime usage/limits](../../references/specialist-composition.md#stage-return-and-head-acceptance-s2). For task output, compare the actual changed surfaces with the assignment and relevant shared producer/consumer contracts. Handle renamed paths and justified cross-boundary effects. A path comparison can detect unexpected edits; it cannot prove their semantic safety. Resolve needed scope changes through the Head's existing authority instead of treating all unexpected paths as inherently invalid.
+R7 implements `specialist_handoff.py`, planner links, R5 completion checks and active-instruction update deferral. [Runtime usage/limits](../../references/specialist-composition.md#stage-return-and-head-acceptance-s2). For task output, compare the actual changed surfaces with the assignment and relevant shared producer/consumer contracts. Handle renamed paths and justified cross-boundary effects. A path comparison can detect unexpected edits; it cannot prove their semantic safety. Resolve needed scope changes through the Head's existing authority instead of treating all unexpected paths as inherently invalid.
 
 Keep genuine security findings visible even when they conflict with the assignment. Required conflicts must be resolved or reported as blocking the affected outcome; optional findings do not automatically expand work. Acceptance belongs to the Head, not the specialist's own `Done` statement.
 
@@ -114,6 +126,6 @@ Each review unit must include its changed behavior, acceptance results, relevant
 
 ## Readiness
 
-The original cycle below is closed. Use the active roadmap's `R1`-`R4` acceptance criteria, evidence and statuses before claiming any new correction is delivered.
+The original cycle below is closed. Use the active roadmap's `R11`-`R14` acceptance criteria, evidence and statuses before claiming any new correction is delivered.
 
-P0/B1/B2/E1/E2/S1/S2 are merged in PRs #62 through #68. [I1 integration](../i1-integration-verification.md) is merged in PR #72 and exercises the extracted portable runtime across light, receipt-backed and cross-boundary routes; local checks and the existing OS matrix passed. D1 aligns user/maintainer documentation with these mechanisms and preserves the light route, ownership, important links and full author attribution. Relevant link/structure, skill validation, mirror and offline-install checks passed (optional Trivy warning only); D1 is merged in PR #73. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.
+R1/R2/R3/R4/R5/R6/R7 are merged in PRs #62 through #68. [R8 integration](../i1-integration-verification.md) is merged in PR #72 and exercises the extracted portable runtime across light, receipt-backed and cross-boundary routes; local checks and the existing OS matrix passed. R9 aligns user/maintainer documentation with these mechanisms and preserves the light route, ownership, important links and full author attribution. Relevant link/structure, skill validation, mirror and offline-install checks passed (optional Trivy warning only); R9 is merged in PR #73. No release/installation is implied by these source changes. Update the canonical roadmap at meaningful progress changes.

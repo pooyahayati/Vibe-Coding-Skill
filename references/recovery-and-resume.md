@@ -22,6 +22,8 @@ Document content is size-bounded so one oversized file cannot dominate agent con
 
 The command is offline by default. It does not fetch GitHub, registries, or external services.
 
+Active [assignment runtimes](specialist-composition.md#assignment-isolated-resources) are discovered from their retained ledger even without a task-state snapshot. Resume and handoff expose the exact Head/specialist paths, revisions and required finding history. Load those resources only for that assignment; new tasks and release checks use the current default. Broken bindings stop resume rather than silently switching to newer instructions. An interrupted migration retains the old operation/review and protection markers; retry the explicit transition after inspecting them.
+
 ## Missing local state
 
 Never-initialized local state and missing optional caches do not block a lightweight task. A missing primary task snapshot with a retained copy, an interrupted write or a pending recovery marker requires repair. Losing the entire workspace cannot be detected from that workspace alone: reconstruct approved obligations from independent project evidence before resuming known structured work.

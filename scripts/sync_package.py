@@ -29,6 +29,7 @@ RUNTIME_FILES = [
     Path("scripts/context_router.py"),
     Path("scripts/specialist_manager.py"),
     Path("scripts/specialist_handoff.py"),
+    Path("scripts/assignment_runtime.py"),
     Path("scripts/execution_plan.py"),
     Path("scripts/behavior_contract.py"),
     Path("scripts/evidence_capture.py"),

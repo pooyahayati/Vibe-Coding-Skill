@@ -4,6 +4,12 @@ User-facing release summaries; [CHANGELOG.md](CHANGELOG.md) retains technical hi
 
 From `1.0.0`, publication requires no model evaluation/provider key. Recent releases include a verified portable ZIP and checksum; publication does not update local installations. The pre-1.0 entries below describe historical policies, not current release requirements.
 
+## 1.7.0 — Focused specialists and uninterrupted skill updates
+
+- Keep inspected mechanical UI edits lightweight when RTL/responsive behavior is preserved. Changed or uncertain behavior and material risks still require formal specialist work.
+- Let new tasks use updated skill installations while verified open assignments continue with their retained Head and specialist resources. Legacy or damaged bindings keep the existing update guard.
+- Support explicit assignment migration and conservative cleanup without losing findings, acceptance history or current release controls.
+
 ## 1.6.1 — Reliable reassessment and release recovery
 
 - Reopen accepted specialist work after an in-scope correction without inventing a task-contract revision. Retain findings and require fresh evidence and Head acceptance.

@@ -27,6 +27,7 @@ RUNTIME_SCRIPTS = [
     "context_router.py",
     "specialist_manager.py",
     "specialist_handoff.py",
+    "assignment_runtime.py",
     "execution_plan.py",
     "behavior_contract.py",
     "evidence_capture.py",

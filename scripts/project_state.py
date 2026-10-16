@@ -315,9 +315,14 @@ def handoff_markdown(state: dict[str, Any]) -> str:
 
 
 def handoff(root: Path, write_local: bool, **task_options) -> dict[str, Any]:
+    import specialist_handoff
+    runtimes = specialist_handoff.runtime_context(root)
     state = capture(root, **task_options)
     markdown = handoff_markdown(state)
+    if runtimes:
+        markdown += "\n\n## Assignment resources for continuation\n\n" + "\n".join(json.dumps(row, ensure_ascii=False) for row in runtimes)
     result = {"state": state, "markdown": markdown}
+    result["specialist_runtimes"] = runtimes
     if write_local:
         path = local_workspace.state_path(root, "handoff.md", create=True)
         path.write_text(markdown, encoding="utf-8")

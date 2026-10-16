@@ -1,24 +1,28 @@
 # Implementation Archive through 1.6.0
 
-Archived on 2026-10-16 after T1-T5 shipped in 1.6.0. The status, approval, next-action and concern statements below are historical snapshots. The partial-release concern is superseded by current F3/H3. Use the [current roadmap](../../ROADMAP.md) and [implementation plan](../improvement-implementation-plan.md) for active work.
+Roadmap IDs were normalized on 2026-10-16 to the permanent R sequence. See the [canonical register](../../ROADMAP.md#roadmap-register) for legacy aliases. Recorded outcomes, evidence and delivery identities are unchanged; old heading anchors remain available. Finding IDs and runtime/schema identifiers retain their separate meaning.
 
-Progress and the next action are maintained only in [ROADMAP.md](../../ROADMAP.md). This document prepares the five approved T1-T5 corrections; it does not implement them or authorize publication/installation. Follow the roadmap order and retain one owner for shared policy/state changes.
+Archived on 2026-10-16 after R23-R27 shipped in 1.6.0. The status, approval, next-action and concern statements below are historical snapshots. The partial-release concern is superseded by current F3/R30. Use the [current roadmap](../../ROADMAP.md) and [implementation plan](../improvement-implementation-plan.md) for active work.
+
+Progress and the next action are maintained only in [ROADMAP.md](../../ROADMAP.md). This document prepares the five approved R23-R27 corrections; it does not implement them or authorize publication/installation. Follow the roadmap order and retain one owner for shared policy/state changes.
 
 ## Confirmed audit findings
 
-Baseline: `e75a8cae9f27c3e5f6305fb5e14523ed9fe06401`, runtime `1.5.0`, reviewed 2026-10-15. Confidence is high in the behaviors below; their share of elapsed time in individual user projects has not been measured. The earlier F1-F7 findings belong to the closed [A1-A5 archive](improvement-plan-through-1.5.0.md#confirmed-audit-findings).
+Baseline: `e75a8cae9f27c3e5f6305fb5e14523ed9fe06401`, runtime `1.5.0`, reviewed 2026-10-15. Confidence is high in the behaviors below; their share of elapsed time in individual user projects has not been measured. The earlier F1-F7 findings belong to the closed [R18-R22 archive](improvement-plan-through-1.5.0.md#confirmed-audit-findings).
 
 | Package | Evidence and realistic failure | Basis |
 |---|---|---|
-| T1 | `risk_classifier.classify` returns Tier 2 for an authentication-documentation typo and Tier 3 for a production-instructions typo despite explicit tiny/local/no-data/local-boundary facts. The router preserves the heavy route. | In-memory reproduction; `scripts/risk_classifier.py` combines text/path and fact tiers with `max`; `SKILL.md` treats it as a floor. |
-| T2 | A label typo in `.tsx`, spacing in `.css`, and a comment typo under `src/auth/` select required specialists with formal handoff. Task preparation and assignment also independently resolve upstream versions. | Pure `select_specialists` reproductions; tracing `specialist_manager.py` and `specialist_handoff.assign`. Network latency was not benchmarked. |
-| T3 | Tier 2/3 requires two evidence items and two semantic families. Two passing integration/contract items can be blocked solely by the family quota; schema-3 resolution delegates to the same gate. | In-memory declared-gate reproduction and schema-3 call tracing in `receipt_validation.py`. This is not a requirement for two automated tests: review can be a family. |
-| T4 | `evidence_capture.capture` sends stdout/stderr to `DEVNULL` and retains a generic nonzero-exit reason. Checks without their own report lose actionable failure output. | Code tracing and existing fixture expectations; no claim about a particular user's failed test. |
-| T5 | `validate-skill.yml` and `cross-platform-smoke.yml` run on unrestricted push and pull-request events. README-only PR #98 ran each twice: two validation jobs plus eight platform jobs. | Workflow definitions and [push](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37600141507)/[PR](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37600148384) validation and [push](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37600141467)/[PR](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37600148420) platform runs for head `16497316b454a00a195d87915e264228a3e0c989`. This overhead belongs to the Skill repository. |
+| <a id="r23"></a>R23 | `risk_classifier.classify` returns Tier 2 for an authentication-documentation typo and Tier 3 for a production-instructions typo despite explicit tiny/local/no-data/local-boundary facts. The router preserves the heavy route. | In-memory reproduction; `scripts/risk_classifier.py` combines text/path and fact tiers with `max`; `SKILL.md` treats it as a floor. |
+| <a id="r24"></a>R24 | A label typo in `.tsx`, spacing in `.css`, and a comment typo under `src/auth/` select required specialists with formal handoff. Task preparation and assignment also independently resolve upstream versions. | Pure `select_specialists` reproductions; tracing `specialist_manager.py` and `specialist_handoff.assign`. Network latency was not benchmarked. |
+| <a id="r25"></a>R25 | Tier 2/3 requires two evidence items and two semantic families. Two passing integration/contract items can be blocked solely by the family quota; schema-3 resolution delegates to the same gate. | In-memory declared-gate reproduction and schema-3 call tracing in `receipt_validation.py`. This is not a requirement for two automated tests: review can be a family. |
+| <a id="r26"></a>R26 | `evidence_capture.capture` sends stdout/stderr to `DEVNULL` and retains a generic nonzero-exit reason. Checks without their own report lose actionable failure output. | Code tracing and existing fixture expectations; no claim about a particular user's failed test. |
+| <a id="r27"></a>R27 | `validate-skill.yml` and `cross-platform-smoke.yml` run on unrestricted push and pull-request events. README-only PR #98 ran each twice: two validation jobs plus eight platform jobs. | Workflow definitions and [push](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37600141507)/[PR](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37600148384) validation and [push](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37600141467)/[PR](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37600148420) platform runs for head `16497316b454a00a195d87915e264228a3e0c989`. This overhead belongs to the Skill repository. |
 
-Additional instruction ambiguity supports T3: `packs/browser-js.md` lists configured build/lint/typecheck as required without a stage distinction, while the core asks for the cheapest relevant check. This establishes conflicting pressure, not proof that every agent executes all checks. Do not infer all project delays from these findings.
+Additional instruction ambiguity supports R25: `packs/browser-js.md` lists configured build/lint/typecheck as required without a stage distinction, while the core asks for the cheapest relevant check. This establishes conflicting pressure, not proof that every agent executes all checks. Do not infer all project delays from these findings.
 
-## T1: Risk grounded in actual change
+## R23: Risk grounded in actual change
+
+<a id="t1-risk-grounded-in-actual-change"></a>
 
 **Priority:** Very high. **Complexity:** Medium. **Dependency:** None.
 
@@ -34,9 +38,11 @@ Additional instruction ambiguity supports T3: `packs/browser-js.md` lists config
 
 **Verification:** Extend the existing classifier/router/plan-state cases with paired harmless and real-risk scenarios. Exercise the affected portable route if runtime behavior changes. Do not run live services or broad suites merely to test classification.
 
-## T2: Lightweight specialist participation
+## R24: Lightweight specialist participation
 
-**Priority:** High. **Complexity:** Medium. **Dependency:** Accepted T1 risk/scope semantics.
+<a id="t2-lightweight-specialist-participation"></a>
+
+**Priority:** High. **Complexity:** Medium. **Dependency:** Accepted R23 risk/scope semantics.
 
 **Correction:** Separate use of accepted specialist guidance from a new formal domain assignment. Mechanical edits within settled decisions reuse the applicable guidance; new domain decisions or material boundary changes retain scoped assignment and Head acceptance. Reuse a valid freshness/compatibility result within the same assignment instead of repeating identical upstream checks.
 
@@ -51,9 +57,11 @@ Additional instruction ambiguity supports T3: `packs/browser-js.md` lists config
 
 **Verification:** Reuse selection, compatibility, resource-change and handoff tests. Add a same-assignment duplicate-resolution check with a stubbed upstream and paired small/material domain cases. No real downloads, host installs or model evaluation are needed for these regressions.
 
-## T3: Outcome- and stage-based verification
+## R25: Outcome- and stage-based verification
 
-**Priority:** High. **Complexity:** Medium. **Dependency:** T1/T2 scope and participation decisions.
+<a id="t3-outcome--and-stage-based-verification"></a>
+
+**Priority:** High. **Complexity:** Medium. **Dependency:** R23/R24 scope and participation decisions.
 
 **Correction:** Use one canonical policy to derive checks from acceptance, material failure modes, affected boundaries and delivery stage. Remove fixed evidence-count/family requirements where they manufacture unrelated work; require independent corroboration when an identified risk or explicit project policy warrants it. Packs/specialists contribute relevant risks, not additive default suites. Separate everyday selection guidance from conditional receipt/release details.
 
@@ -76,9 +84,11 @@ Additional instruction ambiguity supports T3: `packs/browser-js.md` lists config
 
 **Verification:** Adjust current gate/receipt tests to assert sufficient outcome coverage and rejection of missing real obligations, rather than quotas. Preserve existing stale-input, failed-check, handoff/resume and manual-route cases. Test policy decisions/observable behavior, not exact prose.
 
-## T4: Bounded execution diagnostics
+## R26: Bounded execution diagnostics
 
-**Priority:** Medium. **Complexity:** Medium. **Dependency:** T3's evidence boundary; prefer the existing receipt format unless a documented compatible change is necessary.
+<a id="t4-bounded-execution-diagnostics"></a>
+
+**Priority:** Medium. **Complexity:** Medium. **Dependency:** R25's evidence boundary; prefer the existing receipt format unless a documented compatible change is necessary.
 
 **Correction:** Make bounded local command diagnostics available from the original execution. Keep output outside product source, with explicit truncation/retention and sensitive-output handling. Do not collect environment dumps, upload logs automatically or treat printed success as execution evidence.
 
@@ -92,9 +102,11 @@ Additional instruction ambiguity supports T3: `packs/browser-js.md` lists config
 
 **Verification:** Extend the existing collector fixtures with ordinary failure, bounded verbose output, separate streams and timeout cases; reuse process-tree and receipt-integrity coverage. No new logging service or unrelated test suite.
 
-## T5: Change-aware CI and release checks
+## R27: Change-aware CI and release checks
 
-**Priority:** Medium. **Complexity:** Medium. **Dependency:** Follow T4 in delivery order; technically independent of its runtime implementation.
+<a id="t5-change-aware-ci-and-release-checks"></a>
+
+**Priority:** Medium. **Complexity:** Medium. **Dependency:** Follow R26 in delivery order; technically independent of its runtime implementation.
 
 **Correction:** Distinguish overview-only documentation, executable/routed skill instructions, runtime/packaging and release changes. Remove redundant branch/PR runs, select affected checks and retain a complete exact-revision publication route. A `.md` extension alone does not establish a harmless change: this repository's Markdown can be runtime instructions.
 
@@ -111,7 +123,7 @@ Additional instruction ambiguity supports T3: `packs/browser-js.md` lists config
 
 ## Implementation and validation boundaries
 
-Start only T1 when implementation is requested. Reconfirm its smallest reproduction, implement, run affected checks and review before moving on in the approved sequence. Reuse existing tests and record only meaningful new failure scenarios. Broader required integration/publication checks belong at their existing gates, not after every edit. This cycle has no model evaluation, provider-key requirement, new scanner or test framework.
+Start only R23 when implementation is requested. Reconfirm its smallest reproduction, implement, run affected checks and review before moving on in the approved sequence. Reuse existing tests and record only meaningful new failure scenarios. Broader required integration/publication checks belong at their existing gates, not after every edit. This cycle has no model evaluation, provider-key requirement, new scanner or test framework.
 
 When a runtime resource changes, update canonical source and the portable mirror together and check the affected extracted entrypoint. Preserve release/local installation separation. Record measured command duplication or relevant elapsed time only when actually observed; do not promise a percentage improvement from source inspection.
 
@@ -130,4 +142,4 @@ The current instruction system already supports scoped evidence reuse, recovery 
 
 ## Delivered specifications
 
-Closed [A1-A5 specifications and evidence](improvement-plan-through-1.5.0.md), [earlier implementation history](improvement-plan-through-1.4.0.md) and [delivery records](improvement-roadmap-through-1.5.0.md) remain available. Their old next-action/installation statements are historical snapshots. The [current roadmap](../../ROADMAP.md) is the only progress tracker.
+Closed [R18-R22 specifications and evidence](improvement-plan-through-1.5.0.md), [earlier implementation history](improvement-plan-through-1.4.0.md) and [delivery records](improvement-roadmap-through-1.5.0.md) remain available. Their old next-action/installation statements are historical snapshots. The [current roadmap](../../ROADMAP.md) is the only progress tracker.

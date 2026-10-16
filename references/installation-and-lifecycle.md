@@ -14,6 +14,8 @@ Graphify, Trivy, and GitHub CLI are optional and only required for their respect
 
 For managed non-Git installations, use `scripts/specialist_manager.py prepare --task "<task>" --project-root <project> --apply --json` before new work. It verifies the current Head and required specialists, preserves backups/local edits, and records provenance outside product source. Read `references/specialist-composition.md`; Head changes require reload before delegation. Existing Git lifecycle commands remain available for explicit checkout maintenance and rollback, but an older checkout is not proof of upstream currency.
 
+An unrelated open assignment need not prevent a default update when its [retained resource binding](specialist-composition.md#assignment-isolated-resources) is verified. Legacy, damaged or unsupported bindings retain the update guard. Continue through the reported assignment resource paths, or migrate explicitly; never close real work merely to install a new default. Retained copies are outside discovery and are not alternate default installations.
+
 Run:
 
 ```bash

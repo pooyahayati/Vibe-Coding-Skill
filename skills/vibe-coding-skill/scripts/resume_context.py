@@ -137,6 +137,12 @@ def build_context(root: Path, max_bytes_per_doc: int = 16000) -> dict[str, Any]:
     if graph.get("stale"):
         warnings.append("local project graph is stale; refresh it before relying on graph evidence")
 
+    import specialist_handoff
+    try:
+        runtimes = specialist_handoff.runtime_context(root)
+    except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError) as exc:
+        raise RuntimeError("assignment continuation needs repair: " + str(exc)) from exc
+
     present_manifests = [name for name in MANIFESTS if (root / name).exists()]
 
     return {
@@ -162,6 +168,7 @@ def build_context(root: Path, max_bytes_per_doc: int = 16000) -> dict[str, Any]:
             "workspace": str(local_workspace.project_workspace(root, create=False)),
             "project_state": project_state,
             "project": project_meta,
+            "specialist_runtimes": runtimes,
         },
         "manifests": present_manifests,
         "documents": docs,
@@ -197,6 +204,8 @@ def render_markdown(context: dict[str, Any]) -> str:
 
     saved_state = context.get("local_state", {}).get("project_state") or {}
     lines += behavior_contract.handoff_lines(saved_state)
+    for runtime in context.get("local_state", {}).get("specialist_runtimes", []):
+        lines += ["Assignment runtime: " + json.dumps(runtime, ensure_ascii=False)]
 
     lines += ["## Recent commits", ""]
     lines += [f"- {item}" for item in git_state.get("recent_commits", [])] or ["- None"]

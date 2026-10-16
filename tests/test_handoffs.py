@@ -3,6 +3,7 @@ import copy
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -52,6 +53,7 @@ class HandoffTests(unittest.TestCase):
                       "reviewed_paths": packet["required_review_paths"], "conflicts": [],
                       "checks": [{"area": a, "status": "compatible", "rationale": "The contained fixture uses assigned Head controls without additional requests.", "resource_paths": ["SKILL.md", "vibe-head-contract.md"]} for a in sorted(manager.COMPATIBILITY_AREAS)]}
         self.assertEqual(manager.compatibility(self.entry, self.skills, self.state, installed, assessment)["status"], "accepted")
+        self.assessment = assessment
         original = manager.ensure
         self.real_ensure = original
         def ensure(entry, *args):
@@ -81,6 +83,171 @@ class HandoffTests(unittest.TestCase):
 
     def resolve_fixture(self, entry):
         return dict(self.source, repository=entry["repository"], skill_path=entry["skill_path"])
+
+    def install_isolated_head(self, changed=False):
+        head = manager.registry()["head"]
+        paths = [ROOT / name for name in ("SKILL.md", "VERSION", "LICENSE")]
+        for name in ("scripts", "references", "config", "assets/templates", "packs", "agents", "evals"):
+            paths.extend(p for p in (ROOT / name).rglob("*") if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc")
+        content = {p.relative_to(ROOT).as_posix(): p.read_bytes() for p in paths if p.is_file()}
+        if changed:
+            content["SKILL.md"] += b"\nNew default fixture instructions.\n"
+        with patch.object(manager, "resolve_latest", side_effect=self.resolve_fixture), patch.object(manager, "source_package", return_value=content):
+            result = self.real_ensure(head, self.skills, self.state, True)
+        self.assertEqual(result["status"], "current", result)
+        return self.skills / head["skill_name"]
+
+    def update_isolated_defaults(self):
+        self.source["commit"] = "b" * 40
+        self.source["ref"] = "v2"
+        head = self.install_isolated_head(changed=True)
+        self.files["SKILL.md"] += b"\nNew specialist fixture instructions.\n"
+        installed = self.real_ensure(self.entry, self.skills, self.state, True)
+        self.assertEqual(installed["status"], "current", installed)
+        packet = manager.compatibility_packet(self.entry, self.skills, self.state, installed)
+        assessment = dict(copy.deepcopy(self.assessment), **{k: packet[k] for k in ("binding_sha256", "upstream_revision", "head_contract_sha256")},
+                          reviewed_paths=packet["required_review_paths"])
+        self.assertEqual(manager.compatibility(self.entry, self.skills, self.state, installed, assessment)["status"], "accepted")
+        return head
+
+    def test_isolated_runtime_two_projects_use_actual_old_and_new_resources(self):
+        import resume_context
+        import assignment_runtime as runtime
+        self.install_isolated_head()
+        start = self.start()
+        self.assertIsNotNone(start["runtime_binding"], start)
+        returned = self.output(start)
+        head = self.update_isolated_defaults()
+        second = self.base / "second-product"
+        shutil.copytree(self.root, second)
+        with patch.object(manager, "ROOT", head), patch.object(manager, "REGISTRY", head / "config/specialists.json"):
+            started = handoff.assign(second, self.contract, self.spec, self.skills, self.state)
+            self.assertIsNotNone(started["runtime_binding"], started)
+            self.assertNotEqual(start["runtime_binding"], started["runtime_binding"])
+            old = resume_context.build_context(self.root)["local_state"]["specialist_runtimes"][0]
+            new = resume_context.build_context(second)["local_state"]["specialist_runtimes"][0]
+            self.assertEqual(old["head_source"]["commit"], "a" * 40)
+            self.assertEqual(new["head_source"]["commit"], "b" * 40)
+            self.assertNotIn("New default fixture", Path(old["head_skill"]).read_text(encoding="utf-8"))
+            self.assertIn("New default fixture", Path(new["head_skill"]).read_text(encoding="utf-8"))
+            self.assertFalse(Path(old["head_root"]).is_relative_to(self.skills))
+            # This review runs in a fresh interpreter imported from A's old Head.
+            inspected = self.inspect(returned)
+            self.assertEqual(inspected["gate"], "UNVERIFIED", inspected)
+            self.assertEqual(inspected["runtime"]["head_source"]["commit"], "a" * 40)
+            self.assertTrue(self.inspect(returned, self.decision(returned, inspected))["accepted"])
+            self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "PASS")
+            # Historical lookup cannot bypass a changed current delivery control.
+            with patch.object(handoff, "control_fingerprint", return_value="changed-current-controls"):
+                self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "BLOCK")
+            with self.assertRaisesRegex(ValueError, "unsupported"):
+                _, operation = handoff.load_operation(self.root, self.contract, "ui-build")
+                runtime.invoke(operation, "release")
+        self.assertEqual(len(list(self.skills.glob("*/SKILL.md"))), 2)
+        retained = runtime.prune(self.skills, self.state, apply=True)
+        self.assertEqual(retained["removed"], [])
+        self.assertEqual(len(retained["retained"]), 2)  # Includes closed acceptance history.
+
+    def test_isolated_runtime_migration_preserves_findings_and_invalidates_scoped_acceptance(self):
+        import assignment_runtime as runtime
+        self.install_isolated_head()
+        start = self.start()
+        returned = self.output(start)
+        finding = {"id": "saved", "required": True, "description": "Saved setting must match input", "status": "open"}
+        returned["findings"] = [finding]
+        self.assertEqual(self.inspect(returned)["gate"], "BLOCK")
+        resumed = handoff.resume_assignment(self.root, self.contract, "ui-build")
+        self.assertEqual(resumed["required_findings"], [{"id": "saved", "description": finding["description"]}])
+        base, old = handoff.load_operation(self.root, self.contract, "ui-build")
+        head = self.update_isolated_defaults()
+        with patch.object(manager, "ROOT", head), patch.object(manager, "REGISTRY", head / "config/specialists.json"):
+            write = manager.write_record
+            def interrupted(path, value):
+                if path == base / "operation.json":
+                    raise OSError("interrupted runtime migration")
+                return write(path, value)
+            with patch.object(manager, "write_record", side_effect=interrupted), self.assertRaises(OSError):
+                handoff.reassess(self.root, self.contract, "ui-build", "Adopt reviewed current controls", migrate=True)
+            self.assertIsNotNone(runtime.update_blocker(self.entry, self.skills, self.state))
+            with self.assertRaisesRegex(ValueError, "incomplete runtime transition"):
+                handoff.resume_assignment(self.root, self.contract, "ui-build")
+            migrated = handoff.reassess(self.root, self.contract, "ui-build", "Adopt the new default after reviewing changed controls", migrate=True)
+            self.assertEqual(migrated["action"], "migrated")
+            self.assertFalse(migrated["accepted"])
+            _, current = handoff.load_operation(self.root, self.contract, "ui-build")
+            self.assertEqual(current["assignment"], old["assignment"])
+            self.assertEqual(current["baseline"], old["baseline"])
+            self.assertNotEqual(current["runtime_binding"], old["runtime_binding"])
+            stale = dict(returned, upstream_revision=migrated["upstream_revision"], head_contract_sha256=migrated["head_contract_sha256"])
+            self.assertEqual(self.inspect(stale)["gate"], "BLOCK")
+            fresh = self.output(migrated)
+            with self.assertRaisesRegex(ValueError, "required finding"):
+                self.inspect(fresh)
+            fresh["findings"] = [dict(finding, status="resolved", resolution_evidence_ids=fresh["evidence_ids"])]
+            checked = self.inspect(fresh)
+            self.assertEqual(checked["gate"], "UNVERIFIED", checked)
+            self.assertTrue(self.inspect(fresh, self.decision(fresh, checked))["accepted"])
+        archives = [manager.read_local_json(p) for p in (base / "revisions").glob("*.json")]
+        self.assertTrue(any(a["operation"] == old for a in archives))
+        self.assertIn(old["runtime_binding"]["bundle"], runtime.prune(self.skills, self.state, apply=True)["retained"])
+
+    def test_isolated_runtime_damage_and_interrupted_binding_keep_update_protection(self):
+        import assignment_runtime as runtime
+        import resume_context
+        self.install_isolated_head()
+        base = handoff.directory(self.root, self.contract["task_id"], "ui-build")
+        write = manager.write_record
+        def interrupted(path, value):
+            if path == base / "operation.json":
+                raise OSError("interrupted operation publication")
+            return write(path, value)
+        with patch.object(manager, "write_record", side_effect=interrupted), self.assertRaises(OSError):
+            self.start()
+        self.source["commit"] = "b" * 40
+        self.assertEqual(self.real_ensure(self.entry, self.skills, self.state, True)["status"], "update-deferred-active-assignment")
+        self.source["commit"] = "a" * 40
+        self.start()  # Retry can finish the same unpublished assignment safely.
+        _, operation = handoff.load_operation(self.root, self.contract, "ui-build")
+        bundle, _ = runtime.resolve(operation)
+        target = bundle / "specialist/SKILL.md"
+        original = target.read_bytes()
+        self.source["commit"] = "b" * 40
+        for missing in (False, True):
+            with self.subTest(missing=missing):
+                if missing:
+                    target.unlink()
+                else:
+                    target.write_bytes(original + b"changed")
+                self.assertEqual(self.real_ensure(self.entry, self.skills, self.state, True)["status"], "update-deferred-active-assignment")
+                with self.assertRaisesRegex(RuntimeError, "continuation needs repair"):
+                    resume_context.build_context(self.root)
+                target.write_bytes(original)
+        with patch.object(runtime, "PROTOCOL", 2):
+            self.assertIsNotNone(runtime.update_blocker(self.entry, self.skills, self.state))
+        # A broken retained compatibility decision is not a usable historical source.
+        manifest = bundle / "manifest.json"
+        original_manifest = manifest.read_bytes()
+        value = json.loads(original_manifest)
+        value["compatibility"]["assessment"]["decision"] = "blocked"
+        manager.write_record(manifest, value)
+        self.assertIsNotNone(runtime.update_blocker(self.entry, self.skills, self.state))
+        manifest.write_bytes(original_manifest)
+        cached = bundle / "head/scripts/__pycache__/specialist_manager.pyc"
+        cached.parent.mkdir()
+        cached.write_bytes(b"untracked executable cache")
+        with self.assertRaisesRegex(ValueError, "cached/executable"):
+            handoff.resume_assignment(self.root, self.contract, "ui-build")
+        cached.unlink()
+        cached.parent.rmdir()
+        orphan_manifest = json.loads(original_manifest)
+        orphan_manifest["head"]["source"]["ref"] = "interrupted-unpublished-candidate"
+        orphan = bundle.parent / manager.canonical_digest(orphan_manifest)
+        shutil.copytree(bundle, orphan, ignore=shutil.ignore_patterns("owners"))
+        manager.write_record(orphan / "manifest.json", orphan_manifest)
+        self.assertEqual(runtime.prune(self.skills, self.state)["eligible"], [orphan.name])
+        self.assertTrue(orphan.exists())
+        self.assertEqual(runtime.prune(self.skills, self.state, apply=True)["removed"], [orphan.name])
+        self.assertTrue(bundle.exists())
 
     def test_preparation_reuses_only_the_same_assignment_without_duplicate_upstream_checks(self):
         self.install_head_fixture()

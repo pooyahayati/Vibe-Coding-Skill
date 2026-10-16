@@ -1,89 +1,96 @@
 # Improvement Implementation and Acceptance Index
 
-Progress and the next action are maintained only in [ROADMAP.md](../ROADMAP.md). This document defines H1-H3 scope and acceptance in priority order. Current implementation and delivery evidence belong in the roadmap.
+Package numbers belong to the permanent [repository roadmap register](../ROADMAP.md#roadmap-register); they do not restart with a new release or cycle.
 
-## Confirmed audit findings
+[ROADMAP.md](../ROADMAP.md) is the only current progress tracker. This document defines the approved R31-R32 scope and acceptance in priority order. Runtime behavior belongs to the canonical scripts and operating references; implementation evidence belongs in the roadmap.
 
-Baseline: main `80defe5d8061ea85df7a6c523f7120dc85699807`, runtime `1.6.0`, audited 2026-10-16. F1-F3 below refer to this audit only; findings in earlier archives retain their historical meaning. Confidence is high in all three findings. No new model evaluation or performance benchmark was run.
+## Confirmed workflow limitations
 
-| Finding / package | Severity | Confirmed behavior and evidence |
-|---|---|---|
-| F1 / H1 | High | An accepted `current-delivery` specialist operation blocks completion after an input changes. A fresh passing execution cannot be accepted because the closed return changes; reopening requires a different task contract. Reproduced with the existing temporary handoff fixture. [Closed-return check](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/80defe5d8061ea85df7a6c523f7120dc85699807/scripts/specialist_handoff.py#L418-L446); [reconciliation restriction](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/80defe5d8061ea85df7a6c523f7120dc85699807/scripts/specialist_handoff.py#L457-L472). |
-| F2 / H2 | Medium | The selector misses literal `load("module")` dependencies in `test_review_regressions.py` (14 tests in three classes). Separate changes to its six runtime modules select none of those classes in either normal or platform selection. [Dependency extraction](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/80defe5d8061ea85df7a6c523f7120dc85699807/scripts/ci_scope.py#L26-L67); [dynamic loader](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/80defe5d8061ea85df7a6c523f7120dc85699807/tests/test_review_regressions.py#L14-L40). Full release validation still includes them. |
-| F3 / H3 | Medium | The release workflow exits successfully as soon as `gh release view` succeeds, without checking draft state, target identity or required assets. The exact shell branch returned success for simulated existing-draft, missing-ZIP and wrong-target states. [Existing-release branch](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/80defe5d8061ea85df7a6c523f7120dc85699807/.github/workflows/release.yml#L82-L108). The real 1.6.0 release was independently verified complete. |
+Baseline: main `8a7d51d978f651244842e6a743677718b6f1b14b`, installed/runtime version `1.6.1`, reviewed 2026-10-16. Both behaviors below are confirmed. They are workflow limitations, not evidence that the current safeguards should be removed. Speed improvements are expected benefits, not measured results.
 
-## H1: Same-contract specialist reassessment
+| Package | Evidence and practical effect |
+|---|---|
+| <a id="r31"></a>R31 | With otherwise identical complete low-risk facts and inspected mechanical-change evidence, `ui` can select guidance-only while `rtl` or `responsive` selects a formal assignment. The UI guidance allowlist contains only `ui`/`ux`; the participation condition rejects other concerns. A contextual domain label can therefore add a formal handoff to a settled mechanical edit. [Selection condition](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/8a7d51d978f651244842e6a743677718b6f1b14b/scripts/specialist_manager.py#L144-L176); [registry](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/8a7d51d978f651244842e6a743677718b6f1b14b/config/specialists.json#L25-L42). |
+| <a id="r32"></a>R32 | Assignment markers cover the Head and assigned specialist. A changed installation is deferred when any corresponding marker exists, including an assignment in another project. This blocked the previously requested local update while Together assignments remained open. An unchanged current installation returns before this guard; ordinary checks are not always blocked. [Shared markers](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/8a7d51d978f651244842e6a743677718b6f1b14b/scripts/specialist_handoff.py#L125-L134); [replacement guard](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/8a7d51d978f651244842e6a743677718b6f1b14b/scripts/specialist_manager.py#L463-L473). |
 
-**Priority:** High. **Complexity:** Medium. **Dependency:** None; first implementation package.
+Existing mechanisms to retain: assignment-bound preparation reuse, accepted instruction compatibility, same-contract reassessment, stage-aware scoped receipts and proportionate test selection. R31-R32 must extend these mechanisms rather than recreate them.
 
-**Why it matters:** An ordinary in-scope correction after specialist acceptance can strand structured completion. Changing the accepted task contract just to reopen the specialist can invalidate unrelated receipts and create unnecessary work.
+## R31: Effect-based specialist participation
 
-**Correction:** Add an explicit, reasoned reassessment transition for the same task contract. Preserve the previous acceptance and finding history, reopen the assignment under valid Head/specialist controls, and require a fresh return and separate Head acceptance. Do not invent a contract field, remove a retained assignment or relabel an old receipt to bypass the closed state.
+<a id="w1-effect-based-specialist-participation"></a>
 
-**Likely components:** `scripts/specialist_handoff.py`; receipt/completion/state callers only if required by the transition; `references/specialist-composition.md`; existing `tests/test_handoffs.py` and the affected portable integration route.
+**Priority:** First / High. **Complexity:** Small. **Dependency:** None.
 
-**Acceptance:**
+**Outcome:** A verified mechanical UI edit can use the selected specialist's accepted guidance without a formal handoff caused solely by the page's RTL/responsive context. The specialist and relevant visual verification remain part of the workflow.
 
-- With task identity, contract digest, scope and outcomes unchanged, an accepted assignment can be explicitly reopened after a relevant input/context/control change. New scope or changed requirements still use the existing contract-reconciliation route.
-- Old acceptance and stale receipts cannot qualify completion. New passing receipts plus a fresh Head decision can qualify the reassessed assignment without recreating unrelated task evidence.
-- Required findings, protected invariants, authorized scope and acceptance history survive reopening. A new assignment ID or abandoning the old operation cannot erase unresolved obligations.
-- Reopened operations restore active-instruction protection until accepted or explicitly abandoned. Retained records remain readable; an interrupted transition must not manufacture acceptance or lose the outstanding operation.
+**Correction:**
 
-**Verification:** Extend the existing handoff fixture from accepted -> relevant change -> stale evidence blocked -> explicit same-contract reopening -> fresh receipt/return/Head decision -> completion. Reuse finding-retention, stale-context, marker and changed-contract checks. Exercise the affected route from the extracted package once runtime behavior is ready; no live specialist installation is needed for the fixture.
+- Separate a domain's presence from a material change to that domain when choosing participation. Keep the existing complete-risk-facts, inspected-paths and concrete-diff-evidence requirements.
+- Reuse the mechanical/guidance path and risk classifier. Contextual `rtl`/`responsive` facts alone must not force a formal assignment after the Head has established that the change preserves settled behavior.
+- Actual layout direction, breakpoint, interaction, accessibility or design decisions, incomplete inspection, conflicting evidence and explicit assignments retain formal handling. Do not treat every RTL/responsive request as mechanical by expanding an allowlist unconditionally.
+- Keep other specialist domains, risk floors and retained assignments/findings unchanged. The Head still inspects actual effects; supplied metadata is not automated proof of semantics.
 
-## H2: Dynamic regression-test dependencies
-
-**Priority:** Medium. **Complexity:** Small. **Dependency:** None technically; follows H1 by priority.
-
-**Why it matters:** Existing regressions can be skipped during development even though their runtime module changed. Preserving selective CI requires an accurate dependency map, not a return to full testing for every edit.
-
-**Correction:** Recognize the repository's supported dynamic-loading pattern or supply a small explicit dependency mapping where static inference is inadequate. Keep selection explainable and conservatively handle unresolved impact using the existing fallback.
-
-**Likely components:** `scripts/ci_scope.py`, existing selector tests in `tests/test_scripts.py`; test dependency declarations only if chosen. Preserve the current runtime regression scenarios.
+**Likely components:** `scripts/specialist_manager.py`, `config/specialists.json`; router/planner outputs if needed; the participation sections in `SKILL.md` and `references/specialist-composition.md`; existing `tests/test_specialists.py` and affected routing/plan fixtures; corresponding portable resources.
 
 **Acceptance:**
 
-- Changes to `completion_gate.py`, `context_router.py`, `dependency_guard.py`, `execution_plan.py`, `risk_classifier.py` and `wordpress_artifact.py` select their relevant classes from `tests/test_review_regressions.py`, including the applicable platform route.
-- Supported static and dynamic dependency edges compose with existing callers/helper propagation; an unmapped or ambiguous dependency cannot silently establish reliable focused coverage.
-- Overview-only documentation still uses the overview profile. Ordinary mapped changes remain selective; this fix adds no global test-count or coverage quota.
-- Release/full-validation selection and its evidence markers remain intact.
+- The same inspected low-risk label/spacing correction has the same participation outcome whether the unchanged product context is described as UI, RTL or responsive. Selected guidance remains required, and the change still gets its relevant source/rendered observation.
+- Changed direction/breakpoints/accessibility/flows, new design decisions, unknown effects, incomplete inspection or an explicit assignment cannot silently enter guidance-only.
+- Security/data/API risk floors and existing formal obligations remain binding. Router and planner agree on participation and do not create a formal record for a qualifying guidance-only edit.
+- The existing preparation-cache validity rules and specialist compatibility checks remain intact; no new freshness bypass or duplicate cache is introduced.
 
-**Verification:** Assert actual selector outputs for the existing dynamic loader, representative ordinary imports/helper dependencies, unresolved impact and overview-only edits. Use focused selector checks during implementation. Because `ci_scope.py` controls CI, retain the existing full integration baseline at the authorized PR/merge boundary, rather than rerunning it after every edit.
+**Verification:** Extend the existing mechanical-participation fixture with contextual RTL/responsive variants and the corresponding material-change/uncertain-scope cases. Reuse existing risk-floor, explicit-selection, router/planner and retained-obligation checks. Run affected tests during Build; verify the changed route from the extracted package before acceptance. No live specialist installation, new visual testing framework or full-suite-per-edit requirement.
 
-## H3: Verified release recovery
+## R32: Assignment-isolated skill updates
 
-**Priority:** Medium. **Complexity:** Medium. **Dependency:** None technically; follows H2 by priority.
+<a id="w2-assignment-isolated-skill-updates"></a>
 
-**Why it matters:** A cancelled/interrupted publication can leave an existing draft or incomplete release. A later successful workflow must not imply that a complete consumer package was published.
+**Priority:** Second / Medium. **Complexity:** Medium. **Dependency:** Follows R31 acceptance by execution order; no functional dependency.
 
-**Correction:** Inspect the existing release and actual tag target before treating publication as complete. Verify expected assets and checksum/content identity. Reuse an already complete matching release without duplicate publication; report an incomplete or inconsistent state explicitly and support bounded recovery of a matching draft under existing publication authorization.
+**Outcome:** Updating the default installation for new tasks does not require abandoning an unrelated open assignment. Active work continues against identifiable stable resources, or undergoes an explicit, safe migration.
 
-**Likely components:** `.github/workflows/release.yml`, a focused release-state helper if needed, existing release/readiness tests, and contributor/release guidance. Change build/readiness interfaces only where necessary for the verified result.
+**Correction:**
+
+- Retain one discoverable default installation. Resolve the latest permitted source for new tasks under existing authorization and compatibility checks; public policy still contains no fixed specialist versions.
+- Preserve the exact Head/specialist resources and provenance needed by open assignments outside skill discovery and product repositories. Reuse existing external state, manifests, locking, staging and recovery mechanisms.
+- Bind actual script/resource lookup and handoff/resume to those retained resources. Copying files or recording a revision without controlling what continuation loads is insufficient.
+- Before relaxing the replacement guard, prove a bounded two-project continuation scenario. If the host cannot preserve the binding, retain the guard and report the unsupported transition.
+- Make migration explicit: retain the old contract, scope, findings, acceptance history and evidence bindings; reassess changed controls and invalidate only evidence affected by the transition. Migration success is not task acceptance.
+- Preserve legacy records conservatively. An older active operation without a verified resource binding keeps its protection until a safe explicit transition is available. Never infer abandonment from age, delete markers to unlock installation or promote unresolved work to accepted.
+- Keep retained resources while any assignment or required review history depends on them. Define bounded retention/cleanup using actual references; do not build a general multi-version package manager or install duplicate discoverable skills.
+
+**Components:** `scripts/specialist_manager.py`, `scripts/specialist_handoff.py`, the retained-resource dispatcher `scripts/assignment_runtime.py`; affected state/resume, compatibility and receipt callers; `references/specialist-composition.md`, `references/shared-improvement-contracts.md` and relevant lifecycle/recovery guidance; existing specialist/handoff/state fixtures and portable routes.
 
 **Acceptance:**
 
-- Existence alone is insufficient: a draft, missing asset/checksum, mismatched tag target or mismatched asset digest cannot yield publication success.
-- Resolve the actual tag commit, including an annotated tag where applicable; do not rely only on release `target_commitish` or assume `--target` moves an existing tag.
-- A complete matching published release is safely reusable. A matching incomplete draft can be explicitly recovered; incompatible existing content blocks with a concrete next action. Never silently delete a published release, replace its assets or move its tag.
-- Recovery preserves exact-revision full-validation evidence, native Trivy checks for the final artifact and existing authorization. It cannot turn prior partial CI or stale artifacts into new publication evidence.
+- With an open assignment in project A, a verified update can become the default for a new task in project B. Project A continues/resumes using its recorded resource revision; it is not falsely reported as using the new version.
+- Active resource contents, lookup paths, findings and contract identity remain stable. Tampered/missing retained resources, unresolved compatibility or an unsupported host binding stop the affected continuation/update with a concrete reason.
+- An authorized migration preserves unresolved required findings and history. Prior acceptance cannot qualify changed controls automatically; current release/security obligations remain enforceable.
+- Interrupted staging/activation/binding transitions recover without mixed installations, lost markers or fabricated completion. Existing rollback, local-modification and concurrent-update protection remain effective.
+- Legacy assignments and archived acceptances remain readable and correctly checked. Resources still referenced by active work or required history cannot be removed.
+- New tasks keep current-source/compatibility checks. Stable resources for an open operation are explicit provenance, not an unreported outdated fallback or a permanent version pin.
 
-**Verification:** Use deterministic GitHub/CLI fixtures for complete, draft, interrupted upload, missing asset, wrong-target and checksum-mismatch states. Verify repeated execution and recovery decisions without creating or deleting a real release. Retain the existing full CI baseline for delivery-control changes; verify real publication only when a release is authorized.
+**Verification:** Extend existing temporary-installation/handoff fixtures with two project roots, a default update and real continuation/resume through the retained resource path. Reuse current compatibility, marker, stale-evidence, local-modification and recovery cases; add only uncovered interruption, legacy-binding or missing-resource regressions. Use temporary local fixtures rather than changing real Together assignments or installed user skills. Check the affected extracted-package route once ready. Follow existing CI scope and release gates; do not add a platform matrix or broad suite after each edit.
 
-## Implementation and validation boundaries
+## Execution and validation boundaries
 
-1. When implementation is requested, begin H1 only. Recheck the current repository and minimal reproduction, then use the existing branch/PR workflow. Keep one owner for shared state and delivery controls.
-2. Run checks justified by the affected behavior. Extend existing regression fixtures rather than introducing a framework or repeating broad suites after each edit. Record audit reproduction separately from fix verification.
-3. Update canonical runtime sources and generated portable resources together when applicable. Documentation-only planning receives structure, links, purity and mirror checks.
-4. Record acceptance, actual check results, branch/PR and merge evidence in the roadmap before marking a package Complete. Follow the existing user-authorized sequence; release and local installation are separate delivery steps.
+1. Implement R31 first when requested; move to R32 after its scoped behavior is accepted. Use one owner for shared routing, authority and assignment-state changes. Record progress only in the roadmap.
+2. Preserve the smallest sufficient architecture. R31 changes participation, not specialist ownership. R32 changes resource lifecycle, not completion requirements or user authorization.
+3. Keep existing record compatibility; document any necessary format/transition policy before writing new records. Retain current behavior for unsupported legacy transitions instead of silently weakening a guard.
+4. Planning changes require document structure, local links/anchors, repository purity and mirror consistency. Runtime implementation uses affected regressions and portable checks; existing full integration/publication gates apply at their existing triggers.
+5. Before a package is marked Complete, retain relevant acceptance evidence and merged implementation. Commit, push, merge, publication and local installation need authorization for this cycle; prior-cycle permissions are not inherited.
 
-No redesign, new specialist/scanner, model evaluation, provider key, test quota or unrelated cleanup belongs to this cycle. Keep Head authority, one UI/UX specialist, risk-proportionate verification, local retained state, scoped receipt freshness and native Trivy before publication.
+## Deferred and excluded work
 
-Measured speed gains and universal real-agent conformance are not established by these reproductions and are not additional implementation packages.
+- **Verification-cost changes:** Existing receipts already contain execution timestamps; current policy supports scoped evidence reuse and multiple criteria per obligation. First establish unnecessary execution in an actual slow task using existing evidence. No new timing service, fixed global time cap, mandatory per-edit report or general testing-policy rewrite is approved.
+- **Broader observability:** Add only for a concrete operational diagnosis requirement. No general monitoring stack, new specialist or production telemetry obligation belongs to this cycle.
+- Do not add dependencies, scanners, model evaluation, provider keys, coverage/test-count quotas or unrelated cleanup. Preserve native Trivy before publication and the sole UI/UX specialist.
 
 ## Delivered specifications
 
-- [T1-T5 specifications through 1.6.0](archive/improvement-plan-through-1.6.0.md) and [delivery evidence](archive/improvement-roadmap-through-1.6.0.md).
-- [A1-A5 specifications through 1.5.0](archive/improvement-plan-through-1.5.0.md) and [delivery evidence](archive/improvement-roadmap-through-1.5.0.md).
+- [R28-R30 specifications through 1.6.1](archive/improvement-plan-through-1.6.1.md) and [delivery evidence](archive/improvement-roadmap-through-1.6.1.md).
+- [R23-R27 specifications through 1.6.0](archive/improvement-plan-through-1.6.0.md) and [delivery evidence](archive/improvement-roadmap-through-1.6.0.md).
+- [R18-R22 specifications through 1.5.0](archive/improvement-plan-through-1.5.0.md) and [delivery evidence](archive/improvement-roadmap-through-1.5.0.md).
 - [Earlier implementation history](archive/improvement-plan-through-1.4.0.md) and [roadmap history](archive/improvement-roadmap-through-1.4.0.md).
 
-Archived next actions and unconfirmed concerns are historical. The formerly unconfirmed partial-release concern is now scoped to the reproduced F3/H3 defect. The [current roadmap](../ROADMAP.md) is the only progress tracker.
+Archived status, next actions and authorizations are historical. Use the [current roadmap](../ROADMAP.md) for active work.

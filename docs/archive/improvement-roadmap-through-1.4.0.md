@@ -1,27 +1,29 @@
 # Closed improvement history through 1.4.0
 
-Historical snapshot preserved from source commit `95296ca44b18d58d533cad29864cb05a0d0aeada` during the 2026-10-07 documentation cleanup. This is closed history, not active work or current installation evidence. Use the [current roadmap](../../ROADMAP.md) and [implementation index](../improvement-implementation-plan.md) for present status and runtime guidance. Relative links have been relocated; recorded specifications, outcomes and delivery hashes are retained.
+Roadmap IDs were normalized on 2026-10-16 to the permanent R sequence. See the [canonical register](../../ROADMAP.md#roadmap-register) for legacy aliases. Recorded outcomes, evidence and delivery identities are unchanged; old heading anchors remain available. Finding IDs and runtime/schema identifiers retain their separate meaning.
+
+Historical snapshot preserved from source commit `95296ca44b18d58d533cad29864cb05a0d0aeada` during the 2026-10-07 documentation cleanup. This is closed history, not active work or current installation evidence. Use the [current roadmap](../../ROADMAP.md) and [implementation index](../improvement-implementation-plan.md) for present status and runtime guidance. Relative links and roadmap package IDs have been normalized; recorded specifications, outcomes and delivery hashes are retained.
 
 # Improvement Roadmap
 
-Status: The three approved delivery follow-ups are complete, merged and delivered in `1.4.0`, with the publication security gate, published package and local installation verified. No delivery action remains open. The completed `R1`-`R4` cycle shipped in `1.3.1`; the original nine-package cycle and feedback follow-up shipped in `1.3.0`. Their historical evidence is retained below.
+Status: The three approved delivery follow-ups are complete, merged and delivered in `1.4.0`, with the publication security gate, published package and local installation verified. No delivery action remains open. The completed `R11`-`R14` cycle shipped in `1.3.1`; the original nine-package cycle and feedback follow-up shipped in `1.3.0`. Their historical evidence is retained below.
 Audit baseline: main commit [`156676d502fae98c5c0b3a9bafdf5497698a062e`](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/156676d502fae98c5c0b3a9bafdf5497698a062e); released runtime `1.3.0`, commit `83fd4f47e60930718a2c9fb5e27fdedb74de2e81`.
-Last reviewed: 2026-10-04, Asia/Tehran. This is the canonical progress tracker; [implementation scope and dependencies](improvement-plan-through-1.4.0.md#targeted-hardening-cycle-r1-r4) are maintained in the existing implementation plan.
+Last reviewed: 2026-10-04, Asia/Tehran. This is the canonical progress tracker; [implementation scope and dependencies](improvement-plan-through-1.4.0.md#targeted-hardening-cycle-r11-r14) are maintained in the existing implementation plan.
 
 ## Current position
 
 - **Current phase:** Delivered `1.4.0`: native publication security, document/runtime routing, and conditional product installation/local runtime. PRs #83 and #84 were merged through the combined release PR #85.
-- **Implementation progress:** All 3 of 3 approved follow-ups are complete. Historical cycle counts remain 4 of 4 audit packages and 9 of 9 original packages, with feedback F1 tracked separately. Counts are not quality or coverage scores.
+- **Implementation progress:** All 3 of 3 approved follow-ups are complete. Historical cycle counts remain 4 of 4 audit packages and 9 of 9 original packages, with feedback R10 tracked separately. Counts are not quality or coverage scores.
 - **Next action:** Gather meaningful feedback from actual use; no implementation, publication or local replacement remains pending. No new feature or model campaign is planned.
 - **Release / local state:** Stable `v1.4.0` and the verified local runtime are `1.4.0`. The release tag points to `9aa2c9db69ab14cb6530f7b1e84dd8effeb56ccb`; the installed 79-file package matches the published archive. Observed evidence is recorded below.
 
 ## Approved delivery follow-ups — 1.4.0
 
-| Work | Source status | Acceptance / retained evidence |
-|---|---|---|
-| Native security and Trivy publication gate | Complete; PR #83 merged through [PR #85](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/85), delivered in `1.4.0`. | Relevant native-tool regressions and final portable-package scan passed. An actual Windows separator mismatch was corrected without relaxing different-target or immutable-image checks. Missing/wrong tooling, failed or invalid scans and blocking findings prevent publication. |
-| Document/runtime and excluded-domain routing | Complete; PR #84 merged through PR #85, delivered in `1.4.0`. | Routing/specialist regressions, extracted-package routes and the required release-commit workflows passed. Positive executable-source and semantic selection, risk floors and retained commitments are preserved. |
-| Product installation and local runtime | Complete; merged in PR #85, delivered in `1.4.0`. | Head-owned installation selection and conditional local Docker/Compose guidance are packaged; mirror, extracted-package and offline installation/resource checks passed. Preserve native client packages and the exact WordPress ZIP. This validates instructions/package integration, not execution of a separate product. |
+| ID | Work | Source status | Acceptance / retained evidence |
+|---|---|---|---|
+| <a id="r15"></a>R15 | Native security and Trivy publication gate | Complete; PR #83 merged through [PR #85](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/85), delivered in `1.4.0`. | Relevant native-tool regressions and final portable-package scan passed. An actual Windows separator mismatch was corrected without relaxing different-target or immutable-image checks. Missing/wrong tooling, failed or invalid scans and blocking findings prevent publication. |
+| <a id="r16"></a>R16 | Document/runtime and excluded-domain routing | Complete; PR #84 merged through PR #85, delivered in `1.4.0`. | Routing/specialist regressions, extracted-package routes and the required release-commit workflows passed. Positive executable-source and semantic selection, risk floors and retained commitments are preserved. |
+| <a id="r17"></a>R17 | Product installation and local runtime | Complete; merged in PR #85, delivered in `1.4.0`. | Head-owned installation selection and conditional local Docker/Compose guidance are packaged; mirror, extracted-package and offline installation/resource checks passed. Preserve native client packages and the exact WordPress ZIP. This validates instructions/package integration, not execution of a separate product. |
 
 All three follow-ups use existing tools, contracts and specialists. No additional scanner, model evaluation or fixed product test quota.
 
@@ -41,16 +43,18 @@ This is a verified release and one local-host snapshot, not proof of every downs
 
 | ID | Priority | Audit findings | Work | Status | Complexity | Implementation / acceptance evidence |
 |---|---|---|---|---|---|---|
-| R1 | P1 | Audit F1, F2 | Default new structured completion to receipts and preserve required specialist commitments. | Complete | Medium | Both failures reproduced before correction. Affected contract/receipt/handoff regressions, all 3 extracted-package routes (including offline install), skill validation and mirror consistency passed. Required PR/push checks passed. Merged in [PR #77](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/77), commit [`3f847f4`](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/3f847f4555bf92c75002439ab89beb312dd0f86d). Delivered in `1.3.1`; published-package and local-installation evidence below. |
-| R2 | P1 | Audit F3 | Preserve platform discovery for large files and expose incomplete inspection. | Complete | Medium | Large-file platform loss reproduced before correction. Local acceptance verified: 56 routing/planning checks, relevant custom-area regressions, actual read-budget/diagnostic bounds, extracted-package routing (including offline install and plain-CLI warnings), skill validation and mirror consistency. All 6 active PR/push workflow runs passed on final head `99eae82`. Merged in [PR #78](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/78), commit [`a7ebfaf`](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/a7ebfaf1c05b36abaeaa422d715b272c4b46d4c6). Delivered in `1.3.1`; published-package and local-installation evidence below. |
-| R3 | P2 | Audit F4 | Use consistent project-root scope semantics in ownership and drift checks. | Complete | Small | Both failures reproduced before correction. 26 affected planning/retained-contract checks, literal and relative-path controls, extracted-package ownership/drift CLI route (including offline install), skill validation and mirror consistency passed. All 6 active PR/push workflow runs passed on final head `127af50`. Merged in [PR #79](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/79), commit [`8c16570`](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/8c1657018a57d3a6ffc512d8e64118d648fffd2b). Delivered in `1.3.1`; published-package and local-installation evidence below. |
-| R4 | P2 | Audit F5 | Remove obsolete mandatory benchmark claims and unavailable portable commands. | Complete | Small | Obsolete claims confirmed against actual workflows/gate and portable manifest. Affected links/command targets/help and six-workflow release-policy alignment verified. Skill validation, mirror consistency and portable offline install passed with no failures; only optional missing Trivy warned. No new tests or model execution. All 5 active PR/push workflow runs passed on final head `0f45c18`. Merged in [PR #80](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/80), commit [`4ddc350`](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/4ddc350739871b7690c2c39be05caf03adc5c4a1). Delivered in `1.3.1`; published-package and local-installation evidence below. |
+| <a id="r11"></a>R11 | P1 | Audit F1, F2 | Default new structured completion to receipts and preserve required specialist commitments. | Complete | Medium | Both failures reproduced before correction. Affected contract/receipt/handoff regressions, all 3 extracted-package routes (including offline install), skill validation and mirror consistency passed. Required PR/push checks passed. Merged in [PR #77](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/77), commit [`3f847f4`](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/3f847f4555bf92c75002439ab89beb312dd0f86d). Delivered in `1.3.1`; published-package and local-installation evidence below. |
+| <a id="r12"></a>R12 | P1 | Audit F3 | Preserve platform discovery for large files and expose incomplete inspection. | Complete | Medium | Large-file platform loss reproduced before correction. Local acceptance verified: 56 routing/planning checks, relevant custom-area regressions, actual read-budget/diagnostic bounds, extracted-package routing (including offline install and plain-CLI warnings), skill validation and mirror consistency. All 6 active PR/push workflow runs passed on final head `99eae82`. Merged in [PR #78](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/78), commit [`a7ebfaf`](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/a7ebfaf1c05b36abaeaa422d715b272c4b46d4c6). Delivered in `1.3.1`; published-package and local-installation evidence below. |
+| <a id="r13"></a>R13 | P2 | Audit F4 | Use consistent project-root scope semantics in ownership and drift checks. | Complete | Small | Both failures reproduced before correction. 26 affected planning/retained-contract checks, literal and relative-path controls, extracted-package ownership/drift CLI route (including offline install), skill validation and mirror consistency passed. All 6 active PR/push workflow runs passed on final head `127af50`. Merged in [PR #79](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/79), commit [`8c16570`](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/8c1657018a57d3a6ffc512d8e64118d648fffd2b). Delivered in `1.3.1`; published-package and local-installation evidence below. |
+| <a id="r14"></a>R14 | P2 | Audit F5 | Remove obsolete mandatory benchmark claims and unavailable portable commands. | Complete | Small | Obsolete claims confirmed against actual workflows/gate and portable manifest. Affected links/command targets/help and six-workflow release-policy alignment verified. Skill validation, mirror consistency and portable offline install passed with no failures; only optional missing Trivy warned. No new tests or model execution. All 5 active PR/push workflow runs passed on final head `0f45c18`. Merged in [PR #80](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/80), commit [`4ddc350`](https://github.com/pooyahayati/Vibe-Coding-Skill/commit/4ddc350739871b7690c2c39be05caf03adc5c4a1). Delivered in `1.3.1`; published-package and local-installation evidence below. |
 
-Audit IDs belong to the final audit, not the completed original-cycle package IDs. Audit F1 is distinct from the delivered F1 feedback feature.
+Audit IDs belong to the final audit, not the completed original-cycle package IDs. Audit F1 is distinct from the delivered R10 feedback feature.
 
 ## Package specifications
 
-### R1: retained contract and required completion controls
+### R11: retained contract and required completion controls
+
+<a id="r1-retained-contract-and-required-completion-controls"></a>
 
 **Why:** Audit F1 showed that a fresh structured task without `--receipt-completion` selects schema 2 and can accept declared results (`PASS` / `reported-met`) without receipts. It correctly leaves `execution_verified` false, but does not enforce the new-task route. Audit F2 showed that removing `specialist_assignment_ids` passes contract comparison and removes the missing-assignment failure before an operation has been created.
 
@@ -66,7 +70,9 @@ Audit IDs belong to the final audit, not the completed original-cycle package ID
 
 **Verification:** Extend affected behavior/state, receipt and specialist-handoff regressions with the two confirmed reproductions and positive legacy/reconciliation cases. Reuse existing tests; check retained state across handoff/resume and apply affected package checks when runtime resources change.
 
-### R2: bounded discovery without silent platform loss
+### R12: bounded discovery without silent platform loss
+
+<a id="r2-bounded-discovery-without-silent-platform-loss"></a>
 
 **Why:** Audit F3 used identical WordPress headers in a simulated 2 KB and 70 KB `plugin.php`. The larger file lost the WordPress pack while reporting no uncertainty because `safe_text` discards an oversized file entirely.
 
@@ -82,7 +88,9 @@ Audit IDs belong to the final audit, not the completed original-cycle package ID
 
 **Verification:** Add the confirmed large-file routing regression, a non-WordPress control and a relevant unreadable/budget-limited case to existing router tests. Preserve literal-path and bounded/locality regressions; no unbounded repository scan.
 
-### R3: consistent project-root ownership
+### R13: consistent project-root ownership
+
+<a id="r3-consistent-project-root-ownership"></a>
 
 **Why:** Audit F4 validated a bound two-owner plan with scopes `.` and `scripts` and recommended parallelism 2; it returned `PASS`. The same helper also reported that `.` does not cover `scripts/feature.py`.
 
@@ -94,7 +102,9 @@ Audit IDs belong to the final audit, not the completed original-cycle package ID
 
 **Verification:** Extend existing plan overlap/drift tests with the confirmed root case, a disjoint positive case and root coverage. Preserve current cross-platform/literal-path checks.
 
-### R4: one accurate operational validation path
+### R14: one accurate operational validation path
+
+<a id="r4-one-accurate-operational-validation-path"></a>
 
 **Why:** Audit F5 found current benchmark guidance referring to a removed workflow and requiring credentialed agent runs for stable releases, contrary to the active six-workflow release gate. Packaged agent-output guidance also names runners absent from the portable package.
 
@@ -132,27 +142,31 @@ Original baseline: `1.1.0`, main `9e0ca5108567f38a66376883613fdcaff6616de0`. The
 
 ## Work-package tracker
 
-| ID | Phase | Work | Status | Implementation evidence |
+| ID | Area | Work | Status | Implementation evidence |
 |---|---|---|---|---|
-| P0 | 0 | Shared formats, trust limits and compatibility/migration policy. | Complete | [Contract design](../../references/shared-improvement-contracts.md); [merged PR #62](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/62), merge `a3e58725133b282ef60cc76066493deb7d9cf0c8`. Relevant contract/package checks passed. |
-| B1 | 1 | Short observable behavior contract. | Complete | [Behavior guidance](../../references/operating-model.md#observable-behavior-contract); [merged PR #63](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/63), merge `ed8bb85f2b2db899ba1578d1333f6af1198b73d7`. Relevant checks passed. |
-| B2 | 1 | Behavior/acceptance propagation into plans and handoffs. | Complete | [Plan binding](../../references/context-routing-and-execution.md#retained-behavior-in-a-plan-b2), [handoff/state](../../references/project-state-automation.md#preserve-task-behavior-and-useful-delivery-details-b2), [implementation PR #64](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/64). Merged in PR #64; relevant propagation/regression/package checks passed. |
-| E1 | 2 | Bounded execution-receipt collector. | Complete | [Local collector](../../references/execution-and-verification.md#local-execution-receipts-e1); [merged PR #65](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/65), merge `8b849f22f68163821f94a5f9fc3fc6e69dc97446`. Actual success/failure/timeout, scoped-input/artifact binding, unavailable and external-storage checks passed. |
-| E2 | 2 | Completion validation against actual receipts. | Complete | [Receipt-backed completion](../../references/execution-and-verification.md#receipt-backed-completion-e2); [merged PR #66](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/66), merge `4f227116a5ba21f8b413c0532c71667f3c64e453`. Relevant receipt/migration/legacy regressions and package checks passed. |
-| S1 | 3 | Compatibility assessment for changed specialist instructions. | Complete | [Instruction compatibility](../../references/specialist-composition.md#instruction-compatibility-assessment-s1); [merged PR #67](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/67), merge `7e75cdf6c5cee4c532a66e4c565cbff784d71581`. Bound explicit Head assessment/conflict handling and unchanged reuse passed relevant checks. |
-| S2 | 3 | Stage-specific specialist return and Head acceptance. | Complete | [S2 handoffs](../../references/specialist-composition.md#stage-return-and-head-acceptance-s2), [implementation PR #68](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/68). Real changes, receipts, required-finding history, shared-contract decisions, active instructions and completion linkage are implemented. Merged in PR #68; relevant checks passed. |
-| I1 | 4 | Affected-route regressions and portable-package integration. | Complete | [Integration evidence](../i1-integration-verification.md), [merged PR #72](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/72), merge `512272202f9fc178dd6ec191e4a9f0d0f411b881`; three extracted-ZIP routes passed locally and in the existing Linux/macOS/Windows matrix. |
-| D1 | 4 | Concise user/maintainer documentation reflecting implementation. | Complete | [Implementation PR #73](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/73). User/maintainer guidance aligned with runtime. Skill validation, mirror consistency, 63 local links/anchors and preservation of README tables/full author passed; offline install had no failures (optional Trivy warning). Merged in PR #73, merge `3c886874e00e331f2d17ec461d10eda0953a423f`; all three affected PR workflows passed. |
+| <a id="r1"></a>R1 | Contracts | Shared formats, trust limits and compatibility/migration policy. | Complete | [Contract design](../../references/shared-improvement-contracts.md); [merged PR #62](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/62), merge `a3e58725133b282ef60cc76066493deb7d9cf0c8`. Relevant contract/package checks passed. |
+| <a id="r2"></a>R2 | Behavior | Short observable behavior contract. | Complete | [Behavior guidance](../../references/operating-model.md#observable-behavior-contract); [merged PR #63](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/63), merge `ed8bb85f2b2db899ba1578d1333f6af1198b73d7`. Relevant checks passed. |
+| <a id="r3"></a>R3 | Behavior | Behavior/acceptance propagation into plans and handoffs. | Complete | [Plan binding](../../references/context-routing-and-execution.md#retained-behavior-in-a-plan-b2), [handoff/state](../../references/project-state-automation.md#preserve-task-behavior-and-useful-delivery-details-b2), [implementation PR #64](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/64). Merged in PR #64; relevant propagation/regression/package checks passed. |
+| <a id="r4"></a>R4 | Evidence | Bounded execution-receipt collector. | Complete | [Local collector](../../references/execution-and-verification.md#local-execution-receipts-e1); [merged PR #65](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/65), merge `8b849f22f68163821f94a5f9fc3fc6e69dc97446`. Actual success/failure/timeout, scoped-input/artifact binding, unavailable and external-storage checks passed. |
+| <a id="r5"></a>R5 | Evidence | Completion validation against actual receipts. | Complete | [Receipt-backed completion](../../references/execution-and-verification.md#receipt-backed-completion-e2); [merged PR #66](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/66), merge `4f227116a5ba21f8b413c0532c71667f3c64e453`. Relevant receipt/migration/legacy regressions and package checks passed. |
+| <a id="r6"></a>R6 | Specialists | Compatibility assessment for changed specialist instructions. | Complete | [Instruction compatibility](../../references/specialist-composition.md#instruction-compatibility-assessment-s1); [merged PR #67](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/67), merge `7e75cdf6c5cee4c532a66e4c565cbff784d71581`. Bound explicit Head assessment/conflict handling and unchanged reuse passed relevant checks. |
+| <a id="r7"></a>R7 | Specialists | Stage-specific specialist return and Head acceptance. | Complete | [R7 handoffs](../../references/specialist-composition.md#stage-return-and-head-acceptance-s2), [implementation PR #68](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/68). Real changes, receipts, required-finding history, shared-contract decisions, active instructions and completion linkage are implemented. Merged in PR #68; relevant checks passed. |
+| <a id="r8"></a>R8 | Integration | Affected-route regressions and portable-package integration. | Complete | [Integration evidence](../i1-integration-verification.md), [merged PR #72](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/72), merge `512272202f9fc178dd6ec191e4a9f0d0f411b881`; three extracted-ZIP routes passed locally and in the existing Linux/macOS/Windows matrix. |
+| <a id="r9"></a>R9 | Documentation | Concise user/maintainer documentation reflecting implementation. | Complete | [Implementation PR #73](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/73). User/maintainer guidance aligned with runtime. Skill validation, mirror consistency, 63 local links/anchors and preservation of README tables/full author passed; offline install had no failures (optional Trivy warning). Merged in PR #73, merge `3c886874e00e331f2d17ec461d10eda0953a423f`; all three affected PR workflows passed. |
 
-## Follow-up F1: skill feedback
+## R10: skill feedback
 
-This user-requested addition is outside the original nine-package cycle and is included in [PR #73](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/73) alongside D1. **Status: Complete; merged in PR #73 and shipped in `1.3.0`.** The conditional Head-owned route covers confirmed/suspected Vibe defects, minimal English local reports, deduplication and optional user-reviewed email. Skill validation, mirror consistency, two existing install-manifest checks and the extracted 78-file package check passed (optional Trivy warning only). Instruction review covered confirmed/suspected attribution, environment-only failures, duplicates, sharing, blocked work and unavailable storage; this is policy review, not real-agent conformance. Release and local installation evidence are recorded separately above.
+<a id="r10"></a>
+
+<a id="follow-up-f1-skill-feedback"></a>
+
+This user-requested addition is outside the original nine-package cycle and is included in [PR #73](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/73) alongside R9. **Status: Complete; merged in PR #73 and shipped in `1.3.0`.** The conditional Head-owned route covers confirmed/suspected Vibe defects, minimal English local reports, deduplication and optional user-reviewed email. Skill validation, mirror consistency, two existing install-manifest checks and the extracted 78-file package check passed (optional Trivy warning only). Instruction review covered confirmed/suspected attribution, environment-only failures, duplicates, sharing, blocked work and unavailable storage; this is policy review, not real-agent conformance. Release and local installation evidence are recorded separately above.
 
 </details>
 
 ## How progress stays current
 
-This file is maintained in Git; it is not an automatic live monitor. Update it when a roadmap package starts, a blocker changes, implementation is verified/merged, or a release is delivered. Use `R1`-`R4` in this cycle's implementation PRs and link the relevant PR/commit and concise acceptance evidence in the active tracker. Keep closed-cycle evidence separate. Update the implementation plan only when scope, dependencies or acceptance decisions change.
+This file is maintained in Git; it is not an automatic live monitor. Update it when a roadmap package starts, a blocker changes, implementation is verified/merged, or a release is delivered. Use `R11`-`R14` in this cycle's implementation PRs and link the relevant PR/commit and concise acceptance evidence in the active tracker. Keep closed-cycle evidence separate. Update the implementation plan only when scope, dependencies or acceptance decisions change.
 
 Statuses: **Not started**, **In progress**, **Blocked**, **Complete**. Opening a PR or writing code does not make a package Complete. Completion requires its acceptance conditions, relevant verification and merged implementation; a completion update proposed in that implementation PR takes effect when merged. Track release/deployment/local-installation separately when they are part of the objective.
 
@@ -171,21 +185,21 @@ Improve the delivered software, not the volume of code, instructions or tests. A
 
 | Impact priority | Improvement | Current gap | Observable success |
 |---|---|---|---|
-| 1 | Execution-backed completion | E1/E2 now validate local command/manual receipts and scoped inputs/artifacts; remote evidence still requires a separately authorized resolver, and the Head must choose meaningful checks. | An unsuccessful, missing or stale required execution receipt cannot justify completion. An authorized real workflow supplies evidence for the intended behavior. |
-| 2 | Specialist compatibility and acceptance | S1/S2 now bind explicit Head decisions to current instructions, assigned stage, actual changes and receipts. Semantic sufficiency still needs Head reasoning and later real-project evidence. | Changed instructions and task output are reconciled with the Head contract, platform invariants and affected shared contracts before use/integration. |
-| 3 | Observable user behavior | B1/B2 now preserve observable criteria through planning and handoff; the Head must still choose sufficient scenarios and checks. | One short scenario connects user intent, observable result, applicable failure behavior and acceptance evidence without making the user design the implementation. |
+| 1 | Execution-backed completion | R4/R5 now validate local command/manual receipts and scoped inputs/artifacts; remote evidence still requires a separately authorized resolver, and the Head must choose meaningful checks. | An unsuccessful, missing or stale required execution receipt cannot justify completion. An authorized real workflow supplies evidence for the intended behavior. |
+| 2 | Specialist compatibility and acceptance | R6/R7 now bind explicit Head decisions to current instructions, assigned stage, actual changes and receipts. Semantic sufficiency still needs Head reasoning and later real-project evidence. | Changed instructions and task output are reconciled with the Head contract, platform invariants and affected shared contracts before use/integration. |
+| 3 | Observable user behavior | R2/R3 now preserve observable criteria through planning and handoff; the Head must still choose sufficient scenarios and checks. | One short scenario connects user intent, observable result, applicable failure behavior and acceptance evidence without making the user design the implementation. |
 
 The impact ranking is not the implementation order. Define behavior first so execution receipts and specialist acceptance use the same target.
 
 ## Delivery sequence
 
-| Phase | Status | Work | Owner | Deliverable | Exit condition | Dependency |
+| Stages | Status | Work | Owner | Deliverable | Exit condition | Dependency |
 |---|---|---|---|---|---|---|
-| 0 | Complete | Set shared contracts and compatibility rules. | Head / maintainer. | [P0 design](../../references/shared-improvement-contracts.md): small behavior, receipt and specialist-return formats; policy for legacy reports and acceptance snapshots. | Minimal formats, trust limits and migration specified; relevant checks passed in PR #62. Runtime implementation followed in phases 1-3. | Existing source inspection. |
-| 1 | Complete | Carry the user scenario through Define, Plan, Build and Verify. | Head; relevant specialist contributes domain detail. | B1 guidance and B2 linked acceptance IDs with state/handoff/resume propagation. | Scope and observable expectations survive planning and handoff; no blanket extra approval. Merged in PR #64. | Phase 0. |
-| 2 | Complete | Record real execution and validate required receipts at completion. | Head and local tooling. | E1 local collection and E2 schema-3 local receipt resolution/manual observation records. | Failed/missing/stale receipts and mismatched artifacts do not qualify; sufficient evidence is reused. Merged in PR #66. | Phase 1. |
-| 3 | Complete | Accept specialist updates and task output against the shared contracts. | Head accepts; selected specialist supplies domain work. | S1 instruction compatibility and S2 retained stage returns/separate Head acceptance. Merged in PR #68. | Required conflicts are resolved or the affected workflow remains blocked; no standalone specialist lifecycle. | Phases 1 and 2. |
-| 4 | Complete | Integrate, document and prepare delivery. | Head / maintainer. | Focused regression evidence, synchronized portable package, installation evidence and user-facing examples. | Changed behavior passes relevant checks; documentation matches runtime and risk routes stay proportionate. | Phases 1-3. |
+| R1 | Complete | Set shared contracts and compatibility rules. | Head / maintainer. | [R1 design](../../references/shared-improvement-contracts.md): small behavior, receipt and specialist-return formats; policy for legacy reports and acceptance snapshots. | Minimal formats, trust limits and migration specified; relevant checks passed in PR #62. Runtime implementation followed in R2-R7. | Existing source inspection. |
+| R2-R3 | Complete | Carry the user scenario through Define, Plan, Build and Verify. | Head; relevant specialist contributes domain detail. | R2 guidance and R3 linked acceptance IDs with state/handoff/resume propagation. | Scope and observable expectations survive planning and handoff; no blanket extra approval. Merged in PR #64. | R1. |
+| R4-R5 | Complete | Record real execution and validate required receipts at completion. | Head and local tooling. | R4 local collection and R5 schema-3 local receipt resolution/manual observation records. | Failed/missing/stale receipts and mismatched artifacts do not qualify; sufficient evidence is reused. Merged in PR #66. | R2-R3. |
+| R6-R7 | Complete | Accept specialist updates and task output against the shared contracts. | Head accepts; selected specialist supplies domain work. | R6 instruction compatibility and R7 retained stage returns/separate Head acceptance. Merged in PR #68. | Required conflicts are resolved or the affected workflow remains blocked; no standalone specialist lifecycle. | R2-R5. |
+| R8-R9 | Complete | Integrate, document and prepare delivery. | Head / maintainer. | Focused regression evidence, synchronized portable package, installation evidence and user-facing examples. | Changed behavior passes relevant checks; documentation matches runtime and risk routes stay proportionate. | R2-R7. |
 
 Release, merge and local installation are separate delivery actions. A version number is chosen after compatibility review; no release date or publication is implied by this plan.
 
