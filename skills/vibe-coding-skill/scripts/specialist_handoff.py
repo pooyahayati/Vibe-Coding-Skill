@@ -193,7 +193,7 @@ def preparation_binding(root, contract, assignment, entry, skills_dir, state):
 
 def prepared_preflight(root, contract, assignment, entry, skills_dir, state):
     path = preparation_path(root, assignment, state)
-    if not path.exists() or manager.inventory_due(state):
+    if not path.exists():
         return None
     try:
         prepared = manager.read_local_json(path)
@@ -203,7 +203,9 @@ def prepared_preflight(root, contract, assignment, entry, skills_dir, state):
         binding, rows = preparation_binding(root, contract, assignment, entry, skills_dir, state)
         if prepared["binding_sha256"] != binding:
             return None
-        return {"gate": "PASS", "skills": rows,
+        inventory = manager.inventory_status(state)
+        return {"gate": "PASS" if inventory["status"] in {"success", "not-checked"} else "WARN", "skills": rows,
+                "inventory": {**inventory, "performed": False},
                 "preflight_reuse": {"reused": True, "upstream_checked": False, "checked_at": prepared["checked_at"],
                                     "basis": "same prepared assignment; local inputs and compatibility revalidated"}}
     except (OSError, ValueError, KeyError, TypeError):
@@ -218,7 +220,7 @@ def prepare(root, contract, specification, skills_dir, state):
         path.unlink(missing_ok=True)
     result = manager.run("prepare", skills_dir, state, [{**entry, "active_in_stage": True}], False)
     result["preflight_reuse"] = {"reused": False, "upstream_checked": True}
-    if result["gate"] == "PASS":
+    if result["gate"] in ("PASS", "WARN"):
         with manager.installation_lock(skills_dir):
             binding, rows = preparation_binding(root, contract, assignment, entry, skills_dir, state)
             require(all(next(s for s in result["skills"] if s["id"] == row["id"])["source"] == row["source"] for row in rows),

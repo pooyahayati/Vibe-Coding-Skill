@@ -123,6 +123,7 @@ def draft(
     specialist_handoffs: list[dict[str, Any]] | None = None,
     guidance_evidence: str | None = None,
     domain_effects: dict | None = None,
+    explicit_specialists: list[str] | None = None,
 ) -> dict[str, Any]:
     behavior = load_behavior_contract()
     contract = behavior.validate(task_contract) if task_contract is not None else None
@@ -149,6 +150,7 @@ def draft(
         stage=stage,
         guidance_evidence=guidance_evidence,
         domain_effects=domain_effects,
+        explicit_specialists=explicit_specialists,
     )
     complexity = route["project"]["complexity"]["level"]
     tier = int(route["task"]["risk"]["tier"])
@@ -598,6 +600,7 @@ def main() -> int:
     draft_cmd.add_argument("--stage", choices=load_context_router().load_specialist_manager().registry()["lifecycle"], default="plan")
     draft_cmd.add_argument("--guidance-evidence", help="Head diff review confirming mechanical use of settled decisions")
     draft_cmd.add_argument("--domain-effect", action="append", default=[], help="Inspected concern=preserved|changed|unknown")
+    draft_cmd.add_argument("--specialist", action="append", default=[], help="Explicit registered specialist; requires formal participation")
     draft_cmd.add_argument("--specialist-assignment", action="append", default=[], help="Head-owned stage assignment JSON; no delegation or permissions granted")
     for field in load_context_router().load_risk_classifier().INPUT_FIELDS:
         draft_cmd.add_argument("--risk-" + field.replace("_", "-"))
@@ -650,6 +653,7 @@ def run_cli(ns, ap) -> int:
             stage=ns.stage,
             guidance_evidence=ns.guidance_evidence,
             domain_effects=load_context_router().load_specialist_manager().parse_domain_effects(ns.domain_effect),
+            explicit_specialists=ns.specialist,
             task_contract=contract,
             specialist_handoffs=[json.loads(Path(p).read_text(encoding="utf-8")) for p in ns.specialist_assignment] if ns.specialist_assignment else None,
         )

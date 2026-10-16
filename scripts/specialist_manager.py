@@ -20,7 +20,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 from zipfile import BadZipFile, ZipFile
 
@@ -113,11 +113,19 @@ def load_risk_classifier():
     return module
 
 
+def load_context_router():
+    spec = importlib.util.spec_from_file_location("_specialist_context_router", ROOT / "scripts/context_router.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def select_specialists(task: str, paths: list[str] | None = None,
                        facts: dict | None = None, explicit: list[str] | None = None,
                        stage: str = "discover", risk_facts: dict | None = None,
                        guidance_evidence: str | None = None, risk_assessment: dict | None = None,
-                       inspection_complete: bool = True, domain_effects: dict | None = None) -> list[dict]:
+                       inspection_complete: bool = False, domain_effects: dict | None = None) -> list[dict]:
     data = registry()
     entries = {item["id"]: item for item in data["specialists"]}
     if stage not in data["lifecycle"]:
@@ -716,28 +724,71 @@ def compatibility(entry: dict, skills_dir: Path, state: Path, installation: dict
         return {"status": "compatibility-unverified", "error": str(exc)}
 
 
-def inventory_due(state: Path) -> bool:
-    inventory = state / "inventory.json"
+def inventory_status(state: Path) -> dict:
+    """Maintenance scheduling is separate from required task freshness."""
+    result = {"due": True, "status": "not-checked", "checked_at": None,
+              "attempted_at": None, "next_check_at": None, "failures": []}
     try:
-        last = read_local_json(inventory)
-        age = (datetime.now(timezone.utc) - datetime.fromisoformat(last["checked_at"])).total_seconds()
-        return not 0 <= age < registry()["policy"]["inventory_interval_hours"] * 3600
-    except (OSError, ValueError, KeyError, TypeError):
-        return True
+        path = state / "inventory.json"
+        if not path.exists() and not path.is_symlink():
+            return result
+        last = read_local_json(path)
+        if last.get("schema_version", 1) != 1:
+            raise ValueError("unsupported inventory record")
+        checked = last.get("checked_at")
+        attempted = last.get("attempted_at", checked)  # Legacy success-only record.
+        status = last.get("status", "success" if checked else "incomplete")
+        failures = last.get("failures", [])
+        if (status not in {"success", "failed", "incomplete", "reload"}
+                or not isinstance(failures, list)
+                or any(not isinstance(row, dict) or not all(isinstance(row.get(k), str) for k in ("id", "status")) for row in failures)
+                or (status == "success" and (not checked or failures))):
+            raise ValueError("invalid inventory outcome")
+        now = datetime.now(timezone.utc)
+        for stamp in (checked, attempted):
+            if stamp is not None:
+                parsed = datetime.fromisoformat(stamp)
+                if parsed.utcoffset() is None or parsed > now:
+                    raise ValueError("invalid inventory timestamp")
+        basis = datetime.fromisoformat(checked if status == "success" else attempted)
+        next_check = basis + timedelta(hours=registry()["policy"]["inventory_interval_hours"])
+        return {"due": status == "reload" or now >= next_check, "status": status,
+                "checked_at": checked, "attempted_at": attempted,
+                "next_check_at": (now if status == "reload" else next_check).isoformat(), "failures": failures}
+    except FileNotFoundError:
+        return result
+    except (OSError, ValueError, KeyError, TypeError, OverflowError) as exc:
+        return {**result, "status": "unverified", "error": str(exc)}
 
 
-def run(mode: str, skills_dir: Path, state: Path, selected: list[dict], apply: bool, assessment=None) -> dict:
+def inventory_due(state: Path) -> bool:
+    return inventory_status(state)["due"]
+
+
+def run(mode: str, skills_dir: Path, state: Path, selected: list[dict], apply: bool, assessment=None, *, if_due=False) -> dict:
     data = registry()
-    inventory = state / "inventory.json"
-    due = inventory_due(state)
+    if if_due and mode != "inventory":
+        raise ValueError("--if-due is only valid for periodic inventory")
     entries = {data["head"]["id"]: data["head"]}
-    if mode == "inventory" or due:
+    if mode == "inventory":
         entries.update({entry["id"]: entry for entry in data["specialists"] if (skills_dir / entry["skill_name"]).exists()})
     entries.update({entry["id"]: entry for entry in selected})
     with installation_lock(skills_dir):
+        inventory = inventory_status(state)
+        if mode == "inventory" and if_due and not selected and not inventory["due"]:
+            return {"gate": "PASS" if inventory["status"] == "success" else "WARN",
+                    "skills": [], "blocked": [], "selected_specialists": [], "head_precedence": True,
+                    "reload_head_required": False, "inventory": {**inventory, "performed": False}}
+        if mode == "inventory":
+            # Retain an interrupted attempt without claiming successful freshness.
+            attempt = {"schema_version": 1, "checked_at": inventory["checked_at"],
+                       "attempted_at": datetime.now(timezone.utc).isoformat(), "status": "incomplete", "failures": []}
+            write_record(state / "inventory.json", attempt)
         head = ensure(data["head"], skills_dir, state, apply)
         # A changed manager/registry must be reloaded before it can delegate.
         if head.get("updated"):
+            if mode == "inventory":
+                write_record(state / "inventory.json", {**attempt, "status": "reload"})
             return {"gate": "RELOAD", "skills": [head], "reload_head_required": True,
                     "selected_specialists": [], "action": "reload the installed Head and rerun its preflight"}
         results = [head, *(ensure(entry, skills_dir, state, apply) for name, entry in entries.items() if name != data["head"]["id"])]
@@ -747,14 +798,20 @@ def run(mode: str, skills_dir: Path, state: Path, selected: list[dict], apply: b
         for item in results:
             if item["id"] in selected_by_id and item["status"] == "current":
                 item["compatibility"] = compatibility(selected_by_id[item["id"]], skills_dir, state, item, assessment)
+        if mode == "inventory":
+            failures = [{"id": item["id"], "status": item["status"]} for item in results if item["status"] != "current"]
+            write_record(state / "inventory.json", {**attempt, "status": "failed" if failures else "success",
+                         "checked_at": attempt["checked_at"] if failures else datetime.now(timezone.utc).isoformat(),
+                         "failures": failures})
+            inventory = inventory_status(state)
     required = {data["head"]["id"], *(entry["id"] for entry in selected)}
     blocked = [item["id"] for item in results if item["id"] in required and item["status"] != "current"]
     blocked.extend(item["id"] for item in results if item["id"] in selected_by_id
                    and (mode == "assess" or selected_by_id[item["id"]].get("active_in_stage", True))
                    and item.get("status") == "current" and item.get("compatibility", {}).get("status") != "accepted")
-    if (mode == "inventory" or due) and all(item["status"] == "current" for item in results):
-        write_record(inventory, {"checked_at": datetime.now(timezone.utc).isoformat()})
-    return {"gate": "BLOCK" if blocked else ("WARN" if any(item["status"] != "current" for item in results) else "PASS"), "skills": results, "blocked": blocked,
+    warned = any(item["status"] != "current" for item in results) or inventory["status"] not in {"success", "not-checked"}
+    return {"gate": "BLOCK" if blocked else ("WARN" if warned else "PASS"), "skills": results, "blocked": blocked,
+            "inventory": {**inventory, "performed": mode == "inventory"},
             "reload_head_required": False,
             "selected_specialists": selected, "head_precedence": True,
             "missing_unselected": [entry["id"] for entry in data["specialists"] if not (skills_dir / entry["skill_name"]).exists()]}
@@ -763,9 +820,12 @@ def run(mode: str, skills_dir: Path, state: Path, selected: list[dict], apply: b
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("prepare", "inventory", "assess"))
+    parser.add_argument("--if-due", action="store_true", help="Skip periodic inventory until its next successful-check or failed-attempt interval")
     parser.add_argument("--task", default="")
     parser.add_argument("--path", action="append", default=[])
-    parser.add_argument("--concern", action="append", default=[])
+    parser.add_argument("--concern", "--context-concern", action="append", default=[])
+    for field in ("runtime", "platform", "capability"):
+        parser.add_argument("--context-" + field, action="append", default=[])
     parser.add_argument("--specialist", action="append", default=[])
     parser.add_argument("--stage", choices=registry()["lifecycle"], default="discover")
     parser.add_argument("--guidance-evidence", help="Head diff review: mechanical use of settled decisions, no new domain behavior")
@@ -774,7 +834,7 @@ def main() -> int:
         parser.add_argument("--risk-" + field.replace("_", "-"))
     parser.add_argument("--skills-dir", type=Path, default=Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))) / "skills")
     parser.add_argument("--state-dir", type=Path, default=Path(os.environ.get("VIBE_CODING_HOME", str(Path.home() / ".vibe-coding"))) / "specialists")
-    parser.add_argument("--project-root", type=Path)
+    parser.add_argument("--project-root", type=Path, help="Project inspected by prepare; defaults to the working directory")
     parser.add_argument("--apply", action="store_true", help="install/update registered sources within existing authorization")
     parser.add_argument("--assessment", type=Path, help="Head-authored compatibility decision JSON; assess mode only")
     parser.add_argument("--json", action="store_true")
@@ -790,12 +850,26 @@ def main() -> int:
             raise ValueError("unknown specialist concerns: " + ", ".join(sorted(unknown_concerns)))
         risk_facts = {field: getattr(args, "risk_" + field) for field in load_risk_classifier().INPUT_FIELDS
                       if getattr(args, "risk_" + field) is not None}
-        selected = select_specialists(args.task, args.path, {"concern": args.concern}, args.specialist, args.stage,
-                                      risk_facts or None, args.guidance_evidence, domain_effects=parse_domain_effects(args.domain_effect))
+        route = None
+        effects = parse_domain_effects(args.domain_effect)
+        if args.mode == "prepare":
+            context = {field: getattr(args, "context_" + field) for field in ("runtime", "platform", "capability")}
+            context["concern"] = args.concern
+            route = load_context_router().plan(
+                args.project_root or Path.cwd(), args.task, args.path,
+                risk_facts=risk_facts or None, context_facts=context, stage=args.stage,
+                guidance_evidence=args.guidance_evidence, domain_effects=effects,
+                explicit_specialists=args.specialist)
+            selected = route["required_specialists"]
+        else:
+            selected = select_specialists(args.task, args.path, {"concern": args.concern}, args.specialist, args.stage,
+                                          risk_facts or None, args.guidance_evidence, domain_effects=effects)
         if (args.mode == "assess") != bool(args.assessment) or (args.mode == "assess" and len(selected) != 1):
             raise ValueError("assess requires one selected registered specialist and --assessment")
         result = run(args.mode, skills, state, selected, args.apply,
-                     read_local_json(args.assessment) if args.assessment else None)
+                      read_local_json(args.assessment) if args.assessment else None, if_due=args.if_due)
+        if route is not None:
+            result["route"] = route
     except (OSError, ValueError, KeyError) as exc:
         result = {"gate": "BLOCK", "error": str(exc)}
     print(json.dumps(result, indent=2, ensure_ascii=False) if args.json else f"Specialist preflight: {result['gate']}")

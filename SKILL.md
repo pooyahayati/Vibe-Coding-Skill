@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Python 3.10+ and Git. Publication requires an installed native Trivy executable and relevant local release scans. Graphify is conditional. Network access is needed for registry, vulnerability data, GitHub and tool-update checks.
 metadata:
   author: "Pooya Hayati"
-  version: "1.7.0"
+  version: "1.7.1"
 ---
 
 # Vibe Coding Skill
@@ -45,7 +45,7 @@ MUST:
 
 - read every applicable `AGENTS.md` from the repository root through the affected subtree when present;
 - inspect repository structure/manifests and known affected paths;
-- run the Context Router before loading broad domain references:
+- use task-start `specialist_manager.py prepare` below: it runs the Context Router and returns `route` with the same inspected assessment used for specialist preparation. Load that route's relevant references, without repeating selection. For offline discovery without installation checks, run the router directly:
 
 `python scripts/context_router.py --root <project> --task "<task>" --path <known-path> --json`
 
@@ -102,7 +102,7 @@ Read `references/context-routing-and-execution.md` for routing precedence, conte
 
 Vibe is the engineering Head: it owns scope, architecture, risk, integration, acceptance, and final delivery. Specialist methodology belongs to the specialist, not to duplicated rules in Vibe.
 
-Before each new task, run `scripts/specialist_manager.py prepare --task "<task>" --stage <stage> --project-root <project> --json --apply` from the installed Head. Include known `--path` values and applicable `--concern` facts (for example `ui`, `contracts`, `security`, `debugging`); new projects also require semantic routing. If a complete formal assignment already exists, use `specialist_handoff.py prepare` instead so its subsequent `assign` can reuse the same bound check. Install/update only within existing authorization and host permissions. Specialists outside the current stage are preparation-only, not instructions to invoke a standalone lifecycle.
+Before each new task, run `scripts/specialist_manager.py prepare --task "<task>" --stage <stage> --project-root <project> --json --apply` from the installed Head. Include known `--path` values and applicable `--concern` facts (for example `ui`, `contracts`, `security`, `debugging`); new projects also require semantic routing. Preparation inspects the current project and consumes the router's selection directly; `route` retains its risk, inspection limitations and context to load. Missing inspection cannot qualify for lightweight participation, and changed source/scope requires re-routing. If a complete formal assignment already exists, use `specialist_handoff.py prepare` instead so its subsequent `assign` can reuse the same bound check. Install/update only within existing authorization and host permissions. Specialists outside the current stage are preparation-only, not instructions to invoke a standalone lifecycle.
 
 For an already retained assignment, use `specialist_handoff.py resume` or the project resume packet and load its reported resource paths. [Assignment isolation](references/specialist-composition.md#assignment-isolated-resources) lets a verified default update serve new tasks while active work retains its resources. Legacy/unverified bindings keep the update guard; migration is explicit and never acceptance. New tasks and final security/release controls still use the current default.
 
@@ -110,7 +110,7 @@ Registered specialists: sole design specialist `pooyahayati/UI-UX-Skill`; applic
 
 Read each selected current `SKILL.md` and `vibe-head-contract.md`; resolve required instruction-compatibility assessment before use. Reuse acceptance only while source, resources and Head/domain controls match. For inspected mechanical changes within settled decisions, use the relevant accepted guidance directly without a new formal handoff. Supply complete risk facts and `--guidance-evidence` describing the diff and preserved decisions, or reuse an accepted non-runtime scope review. Existing RTL/responsive context can use `--domain-effect rtl=preserved` / `responsive=preserved` after inspecting the actual effect; keep the relevant visual check. Files/extensions alone do not require formal work. Missing/uncertain scope, material domain decisions and explicit specialist assignments retain [S2 handoffs](references/specialist-composition.md#stage-return-and-head-acceptance-s2) and separate Head acceptance of actual returns, changes and evidence. Existing assignments/findings remain binding. Installation is not specialist use; registry permissions do not grant host access.
 
-Resolve the latest stable release, or the latest default-branch commit when no release exists; never put specialist version pins in Head policy. Check the Head at task start and selected specialists before use; reconcile registered installed skills when the daily inventory is due. Record observed revisions outside the product repository and keep them stable during the operation.
+Resolve the latest stable release, or the latest default-branch commit when no release exists; never put specialist version pins in Head policy. Preparation checks the Head and selected specialists before use. At the next completed task boundary, before the next operation, run `scripts/specialist_manager.py inventory --if-due --json` to reconcile registered installed skills; use `--apply` only within existing authorization. Task preparation does not perform unrelated inventory; failed inventory attempts retain warnings and a bounded retry time. Required checks do not wait for that retry. Record observed revisions outside the product repository and keep them stable during the operation.
 
 `RELOAD` requires reading the updated Head and rerunning its preflight before delegation. `BLOCK` stops the affected required workflow; an unrelated inventory `WARN` does not block unaffected work. Never call unavailable, incompatible, or unverified installations current.
 

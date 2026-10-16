@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 from zipfile import ZipFile
 from contextlib import redirect_stdout
+from datetime import datetime, timedelta, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -65,13 +66,13 @@ class SpecialistTests(unittest.TestCase):
         for task, paths in [("Correct the label", ["src/Button.tsx"]), ("Adjust spacing", ["styles/site.css"])]:
             with self.subTest(task=task):
                 selected = manager.select_specialists(task, paths, {"concern": ["ui"]}, stage="build",
-                                                      risk_facts=facts, guidance_evidence=evidence)
+                                                      risk_facts=facts, guidance_evidence=evidence, inspection_complete=True)
                 self.assertEqual([s["id"] for s in selected], ["ui-ux-skill"])
                 self.assertEqual(selected[0]["participation"], "guidance-only")
                 self.assertFalse(selected[0]["handoff_required"])
                 self.assertTrue(selected[0]["required"])
         comments = dict(facts, change_effect="non-runtime", scope_evidence="Inspected auth.py: comment spelling only; access behavior unchanged.")
-        selected = manager.select_specialists("Correct comment spelling", ["src/auth/session.py"], risk_facts=comments)
+        selected = manager.select_specialists("Correct comment spelling", ["src/auth/session.py"], risk_facts=comments, inspection_complete=True)
         self.assertFalse(selected[0]["handoff_required"])
         for task, path, risk, concerns in [
                 ("Add a UI flow", "src/Form.tsx", dict(facts, operation="feature"), ["ui"]),
@@ -81,17 +82,20 @@ class SpecialistTests(unittest.TestCase):
                 ("Correct the label", "src/Button.tsx", {}, ["ui"])]:
             with self.subTest(task=task, risk=risk):
                 rows = manager.select_specialists(task, [path], {"concern": concerns}, stage="build",
-                                                   risk_facts=risk, guidance_evidence=evidence)
+                                                   risk_facts=risk, guidance_evidence=evidence, inspection_complete=True)
                 self.assertTrue(rows and all(s["handoff_required"] for s in rows))
         self.assertTrue(manager.select_specialists("Correct label", ["src/Button.tsx"], risk_facts=facts)[0]["handoff_required"])
         self.assertTrue(manager.select_specialists("Correct label", ["src/Button.tsx"], explicit=["ui-ux-skill"],
+                                                  risk_facts=facts, guidance_evidence=evidence, inspection_complete=True)[0]["handoff_required"])
+        # Direct callers without current inspection cannot qualify through text alone.
+        self.assertTrue(manager.select_specialists("Correct label", ["src/Button.tsx"],
                                                   risk_facts=facts, guidance_evidence=evidence)[0]["handoff_required"])
         for context in ([], ["rtl"], ["responsive"], ["rtl", "responsive"]):
             effects = {c: "preserved" for c in context}
             with self.subTest(context=context):
                 row = manager.select_specialists("Correct label spelling", ["src/Button.tsx"],
                     {"concern": ["ui", *context]}, risk_facts=facts, guidance_evidence=evidence,
-                    domain_effects=effects)[0]
+                    domain_effects=effects, inspection_complete=True)[0]
                 self.assertFalse(row["handoff_required"])
                 self.assertEqual(row["domain_effects"], effects)
         for overrides in (
@@ -104,7 +108,7 @@ class SpecialistTests(unittest.TestCase):
                 {"risk_facts": {}}, {"explicit": ["ui-ux-skill"]},
                 {"risk_facts": dict(facts, operation="auth")},
                 {"risk_facts": dict(facts, data_sensitivity="personal")}):
-            args = dict(risk_facts=facts, guidance_evidence=evidence, domain_effects={"rtl": "preserved"})
+            args = dict(risk_facts=facts, guidance_evidence=evidence, domain_effects={"rtl": "preserved"}, inspection_complete=True)
             args.update(overrides)
             with self.subTest(overrides=overrides):
                 rows = manager.select_specialists("Correct label", ["src/Button.tsx"], {"concern": ["ui", "rtl"]}, **args)
@@ -117,7 +121,7 @@ class SpecialistTests(unittest.TestCase):
                                     ("public-api", {"api-and-interface-design", "security-and-hardening"}),
                                     ("payment", {"security-and-hardening", "api-and-interface-design"})]:
             selected = manager.select_specialists("Small correction", ["policy.md"],
-                                                  risk_facts=dict(facts, operation=operation), guidance_evidence=evidence)
+                                                  risk_facts=dict(facts, operation=operation), guidance_evidence=evidence, inspection_complete=True)
             self.assertEqual({s["id"] for s in selected}, expected)
             self.assertTrue(all(s["handoff_required"] for s in selected))
 
@@ -125,24 +129,55 @@ class SpecialistTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("guidance_planner_test", ROOT / "scripts/execution_plan.py")
         planner = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(planner)
-        path = self.root / "src/Button.tsx"
-        path.parent.mkdir()
+        project = self.root / "project"
+        path = project / "src/Button.tsx"
+        path.parent.mkdir(parents=True)
         path.write_text("export const Label = () => <span>Save</span>;", encoding="utf-8")
         args = {"paths": ["src/Button.tsx"], "stage": "build", "context_facts": {"concern": ["ui"]},
                 "risk_facts": {"operation": "tiny", "environment": "local", "data_sensitivity": "none", "change_boundary": "local"},
                 "guidance_evidence": "Compared with accepted design: label spelling only, same layout, flow and accessibility."}
-        result = planner.draft(self.root, "Correct label spelling", **args)
-        self.assertEqual(result["specialist_assignments"], [])
-        self.assertEqual([s["id"] for s in result["specialist_guidance"]], ["ui-ux-skill"])
+        def compare(light):
+            task = "Correct label spelling"
+            route = manager.load_context_router().plan(project, task, **args)
+            plan = planner.draft(project, task, **args)
+            argv = ["specialist_manager.py", "prepare", "--project-root", str(project), "--task", task,
+                    "--path", args["paths"][0], "--stage", args["stage"], "--json",
+                    "--skills-dir", str(self.skills), "--state-dir", str(self.state),
+                    "--guidance-evidence", args["guidance_evidence"]]
+            for key, value in args["risk_facts"].items():
+                argv.extend(["--risk-" + key.replace("_", "-"), value])
+            for concern in args["context_facts"]["concern"]:
+                argv.extend(["--concern", concern])
+            for concern, effect in args.get("domain_effects", {}).items():
+                argv.extend(["--domain-effect", concern + "=" + effect])
+            for name in args.get("explicit_specialists", []):
+                argv.extend(["--specialist", name])
+            output = io.StringIO()
+            with patch.object(sys, "argv", argv), redirect_stdout(output), patch.object(manager, "run", return_value={"gate": "PASS"}) as prepare:
+                self.assertEqual(manager.main(), 0)
+            actual = json.loads(output.getvalue())["route"]
+            self.assertEqual(prepare.call_args.args[3], route["required_specialists"])
+            self.assertEqual(actual["required_specialists"], route["required_specialists"])
+            self.assertEqual(actual["task"]["risk"], route["task"]["risk"])
+            self.assertEqual(actual["context_plan"]["inspection"], route["context_plan"]["inspection"])
+            self.assertEqual(bool(plan["specialist_guidance"]), light)
+            self.assertEqual(bool(plan["specialist_assignments"]), not light)
+            self.assertEqual(actual["required_specialists"][0]["handoff_required"], not light)
+
+        compare(True)
         args.update(context_facts={"concern": ["ui", "rtl", "responsive"]},
                     domain_effects={"rtl": "preserved", "responsive": "preserved"})
-        result = planner.draft(self.root, "Correct label spelling", **args)
-        self.assertEqual(result["specialist_assignments"], [])
-        self.assertEqual(result["specialist_guidance"][0]["domain_effects"], args["domain_effects"])
+        compare(True)
+        args["domain_effects"]["rtl"] = "changed"
+        compare(False)
+        args["domain_effects"]["rtl"] = "preserved"
+        args["explicit_specialists"] = ["ui-ux-skill"]
+        compare(False)
+        args.pop("explicit_specialists")
         path.unlink()
-        result = planner.draft(self.root, "Correct label spelling", **args)
-        self.assertEqual(result["specialist_guidance"], [])
-        self.assertTrue(result["specialist_assignments"][0]["handoff_required"])
+        compare(False)
+        path.write_text("export const Label = () => <span>Saved</span>;", encoding="utf-8")
+        compare(True)
 
     def test_domain_semantics_docs_and_sensitive_risk_do_not_select_unrelated_skills(self):
         self.assertEqual(manager.select_specialists("Describe API authentication", ["docs/API.md"]), [])
@@ -461,16 +496,73 @@ class SpecialistTests(unittest.TestCase):
 
     def test_daily_inventory_reports_unused_failure_without_blocking_backend(self):
         (self.skills / "ui-ux-skill").mkdir(parents=True)
-        with patch.object(manager, "ensure", side_effect=[{"id": "vibe-coding-skill", "status": "current"}, {"id": "ui-ux-skill", "status": "currency-unverified"}]):
-            result = manager.run("prepare", self.skills, self.state, [], False)
-            self.assertEqual(result["gate"], "WARN")
-            self.assertFalse((self.state / "inventory.json").exists())
-        with patch.object(manager, "ensure", side_effect=lambda entry, *args: {"id": entry["id"], "status": "current"}) as ensure:
-            manager.run("inventory", self.skills, self.state, [], False)
+        now = datetime(2026, 10, 16, tzinfo=timezone.utc)
+        previous = (now - timedelta(days=2)).isoformat()
+        manager.write_record(self.state / "inventory.json", {"checked_at": previous})  # Legacy record.
+        def unavailable(entry, *args):
+            return {"id": entry["id"], "status": "currency-unverified" if entry["id"] == "ui-ux-skill" else "current"}
+        with patch.object(manager, "datetime", wraps=datetime) as clock, patch.object(manager, "ensure", side_effect=unavailable) as ensure:
+            clock.now.return_value = now
+            prepared = manager.run("prepare", self.skills, self.state, [], False)
+            self.assertEqual(prepared["gate"], "PASS")
+            self.assertTrue(prepared["inventory"]["due"])
+            self.assertEqual(ensure.call_count, 1)  # Only the required Head, despite due inventory.
+            ensure.reset_mock()
+            failed = manager.run("inventory", self.skills, self.state, [], False, if_due=True)
+            self.assertEqual(failed["gate"], "WARN")
             self.assertEqual(ensure.call_count, 2)
-        with patch.object(manager, "ensure", return_value={"id": "vibe-coding-skill", "status": "current"}) as ensure:
-            manager.run("prepare", self.skills, self.state, [], False)
-            self.assertEqual(ensure.call_count, 1)
+            self.assertEqual(failed["inventory"]["checked_at"], previous)
+            self.assertEqual(failed["inventory"]["failures"], [{"id": "ui-ux-skill", "status": "currency-unverified"}])
+            self.assertFalse(failed["inventory"]["due"])
+            ensure.reset_mock()
+            for _ in range(3):
+                result = manager.run("prepare", self.skills, self.state, [], False)
+                self.assertEqual(result["gate"], "WARN")
+                self.assertEqual(result["blocked"], [])
+                self.assertEqual([s["id"] for s in result["skills"]], ["vibe-coding-skill"])
+                self.assertFalse(manager.run("inventory", self.skills, self.state, [], False, if_due=True)["inventory"]["performed"])
+            self.assertEqual(ensure.call_count, 3)  # No unrelated retries, including maintenance calls.
+            ensure.reset_mock()
+            self.assertEqual(manager.run("prepare", self.skills, self.state, [self.entry], False)["gate"], "BLOCK")
+            self.assertEqual(ensure.call_count, 2)  # Selection bypasses inventory retry scheduling.
+            ensure.reset_mock()
+            manager.run("inventory", self.skills, self.state, [], False)  # Explicit retry.
+            self.assertEqual(ensure.call_count, 2)
+            clock.now.return_value = now + timedelta(days=1)
+            ensure.side_effect = lambda entry, *args: {"id": entry["id"], "status": "current"}
+            recovered = manager.run("inventory", self.skills, self.state, [], False, if_due=True)
+            self.assertEqual(recovered["gate"], "PASS")
+            self.assertTrue(recovered["inventory"]["performed"])
+            self.assertEqual(recovered["inventory"]["failures"], [])
+            self.assertEqual(recovered["inventory"]["checked_at"], clock.now.return_value.isoformat())
+            ensure.reset_mock()
+            self.assertFalse(manager.run("inventory", self.skills, self.state, [], False, if_due=True)["inventory"]["performed"])
+            ensure.assert_not_called()
+
+    def test_inventory_interruption_and_invalid_state_do_not_claim_freshness(self):
+        self.assertTrue(manager.inventory_due(self.state))
+        for record in ({"checked_at": "bad"}, {"checked_at": "2099-01-01T00:00:00+00:00"},
+                       {"checked_at": "2026-01-01T00:00:00"}, {"schema_version": 99},
+                       {"checked_at": None, "attempted_at": 1, "status": "failed"}):
+            manager.write_record(self.state / "inventory.json", record)
+            self.assertEqual(manager.inventory_status(self.state)["status"], "unverified")
+            self.assertTrue(manager.inventory_due(self.state))
+        previous = "2000-01-01T00:00:00+00:00"
+        manager.write_record(self.state / "inventory.json", {"checked_at": previous})
+        with patch.object(manager, "ensure", side_effect=RuntimeError("interrupted")):
+            with self.assertRaises(RuntimeError):
+                manager.run("inventory", self.skills, self.state, [], False, if_due=True)
+        interrupted = manager.inventory_status(self.state)
+        self.assertEqual(interrupted["checked_at"], previous)
+        self.assertEqual(interrupted["status"], "incomplete")
+        with patch.object(manager, "ensure") as ensure:
+            result = manager.run("inventory", self.skills, self.state, [], False, if_due=True)
+            ensure.assert_not_called()
+            self.assertEqual(result["gate"], "WARN")
+        with patch.object(manager, "ensure", return_value={"id": "vibe-coding-skill", "status": "current", "updated": True}):
+            self.assertEqual(manager.run("inventory", self.skills, self.state, [], False)["gate"], "RELOAD")
+        self.assertTrue(manager.inventory_due(self.state))
+        self.assertEqual(manager.inventory_status(self.state)["checked_at"], previous)
 
 
 class CompatibilityTests(unittest.TestCase):

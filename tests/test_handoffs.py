@@ -266,8 +266,14 @@ class HandoffTests(unittest.TestCase):
             result = cli("prepare")
             self.assertEqual(result["gate"], "PASS")
             self.assertEqual(upstream.call_count, 2)  # Head and selected specialist, once each.
+            manager.write_record(self.state / "inventory.json", {
+                "schema_version": 1, "checked_at": "2000-01-01T00:00:00+00:00",
+                "attempted_at": "2000-01-02T00:00:00+00:00", "status": "failed",
+                "failures": [{"id": "debugging-and-error-recovery", "status": "currency-unverified"}]})
             # A new explicit task-start preparation always observes upstream again.
             result = cli("prepare")
+            self.assertEqual(result["gate"], "WARN")
+            self.assertTrue(result["inventory"]["due"])
             self.assertEqual(upstream.call_count, 4)
             prepared = manager.read_local_json(Path(result["preparation_path"]))
             with patch.object(manager, "resolve_latest", side_effect=OSError("offline")) as offline:
@@ -279,10 +285,10 @@ class HandoffTests(unittest.TestCase):
             self.assertFalse(started["accepted"])
             self.assertFalse(Path(result["preparation_path"]).exists())
 
-    def test_changed_preparation_inputs_and_due_inventory_require_fresh_checks(self):
+    def test_changed_preparation_inputs_and_expiry_require_fresh_checks(self):
         self.install_head_fixture()
         with patch.object(manager, "ensure", wraps=self.real_ensure), patch.object(manager, "resolve_latest", side_effect=self.resolve_fixture):
-            for case in ("scope-file", "assignment", "contract", "resource", "head-resource", "source", "controls", "assessment", "inventory", "expired"):
+            for case in ("scope-file", "assignment", "contract", "resource", "head-resource", "source", "controls", "assessment", "expired"):
                 with self.subTest(case=case):
                     result = handoff.prepare(self.root, self.contract, self.spec, self.skills, self.state)
                     self.assertEqual(result["gate"], "PASS")
@@ -319,7 +325,7 @@ class HandoffTests(unittest.TestCase):
                             value["decision"] = "blocked"
                             write(target, value)
                         else:
-                            target = self.state / "inventory.json" if case == "inventory" else path
+                            target = path
                             value = manager.read_local_json(target)
                             value["checked_at"] = "2000-01-01T00:00:00+00:00"
                             write(target, value)
@@ -506,7 +512,8 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual(inspected["gate"], "UNVERIFIED")
         light = manager.select_specialists("Correct label", ["src/view.tsx"], facts={"concern": ["ui"]},
                                             risk_facts={"operation": "tiny", "environment": "local", "data_sensitivity": "none", "change_boundary": "local"},
-                                            guidance_evidence="Inspected the follow-up diff: mechanical label only, existing decisions preserved.")
+                                            guidance_evidence="Inspected the follow-up diff: mechanical label only, existing decisions preserved.",
+                                            inspection_complete=True)
         self.assertFalse(light[0]["handoff_required"])
         # New lightweight routing never accepts/removes the retained formal work.
         self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "BLOCK")

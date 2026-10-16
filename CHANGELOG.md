@@ -6,6 +6,11 @@ Technical release history. Entries describe their release; current operating and
 
 No pending changes.
 
+## 1.7.1 — Consistent selection and bounded specialist maintenance
+
+- R33: reuse current router inspection and risk evaluation in specialist preparation; return the same route for context loading, preserve explicit selections across entry points, and make uninspected direct selection conservative. Keep verified mechanical edits lightweight without a routing cache.
+- R34: separate required preparation from periodic installed-skill inventory, retain failed-attempt scheduling independently of successful freshness, and add due-only maintenance at task boundaries. Keep required current-source checks and assignment-bound preparation validity independent of unrelated inventory warnings.
+
 ## 1.7.0 — Focused specialist participation and isolated assignments
 
 - R31: distinguish inspected, preserved RTL/responsive context from changed domain behavior in mechanical specialist participation. Carry explicit domain effects through routing and planning; preserve formal assignment, uncertainty and material-risk safeguards.
