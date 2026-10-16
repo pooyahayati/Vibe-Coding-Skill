@@ -53,13 +53,15 @@ python scripts/specialist_manager.py prepare --task "<task>" --path <affected-pa
 
 Use `--stage <stage>` and matching `--concern` facts; repeat `--specialist <registered-id>` for explicit approved selections. Omit UI facts for backend-only work. `prepare` runs the current Context Router against `--project-root` (working directory if omitted) and passes its selected specialists directly to preparation. Its `route` result includes inspection limitations, risk and context-loading instructions; reuse that current assessment rather than rebuilding selection flags or running a second router. The existing router/planner also accept explicit `--specialist` selections; manager context runtime/platform/capability facts use the same `--context-*` options. Missing or unreadable affected source remains conservative even when evidence text claims a mechanical change. Re-route after source/scope/control changes; there is no persisted routing approval. Selection prepares relevant skills for the workflow; current-stage assignments decide actual use. `--apply` is used within existing authorization to install/update approved registered packages; do not treat a command-line option as permission to exceed host permissions. Without it, missing/outdated installations block rather than being silently used.
 
-The manager always checks the Head and each selected specialist upstream. When a complete formal assignment is already available at task start, use the bound S2 `prepare` below instead of stacking both preparation commands. At most once per successful daily interval, preparation also reconciles all registered specialists already installed on the host. Unselected missing skills are reported but not downloaded. A daily audit can also be invoked explicitly:
+The manager checks the Head and each selected specialist upstream; preparation does not scan unrelated installed skills. When a complete formal assignment is already available at task start, use the bound S2 `prepare` below instead of stacking both preparation commands. At the next completed task boundary, before beginning another operation, run the periodic inventory command below. It skips upstream work until the existing daily interval is due, measured from the last success or failed attempt. Unselected missing skills are reported but not downloaded:
 
 ```sh
-python scripts/specialist_manager.py inventory --apply --json
+python scripts/specialist_manager.py inventory --if-due --json
 ```
 
-This entrypoint performs a due daily audit while tasks are active. It does not create an idle background service. If checks must run without active tasks, a host scheduler must invoke the inventory command; no background scheduling is implied by `SKILL.md`.
+Use `--apply` only within existing installation authorization and outside the running operation; active/legacy assignment guards remain in force. Omit `--if-due` for an explicitly requested immediate retry. There is no idle background service; an authorized host scheduler may invoke the same command when no tasks run.
+
+The `inventory` result distinguishes `checked_at` (last successful inventory), `attempted_at`, `status`, `failures`, `next_check_at`, `due` and whether this call `performed` the inventory. Failed/interrupted attempts never refresh successful currency; they remain WARN/unverified until reconciliation. Old success-only records remain readable; missing/invalid records are due, not proof of currency. An updated Head requires RELOAD and inventory retry with its new controls. Unrelated warnings remain visible during preparation without invalidating verified required preparation. If a previously unrelated specialist becomes selected, fresh required checks run immediately regardless of inventory scheduling; failures still BLOCK its use.
 
 The normal source is the latest published stable release. Only a `404` for no stable release permits resolving the repository's declared default branch. Rate-limit, network, and permission errors must not become a development-branch fallback. Report the source channel accurately.
 
@@ -75,10 +77,10 @@ Default provenance lives under `~/.vibe-coding/specialists`; skills live in the 
 
 | Outcome | Required action |
 |---|---|
-| `PASS` / `current` | Installation is current; active selected specialists also need compatibility `accepted`. Read instructions and delegate within the settled boundary. |
+| `PASS` / `current` | Checked required installations are current; active selected specialists also need compatibility `accepted`. A skipped inventory has no checked skills and claims no fresh upstream observation. Read instructions and delegate within the settled boundary. |
 | `RELOAD` | Head changed; read it and rerun its preflight using its current registry/manager. |
 | `BLOCK` | Required Head/selected specialist is missing, outdated, incompatible, locally modified, or currency-unverified; resolve that cause before this workflow. |
-| `WARN` | An unused registered installation failed inventory; report it and continue unaffected work. |
+| `WARN` | Periodic inventory has an unresolved failure/incomplete attempt or unverified state; report it and continue unaffected work after required checks pass. |
 
 Do not silently label an older fallback latest. A deliberate exception to mandatory currency requires a real user decision. Never claim automatic updates are available where host execution/network permissions prevent them.
 
@@ -120,7 +122,7 @@ python scripts/specialist_handoff.py assign --root <project> --task-contract <co
 python scripts/specialist_handoff.py review --root <project> --task-contract <contract.json> --assignment-id <id> --return <specialist-return.json> --evidence <head-receipt-catalog.json>
 ```
 
-`prepare` performs a fresh upstream check and due inventory, then retains a successful check for this exact assignment. It grants no acceptance or installation permission. If installation/S1 work is needed, resolve it through the manager first. `assign` reuses the preparation only while the project/contract/assignment, scoped inputs and baseline, installed Head/specialist resources and provenance, accepted compatibility, registry and controls match. Reuse expires at the existing 24-hour inventory interval and cannot skip due inventory. Changed/missing/invalid preparation triggers the ordinary fresh preflight; an offline failure blocks, and a failed fresh attempt cannot restore old success. A successful assignment consumes the preparation. Generic manager preparation is not an assignment-bound cache.
+`prepare` performs fresh upstream checks for the required Head and assigned specialist, then retains successful required preparation even when unrelated inventory has warnings. It grants no acceptance or installation permission. If installation/S1 work is needed, resolve it through the manager first. `assign` reuses preparation only while the project/contract/assignment, scoped inputs and baseline, installed Head/specialist resources and provenance, accepted compatibility, registry and controls match. Reuse still expires after 24 hours from its own preparation time; due/failed general inventory does not invalidate it. Periodic maintenance remains required at the task boundary above. Changed/missing/invalid preparation triggers the ordinary fresh preflight; an offline required check blocks, and a failed fresh attempt cannot restore old success. A successful assignment consumes the preparation. Generic manager preparation is not an assignment-bound cache.
 
 The result labels reuse with `preflight_reuse.reused: true`, the original preparation time and `upstream_checked: false`; it is locally revalidated evidence from that preparation, not a new upstream observation. A valid prepared assignment can therefore start offline with that explicit limitation. Every new task still starts with fresh preparation; this is not a global freshness bypass or a version pin. Active assignments keep stable resources through the binding below, or retain the legacy update guard.
 

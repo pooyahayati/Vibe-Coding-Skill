@@ -9,9 +9,9 @@ Canonical progress tracker. Reviewed: 2026-10-16, Asia/Tehran. All documented im
 | Published runtime | Stable [1.7.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.7.0), release commit `e556f0a1b41b43c6001d03739905001249be574d`. |
 | Local installation | Active **1.7.0**, verified on 2026-10-16. All 81 installed files match the published ZIP byte-for-byte; offline installation check passed without failures or warnings. Previous installation retained as a backup outside skill discovery. |
 | Review baseline | Main `1204b41fced7cb144721bebc90a5ec03d84dad50`, runtime 1.7.0; inspected source and bounded reproductions of selection disagreement and repeated unrelated inventory checks. |
-| Overall progress | **R1-R32 complete; R33 accepted locally; R34 next.** The counts track packages, not quality or coverage. |
-| Current phase | R33 scoped source and extracted-package acceptance passed on `codex/r33-r34`; merge pending. |
-| Next action | Implement R34's separated required preparation and bounded periodic inventory. |
+| Overall progress | **R1-R32 complete; R33-R34 accepted locally.** The counts track packages, not quality or coverage. |
+| Current phase | Both packages passed scoped source and extracted-package acceptance on `codex/r33-r34`; merge pending. |
+| Next action | Prepare 1.7.1, pass required hosted checks, merge, publish and update the local Head. |
 | Next unallocated ID | **R35**. Continue the same sequence for later improvements. |
 | Delivery state | R33-R34 implementation, merge, release and local update are authorized. Runtime acceptance and new delivery remain pending; latest verified delivery is 1.7.0 below. |
 | Blockers / limits | No known planning blocker. Runtime acceptance is pending. Legacy or unverifiable assignment bindings retain their update guard; project speed gains remain unmeasured. |
@@ -65,7 +65,7 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 | R31 | W1 (planning draft) | [Effect-based specialist participation](docs/improvement-implementation-plan.md#r31) | **Complete** | `1.7.0` / [PR #104](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/104); scoped selection, extracted route and full hosted checks passed. |
 | R32 | W2 (planning draft) | [Assignment-isolated skill updates](docs/improvement-implementation-plan.md#r32) | **Complete** | `1.7.0` / [PR #104](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/104); two-project continuation/migration, retained history, interruption protection, cleanup and extracted-package checks passed. |
 | R33 | None | [Consistent inspected specialist selection](docs/improvement-implementation-plan.md#r33) | **Accepted locally** | Existing specialist/routing suites and affected extracted-package route passed; merge pending. |
-| R34 | None | [Bounded periodic specialist inventory](docs/improvement-implementation-plan.md#r34) | **Planned - second** | Scope approved; queued after R33 acceptance. No runtime acceptance or delivery claimed. |
+| R34 | None | [Bounded periodic specialist inventory](docs/improvement-implementation-plan.md#r34) | **Accepted locally** | Bounded retry, required-selection failure, interrupted/legacy inventory and preparation reuse/invalidation checks passed; merge pending. |
 
 ## Numbering policy
 
@@ -93,8 +93,9 @@ Broad instruction slimming is not a separate stage: R33 may clarify only the tas
 | Package | Verified locally |
 |---|---|
 | R33 | 98 existing specialist/routing tests passed, including the extended manager/router/planner agreement case for readable/missing source, changed effects and explicit selection. The affected extracted-package route passed, including the same manager-entry scenario and existing preparation reuse. Structure and portable mirror checks passed. |
+| R34 | 58 specialist/handoff tests passed. Extended fixtures cover consecutive prepares, bounded/explicit inventory retry, a failed specialist becoming required, preserved last-success time, interrupted/reload/legacy records and valid required preparation despite unrelated warnings. The affected extracted-package route and all 16 existing deterministic policy scenarios passed. |
 
-These are bounded mechanism checks, not a project-speed measurement. R34, integration, release and local activation evidence remain pending.
+These are bounded mechanism checks, not model evaluation or a project-speed measurement. Integration, release and local activation evidence remain pending.
 
 ## Retained local acceptance evidence: R31-R32
 

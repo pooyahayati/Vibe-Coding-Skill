@@ -150,6 +150,7 @@ class PortableIntegrationTests(unittest.TestCase):
             try:
                 case.setUp()
                 case.test_router_and_plan_keep_guidance_separate_and_incomplete_inspection_formal()
+                case.test_daily_inventory_reports_unused_failure_without_blocking_backend()
             finally:
                 case.doCleanups()
             import test_handoffs as fixtures

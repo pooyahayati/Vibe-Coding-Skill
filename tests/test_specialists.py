@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 from zipfile import ZipFile
 from contextlib import redirect_stdout
+from datetime import datetime, timedelta, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -495,16 +496,73 @@ class SpecialistTests(unittest.TestCase):
 
     def test_daily_inventory_reports_unused_failure_without_blocking_backend(self):
         (self.skills / "ui-ux-skill").mkdir(parents=True)
-        with patch.object(manager, "ensure", side_effect=[{"id": "vibe-coding-skill", "status": "current"}, {"id": "ui-ux-skill", "status": "currency-unverified"}]):
-            result = manager.run("prepare", self.skills, self.state, [], False)
-            self.assertEqual(result["gate"], "WARN")
-            self.assertFalse((self.state / "inventory.json").exists())
-        with patch.object(manager, "ensure", side_effect=lambda entry, *args: {"id": entry["id"], "status": "current"}) as ensure:
-            manager.run("inventory", self.skills, self.state, [], False)
+        now = datetime(2026, 10, 16, tzinfo=timezone.utc)
+        previous = (now - timedelta(days=2)).isoformat()
+        manager.write_record(self.state / "inventory.json", {"checked_at": previous})  # Legacy record.
+        def unavailable(entry, *args):
+            return {"id": entry["id"], "status": "currency-unverified" if entry["id"] == "ui-ux-skill" else "current"}
+        with patch.object(manager, "datetime", wraps=datetime) as clock, patch.object(manager, "ensure", side_effect=unavailable) as ensure:
+            clock.now.return_value = now
+            prepared = manager.run("prepare", self.skills, self.state, [], False)
+            self.assertEqual(prepared["gate"], "PASS")
+            self.assertTrue(prepared["inventory"]["due"])
+            self.assertEqual(ensure.call_count, 1)  # Only the required Head, despite due inventory.
+            ensure.reset_mock()
+            failed = manager.run("inventory", self.skills, self.state, [], False, if_due=True)
+            self.assertEqual(failed["gate"], "WARN")
             self.assertEqual(ensure.call_count, 2)
-        with patch.object(manager, "ensure", return_value={"id": "vibe-coding-skill", "status": "current"}) as ensure:
-            manager.run("prepare", self.skills, self.state, [], False)
-            self.assertEqual(ensure.call_count, 1)
+            self.assertEqual(failed["inventory"]["checked_at"], previous)
+            self.assertEqual(failed["inventory"]["failures"], [{"id": "ui-ux-skill", "status": "currency-unverified"}])
+            self.assertFalse(failed["inventory"]["due"])
+            ensure.reset_mock()
+            for _ in range(3):
+                result = manager.run("prepare", self.skills, self.state, [], False)
+                self.assertEqual(result["gate"], "WARN")
+                self.assertEqual(result["blocked"], [])
+                self.assertEqual([s["id"] for s in result["skills"]], ["vibe-coding-skill"])
+                self.assertFalse(manager.run("inventory", self.skills, self.state, [], False, if_due=True)["inventory"]["performed"])
+            self.assertEqual(ensure.call_count, 3)  # No unrelated retries, including maintenance calls.
+            ensure.reset_mock()
+            self.assertEqual(manager.run("prepare", self.skills, self.state, [self.entry], False)["gate"], "BLOCK")
+            self.assertEqual(ensure.call_count, 2)  # Selection bypasses inventory retry scheduling.
+            ensure.reset_mock()
+            manager.run("inventory", self.skills, self.state, [], False)  # Explicit retry.
+            self.assertEqual(ensure.call_count, 2)
+            clock.now.return_value = now + timedelta(days=1)
+            ensure.side_effect = lambda entry, *args: {"id": entry["id"], "status": "current"}
+            recovered = manager.run("inventory", self.skills, self.state, [], False, if_due=True)
+            self.assertEqual(recovered["gate"], "PASS")
+            self.assertTrue(recovered["inventory"]["performed"])
+            self.assertEqual(recovered["inventory"]["failures"], [])
+            self.assertEqual(recovered["inventory"]["checked_at"], clock.now.return_value.isoformat())
+            ensure.reset_mock()
+            self.assertFalse(manager.run("inventory", self.skills, self.state, [], False, if_due=True)["inventory"]["performed"])
+            ensure.assert_not_called()
+
+    def test_inventory_interruption_and_invalid_state_do_not_claim_freshness(self):
+        self.assertTrue(manager.inventory_due(self.state))
+        for record in ({"checked_at": "bad"}, {"checked_at": "2099-01-01T00:00:00+00:00"},
+                       {"checked_at": "2026-01-01T00:00:00"}, {"schema_version": 99},
+                       {"checked_at": None, "attempted_at": 1, "status": "failed"}):
+            manager.write_record(self.state / "inventory.json", record)
+            self.assertEqual(manager.inventory_status(self.state)["status"], "unverified")
+            self.assertTrue(manager.inventory_due(self.state))
+        previous = "2000-01-01T00:00:00+00:00"
+        manager.write_record(self.state / "inventory.json", {"checked_at": previous})
+        with patch.object(manager, "ensure", side_effect=RuntimeError("interrupted")):
+            with self.assertRaises(RuntimeError):
+                manager.run("inventory", self.skills, self.state, [], False, if_due=True)
+        interrupted = manager.inventory_status(self.state)
+        self.assertEqual(interrupted["checked_at"], previous)
+        self.assertEqual(interrupted["status"], "incomplete")
+        with patch.object(manager, "ensure") as ensure:
+            result = manager.run("inventory", self.skills, self.state, [], False, if_due=True)
+            ensure.assert_not_called()
+            self.assertEqual(result["gate"], "WARN")
+        with patch.object(manager, "ensure", return_value={"id": "vibe-coding-skill", "status": "current", "updated": True}):
+            self.assertEqual(manager.run("inventory", self.skills, self.state, [], False)["gate"], "RELOAD")
+        self.assertTrue(manager.inventory_due(self.state))
+        self.assertEqual(manager.inventory_status(self.state)["checked_at"], previous)
 
 
 class CompatibilityTests(unittest.TestCase):
