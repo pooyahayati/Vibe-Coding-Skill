@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import copy
 import io
 import json
 import os
@@ -1579,6 +1580,162 @@ class CISelectionTests(unittest.TestCase):
                         exec(code, {})
 
 
+class ReleasePublicationTests(unittest.TestCase):
+    SHA = "a" * 40
+
+    def fixture(self, draft=False):
+        mod = load_script("publish_release.py")
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        output = Path(temporary.name)
+        version = "1.6.1"
+        archive = output / f"Vibe-Coding-Skill-{version}.zip"
+        archive.write_bytes(b"deterministic final artifact")
+        import hashlib
+        (output / f"Vibe-Coding-Skill-{version}-SHA256SUMS.txt").write_text(
+            hashlib.sha256(archive.read_bytes()).hexdigest() + "  " + archive.name + "\n", encoding="utf-8", newline="\n")
+        (output / "release-notes.md").write_text("Release notes", encoding="utf-8")
+        expected, _ = mod.local_assets(output, version)
+        sha = self.SHA
+        class Fixture:
+            def __init__(self):
+                self.target = sha
+                self.row = {"id": 7, "tag_name": "v" + version, "draft": draft,
+                            "prerelease": False, "target_commitish": sha, "assets": []}
+                self.bytes = {}
+                self.actions = []
+                self.interrupt_upload = False
+                self.interrupt_publish = False
+                for name, data in expected.items():
+                    self.add(name, data)
+            def add(self, name, data):
+                ident = len(self.bytes) + 1
+                self.bytes[ident] = data
+                self.row["assets"].append({"id": ident, "name": name, "state": "uploaded", "size": len(data)})
+            def release(self, tag):
+                return copy.deepcopy(self.row)
+            def tag_commit(self, tag):
+                return self.target
+            def asset(self, ident):
+                return self.bytes[ident]
+            def create_tag(self, tag, target):
+                self.actions.append("create-tag")
+                self.target = target
+            def create_draft(self, tag, target, channel, notes):
+                self.actions.append("create-draft")
+                self.row = {"id": 7, "tag_name": tag, "draft": True, "prerelease": channel != "stable",
+                            "target_commitish": target, "assets": []}
+            def upload(self, tag, files):
+                for path in files:
+                    self.actions.append("upload:" + path.name)
+                    self.add(path.name, path.read_bytes())
+                    if self.interrupt_upload:
+                        self.interrupt_upload = False
+                        raise OSError("interrupted upload")
+            def publish(self, tag, channel):
+                self.actions.append("publish")
+                if self.interrupt_publish:
+                    self.interrupt_publish = False
+                    raise OSError("interrupted publish")
+                self.row["draft"] = False
+        api = Fixture()
+        return mod, api, output, version
+
+    def test_complete_release_is_verified_and_reused_without_mutation(self):
+        mod, api, output, version = self.fixture()
+        api.row["target_commitish"] = "main"  # Actual tag identity, not this hint, is authoritative.
+        result = mod.publish(api, self.SHA, version, "stable", output)
+        self.assertEqual(result["status"], "reused")
+        self.assertEqual(api.actions, [])
+
+    def test_incomplete_or_incompatible_release_cannot_claim_success_or_mutate(self):
+        for fault in ("draft", "missing-zip", "missing-checksum", "wrong-tag", "bad-zip", "bad-checksum", "placeholder", "channel"):
+            with self.subTest(fault=fault):
+                mod, api, output, version = self.fixture()
+                if fault == "draft": api.row["draft"] = True
+                elif fault == "missing-zip": api.row["assets"].pop(0)
+                elif fault == "missing-checksum": api.row["assets"].pop(1)
+                elif fault == "wrong-tag": api.target = "b" * 40
+                elif fault in ("bad-zip", "bad-checksum"):
+                    ident = 1 if fault == "bad-zip" else 2
+                    api.bytes[ident] = b"x" * len(api.bytes[ident])
+                elif fault == "placeholder": api.row["assets"][0]["state"] = "starter"
+                else: api.row["prerelease"] = True
+                with self.assertRaises(ValueError):
+                    mod.publish(api, self.SHA, version, "stable", output)
+                self.assertEqual(api.actions, [])
+
+    def test_matching_draft_recovers_only_missing_assets_and_retry_reuses(self):
+        mod, api, output, version = self.fixture(draft=True)
+        api.row["assets"].pop(0)
+        self.assertEqual(mod.publish(api, self.SHA, version, "stable", output, True)["status"], "recovered")
+        self.assertEqual(api.actions, [f"upload:Vibe-Coding-Skill-{version}.zip", "publish"])
+        api.actions.clear()
+        self.assertEqual(mod.publish(api, self.SHA, version, "stable", output, True)["status"], "reused")
+        self.assertEqual(api.actions, [])
+
+    def test_interrupted_new_publication_retains_state_and_resumes_without_replacement(self):
+        mod, api, output, version = self.fixture()
+        api.row, api.target, api.bytes = None, None, {}
+        api.interrupt_upload = True
+        with self.assertRaisesRegex(OSError, "interrupted upload"):
+            mod.publish(api, self.SHA, version, "stable", output)
+        self.assertTrue(api.row["draft"])
+        self.assertEqual(len(api.row["assets"]), 1)
+        with self.assertRaisesRegex(ValueError, "recover-draft"):
+            mod.publish(api, self.SHA, version, "stable", output)
+        api.actions.clear()
+        api.interrupt_publish = True
+        with self.assertRaisesRegex(OSError, "interrupted publish"):
+            mod.publish(api, self.SHA, version, "stable", output, True)
+        self.assertEqual(len(api.row["assets"]), 2)
+        api.actions.clear()
+        self.assertEqual(mod.publish(api, self.SHA, version, "stable", output, True)["status"], "recovered")
+        self.assertEqual(api.actions, ["publish"])
+
+    def test_conflicting_draft_and_missing_tag_do_not_bypass_identity(self):
+        mod, api, output, version = self.fixture(draft=True)
+        api.target = None
+        api.row["target_commitish"] = "main"
+        with self.assertRaisesRegex(ValueError, "tag target"):
+            mod.publish(api, self.SHA, version, "stable", output, True)
+        self.assertEqual(api.actions, [])
+        api.row["target_commitish"] = self.SHA
+        self.assertEqual(mod.publish(api, self.SHA, version, "stable", output, True)["status"], "recovered")
+        self.assertEqual(api.actions, ["create-tag", "publish"])
+
+    def test_transport_keeps_draft_upload_and_publish_separate_for_each_channel(self):
+        mod = load_script("publish_release.py")
+        api = mod.GitHub("owner/repo")
+        for channel in ("stable", "rc", "beta"):
+            with self.subTest(channel=channel), mock.patch.object(api, "command", return_value=b"") as command:
+                api.create_draft("v1.6.1", self.SHA, channel, Path("notes.md"))
+                self.assertIn("--draft", command.call_args.args)
+                self.assertIn("--verify-tag", command.call_args.args)
+                self.assertEqual("--prerelease" in command.call_args.args, channel != "stable")
+                api.upload("v1.6.1", [Path("artifact.zip")])
+                self.assertNotIn("--clobber", command.call_args.args)
+                api.publish("v1.6.1", channel)
+                self.assertIn("--draft=false", command.call_args.args)
+                self.assertIn("--latest=" + str(channel == "stable").lower(), command.call_args.args)
+
+    def test_actual_tag_resolution_peels_annotated_tags_and_rejects_unknown_objects(self):
+        mod = load_script("publish_release.py")
+        api = mod.GitHub("owner/repo")
+        with mock.patch.object(api, "read", side_effect=[{"object": {"type": "tag", "sha": "b" * 40}},
+                                                       {"object": {"type": "commit", "sha": self.SHA}}]) as read:
+            self.assertEqual(api.tag_commit("v1.6.1"), self.SHA)
+            self.assertEqual(read.call_args.args[0], "/git/tags/" + "b" * 40)
+        with mock.patch.object(api, "read", return_value={"object": {"type": "tree", "sha": self.SHA}}):
+            with self.assertRaises(ValueError): api.tag_commit("v1.6.1")
+        for status in (404, 403, 500):
+            with self.subTest(status=status), mock.patch.object(mod.subprocess, "run", return_value=
+                    subprocess.CompletedProcess([], 1, b"", f"HTTP {status}".encode())):
+                if status == 404: self.assertIsNone(api.read("/missing", missing=True))
+                else:
+                    with self.assertRaises(RuntimeError): api.read("/missing", missing=True)
+
+
 class ReleaseReadinessTests(unittest.TestCase):
     def _report(self, mod, commit="abc123", include_cross=True):
         names = list(mod.CHANNEL_CHECKS["rc"])
@@ -1792,7 +1949,7 @@ class ReleaseReadinessTests(unittest.TestCase):
             self.assertIn("if: steps.readiness.outputs.base_ready == 'true'", step)
         self.assertLess(workflow.index("python scripts/release_readiness.py"), workflow.index("aquasecurity/setup-trivy@"))
         self.assertLess(workflow.index("aquasecurity/setup-trivy@"), workflow.index("--before-publication"))
-        self.assertLess(workflow.index("--before-publication"), workflow.index("gh release create"))
+        self.assertLess(workflow.index("--before-publication"), workflow.index("python scripts/publish_release.py"))
         for filename in ("validate-skill.yml", "cross-platform-smoke.yml"):
             baseline = (ROOT / ".github/workflows" / filename).read_text(encoding="utf-8")
             self.assertIn("push:\n    branches: [main]", baseline)
@@ -1806,7 +1963,8 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.assertIn('CHANNEL="beta"', workflow)
         self.assertIn('CHANNEL="rc"', workflow)
         self.assertIn('CHANNEL="stable"', workflow)
-        self.assertIn("--prerelease", workflow)
+        self.assertIn('--channel "${{ steps.readiness.outputs.channel }}"', workflow)
+        self.assertIn("--recover-draft", workflow)
 
 
 

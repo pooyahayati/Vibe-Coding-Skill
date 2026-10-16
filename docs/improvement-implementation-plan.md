@@ -1,6 +1,6 @@
 # Improvement Implementation and Acceptance Index
 
-Progress and the next action are maintained only in [ROADMAP.md](../ROADMAP.md). This document prepares H1-H3 in priority order. Implementation, commits, publication and installation are not performed by this planning change.
+Progress and the next action are maintained only in [ROADMAP.md](../ROADMAP.md). This document defines H1-H3 scope and acceptance in priority order. Current implementation and delivery evidence belong in the roadmap.
 
 ## Confirmed audit findings
 

@@ -4,6 +4,13 @@ User-facing release summaries; [CHANGELOG.md](CHANGELOG.md) retains technical hi
 
 From `1.0.0`, publication requires no model evaluation/provider key. Recent releases include a verified portable ZIP and checksum; publication does not update local installations. The pre-1.0 entries below describe historical policies, not current release requirements.
 
+## 1.6.1 — Reliable reassessment and release recovery
+
+- Reopen accepted specialist work after an in-scope correction without inventing a task-contract revision. Retain findings and require fresh evidence and Head acceptance.
+- Include dynamically loaded regressions in focused CI while keeping overview edits lightweight.
+- Verify published tag identity and consumer assets; recover a matching interrupted draft without replacing existing assets. Full release checks and native Trivy remain required.
+- Existing task, receipt and specialist formats remain supported; unrelated task evidence does not need recreation.
+
 ## 1.6.0 — Proportionate verification and focused CI
 
 - Bases risk on the actual change and reuses accepted specialist guidance for inspected mechanical edits, avoiding unnecessary repeated preparation.

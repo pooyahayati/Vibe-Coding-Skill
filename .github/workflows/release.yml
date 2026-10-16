@@ -87,22 +87,7 @@ jobs:
         shell: bash
         run: |
           VERSION=$(tr -d '[:space:]' < VERSION)
-          TAG="v${VERSION}"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists."
-            exit 0
-          fi
-          release_args=(
-            "$TAG"
-            --target "$SHA"
-            --title "Vibe Coding Skill $TAG"
-            --notes-file "$RUNNER_TEMP/vibe-release/release-notes.md"
-          )
-          if [ "${{ steps.readiness.outputs.channel }}" != "stable" ]; then
-            release_args+=(--prerelease)
-          else
-            release_args+=(--latest)
-          fi
-          gh release create "${release_args[@]}" \
-            "$RUNNER_TEMP/vibe-release/Vibe-Coding-Skill-${VERSION}.zip" \
-            "$RUNNER_TEMP/vibe-release/Vibe-Coding-Skill-${VERSION}-SHA256SUMS.txt"
+          python scripts/publish_release.py \
+            --repository "$GITHUB_REPOSITORY" --sha "$SHA" --version "$VERSION" \
+            --channel "${{ steps.readiness.outputs.channel }}" \
+            --output-dir "$RUNNER_TEMP/vibe-release" --recover-draft

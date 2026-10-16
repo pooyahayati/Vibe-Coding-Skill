@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OVERVIEWS = {"README.md", "ROADMAP.md", "CHANGELOG.md", "UPDATES.md", "CONTRIBUTING.md", "HOW_TO_INSTALL.md", "LICENSE"}
 OVERVIEW_DOCS = {"docs/improvement-implementation-plan.md", "docs/i1-integration-verification.md"}
 FULL_INPUTS = {"VERSION", "scripts/ci_scope.py", "scripts/collect_release_checks.py", "scripts/release_readiness.py",
-               "scripts/build_release.py", "scripts/sync_package.py", "scripts/validate_skill.py"}
+               "scripts/build_release.py", "scripts/publish_release.py", "scripts/sync_package.py", "scripts/validate_skill.py"}
 PLATFORM_TESTS = ["tests.test_cross_platform", "tests.test_review_regressions", "tests.test_portable_integration",
                   "tests.test_scripts.GraphProviderContractTests", "tests.test_scripts.GitHubTraceabilityTests"]
 INSTRUCTION_TESTS = ["tests.test_context_routing", "tests.test_scripts.RiskClassifierTests", "tests.test_scripts.CompletionGateTests"]
