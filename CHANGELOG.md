@@ -6,6 +6,11 @@ Technical release history. Entries describe their release; current operating and
 
 No pending changes.
 
+## 1.7.0 — Focused specialist participation and isolated assignments
+
+- R31: distinguish inspected, preserved RTL/responsive context from changed domain behavior in mechanical specialist participation. Carry explicit domain effects through routing and planning; preserve formal assignment, uncertainty and material-risk safeguards.
+- R32: retain exact managed Head/specialist resources for open assignments outside skill discovery, dispatch continuation through those resources and allow verified default updates for new tasks. Add explicit migration, resource-aware resume/handoff and bounded reference-based cleanup; preserve legacy guards, findings, history, current delivery controls and installation rollback protection.
+
 ## 1.6.1 — Specialist reassessment and verified delivery
 
 - H3: Verify the actual tag commit, channel/state and ZIP/checksum content before claiming publication. Recover matching drafts through explicit bounded retries, upload missing assets only, and preserve full same-revision CI and final-artifact native Trivy gates. Never move existing tags or replace published assets.

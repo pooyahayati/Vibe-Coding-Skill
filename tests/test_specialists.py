@@ -15,9 +15,8 @@ from zipfile import ZipFile
 from contextlib import redirect_stdout
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("specialist_manager_test", ROOT / "scripts/specialist_manager.py")
-manager = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(manager)
+sys.path.insert(0, str(ROOT / "scripts"))
+import specialist_manager as manager
 
 
 class SpecialistTests(unittest.TestCase):
@@ -87,6 +86,32 @@ class SpecialistTests(unittest.TestCase):
         self.assertTrue(manager.select_specialists("Correct label", ["src/Button.tsx"], risk_facts=facts)[0]["handoff_required"])
         self.assertTrue(manager.select_specialists("Correct label", ["src/Button.tsx"], explicit=["ui-ux-skill"],
                                                   risk_facts=facts, guidance_evidence=evidence)[0]["handoff_required"])
+        for context in ([], ["rtl"], ["responsive"], ["rtl", "responsive"]):
+            effects = {c: "preserved" for c in context}
+            with self.subTest(context=context):
+                row = manager.select_specialists("Correct label spelling", ["src/Button.tsx"],
+                    {"concern": ["ui", *context]}, risk_facts=facts, guidance_evidence=evidence,
+                    domain_effects=effects)[0]
+                self.assertFalse(row["handoff_required"])
+                self.assertEqual(row["domain_effects"], effects)
+        for overrides in (
+                {"domain_effects": {}},
+                {"domain_effects": {"rtl": "changed"}},
+                {"domain_effects": {"rtl": "unknown"}},
+                {"domain_effects": {"rtl": "preserved", "accessibility": "changed"}},
+                {"domain_effects": {"rtl": "preserved", "design": "changed"}},
+                {"inspection_complete": False}, {"guidance_evidence": None},
+                {"risk_facts": {}}, {"explicit": ["ui-ux-skill"]},
+                {"risk_facts": dict(facts, operation="auth")},
+                {"risk_facts": dict(facts, data_sensitivity="personal")}):
+            args = dict(risk_facts=facts, guidance_evidence=evidence, domain_effects={"rtl": "preserved"})
+            args.update(overrides)
+            with self.subTest(overrides=overrides):
+                rows = manager.select_specialists("Correct label", ["src/Button.tsx"], {"concern": ["ui", "rtl"]}, **args)
+                self.assertTrue(all(row["handoff_required"] for row in rows))
+        for malformed in (["rtl=preserved", "rtl=changed"], ["rtl=yes"], ["unknown=preserved"]):
+            with self.assertRaises(ValueError):
+                manager.parse_domain_effects(malformed)
         # Structured boundaries still route even when wording and extensions do not.
         for operation, expected in [("auth", {"security-and-hardening"}),
                                     ("public-api", {"api-and-interface-design", "security-and-hardening"}),
@@ -109,6 +134,11 @@ class SpecialistTests(unittest.TestCase):
         result = planner.draft(self.root, "Correct label spelling", **args)
         self.assertEqual(result["specialist_assignments"], [])
         self.assertEqual([s["id"] for s in result["specialist_guidance"]], ["ui-ux-skill"])
+        args.update(context_facts={"concern": ["ui", "rtl", "responsive"]},
+                    domain_effects={"rtl": "preserved", "responsive": "preserved"})
+        result = planner.draft(self.root, "Correct label spelling", **args)
+        self.assertEqual(result["specialist_assignments"], [])
+        self.assertEqual(result["specialist_guidance"][0]["domain_effects"], args["domain_effects"])
         path.unlink()
         result = planner.draft(self.root, "Correct label spelling", **args)
         self.assertEqual(result["specialist_guidance"], [])

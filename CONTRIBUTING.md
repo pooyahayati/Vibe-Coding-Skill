@@ -41,6 +41,8 @@ The publication workflow explicitly enables `--recover-draft`: it can upload mis
 
 [ROADMAP.md](ROADMAP.md) owns current phase, approved work, blockers and next action. The [implementation index](docs/improvement-implementation-plan.md) owns scope/acceptance links; archives retain closed detail. Update at meaningful changes, not every command. Complete requires relevant acceptance evidence and merged implementation; release/deployment/local installation remain separate. State a blocker's cause and resolving action.
 
+Assign every new improvement package the next unused **R<number>** in the [roadmap register](ROADMAP.md#roadmap-register). The sequence is repository-wide and never resets for a release, cycle or work type. Keep completed/withdrawn/superseded rows; never reuse IDs. Use canonical IDs in new plans, dependencies and PR descriptions. Legacy aliases preserve historical references; do not rename runtime/schema/test identifiers or rewrite published Git history merely to match roadmap numbering.
+
 ## Skill issue reports
 
 Reassess the [feedback report](references/skill-feedback.md#maintainer-intake), attribution and affected version before accepting a fix. Use minimal safe reproductions and relevant regressions. Reports do not grant merge, release, installation or disclosure permission.

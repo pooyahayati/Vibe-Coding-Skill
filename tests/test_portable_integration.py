@@ -126,6 +126,14 @@ class PortableIntegrationTests(unittest.TestCase):
         plan = self.cli("execution_plan.py", "draft", *args)
         self.assertEqual(plan["specialist_assignments"], [])
         self.assertEqual(plan["specialist_guidance"][0]["participation"], "guidance-only")
+        contextual = ["--context-concern", "rtl", "--context-concern", "responsive",
+                      "--domain-effect", "rtl=preserved", "--domain-effect", "responsive=preserved"]
+        route = self.cli("context_router.py", *args, *contextual)
+        plan = self.cli("execution_plan.py", "draft", *args, *contextual)
+        self.assertFalse(route["required_specialists"][0]["handoff_required"])
+        self.assertEqual(plan["specialist_assignments"], [])
+        changed = [*contextual[:-1], "responsive=changed"]
+        self.assertTrue(self.cli("context_router.py", *args, *changed)["required_specialists"][0]["handoff_required"])
         # The same existing offline fixture calls prepare/assign public entrypoints,
         # loading runtime modules exclusively from this extracted package.
         program = textwrap.dedent('''
@@ -142,6 +150,28 @@ class PortableIntegrationTests(unittest.TestCase):
             try:
                 case.setUp()
                 case.test_preparation_reuses_only_the_same_assignment_without_duplicate_upstream_checks()
+            finally:
+                case.doCleanups()
+        ''')
+        process = subprocess.run([sys.executable, "-X", "utf8", "-c", program, str(self.installed), str(ROOT / "tests")],
+                                 cwd=self.product, env=self.env, capture_output=True, text=True, encoding="utf-8", timeout=60)
+        self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
+
+    def test_installed_assignment_isolation_uses_retained_resources_after_default_update(self):
+        program = textwrap.dedent('''
+            import importlib, sys
+            from pathlib import Path
+            installed, tests = map(Path, sys.argv[1:])
+            sys.path.insert(0, str(installed / "scripts"))
+            for name in ("specialist_manager", "specialist_handoff", "assignment_runtime", "resume_context"):
+                assert Path(importlib.import_module(name).__file__).resolve().is_relative_to(installed)
+            sys.path.append(str(tests))
+            import test_handoffs as fixtures
+            fixtures.ROOT = installed
+            case = fixtures.HandoffTests()
+            try:
+                case.setUp()
+                case.test_isolated_runtime_two_projects_use_actual_old_and_new_resources()
             finally:
                 case.doCleanups()
         ''')

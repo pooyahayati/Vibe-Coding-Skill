@@ -17,6 +17,7 @@ import behavior_contract as behavior
 import evidence_capture as capture
 import receipt_validation as receipts
 import specialist_manager as manager
+import assignment_runtime as runtime
 
 
 def require(condition, reason):
@@ -119,7 +120,7 @@ def scope_snapshot(root, assignment):
 def control_fingerprint(entry):
     return behavior.digest({"authority": hashlib.sha256((manager.ROOT / "references/specialist-authority.md").read_bytes()).hexdigest(),
                             "adapter": manager.PACKAGE_ADAPTER, "permissions": manager.registry()["permissions"],
-                            "domain": {k: entry.get(k) for k in ("mode", "capability", "assignment", "stages", "primary_stages", "guidance_only_concerns")}})
+                            "domain": manager.domain_contract(entry)})
 
 
 def markers(operation, remove=False):
@@ -131,7 +132,20 @@ def markers(operation, remove=False):
         if remove:
             path.unlink(missing_ok=True)
         else:
-            manager.write_record(path, {"task_id": operation["assignment"]["task_id"], "assignment_id": operation["assignment"]["assignment_id"], "root": operation["root"]})
+            value = {"task_id": operation["assignment"]["task_id"], "assignment_id": operation["assignment"]["assignment_id"], "root": operation["root"]}
+            if operation.get("runtime_binding"):
+                value.update(runtime_binding=operation["runtime_binding"], operation_path=str(directory(Path(operation["root"]), value["task_id"], value["assignment_id"]) / "operation.json"))
+            manager.write_record(path, value)
+
+
+def retain_runtime(operation, path):
+    operation.pop("runtime_binding", None)
+    operation.pop("runtime_limitation", None)
+    try:
+        operation["runtime_binding"] = runtime.retain(operation, path)
+    except runtime.UnsupportedBinding as exc:
+        operation["runtime_limitation"] = str(exc)
+    return operation
 
 
 def assignment_inputs(root, contract, specification, skills_dir, state):
@@ -243,20 +257,33 @@ def assign(root, contract, specification, skills_dir, state):
                      "baseline_tracked": git_names(root, "ls-tree", "-r", "--name-only", "-z", commit),
                      "baseline": observation(root, assignment, commit), "created_at": capture.now(), "closed": False}
         base.mkdir(parents=True, exist_ok=True)
-        manager.write_record(base / "operation.json", operation)
+        retain_runtime(operation, base / "operation.json")
+        # Publish guards first: an interrupted binding may not unlock replacement.
         markers(operation)
+        manager.write_record(base / "operation.json", operation)
         preparation_path(root, assignment, state).unlink(missing_ok=True)
     return {"assignment": assignment, "upstream_revision": operation["source"]["commit"], "head_contract_sha256": operation["source"]["package_policy"], "record_path": str(base / "operation.json"), "accepted": False,
-            "preflight_reuse": preflight.get("preflight_reuse", {"reused": False, "upstream_checked": True})}
+            "preflight_reuse": preflight.get("preflight_reuse", {"reused": False, "upstream_checked": True}),
+            "runtime_binding": operation.get("runtime_binding"), "runtime_limitation": operation.get("runtime_limitation")}
 
 
-def load_operation(root, contract, assignment_id):
+def load_operation(root, contract, assignment_id, allow_transition=False):
     base = directory(root, contract["task_id"], assignment_id)
     operation = manager.read_local_json(base / "operation.json")
     require(operation["root"] == str(root.resolve()) and operation["contract"] == behavior.validate(contract), "operation belongs to another root/contract")
     require(operation["assignment"]["assignment_id"] == assignment_id, "retained assignment identity mismatch")
     require(type(operation.get("closed")) is bool and re.fullmatch(r"[0-9a-f]{40}", str(operation.get("baseline_commit"))), "invalid retained operation baseline")
-    validate_assignment(operation["assignment"], contract)
+    if operation.get("runtime_binding"):
+        runtime.resolve(operation)
+        if not operation["closed"] and not allow_transition:
+            key = behavior.digest({"root": operation["root"], "assignment": operation["assignment"]})[:16]
+            for name in ("vibe-coding-skill", operation["assignment"]["specialist_id"]):
+                marker = manager.read_local_json(Path(operation["specialist_state"]) / "active-assignments" / name / (key + ".json"))
+                require(marker.get("runtime_binding") == operation["runtime_binding"]
+                        and marker.get("operation_path") == str(base / "operation.json"),
+                        "incomplete runtime transition; inspect and retry the explicit migration")
+    else:
+        validate_assignment(operation["assignment"], contract)
     return base, operation
 
 
@@ -318,11 +345,17 @@ def evaluate(root, contract, operation, returned, evidence, decision=None, conte
     failures, qualified = [], set()
     assignment = operation["assignment"]
     try:
+        retained = None
+        if operation.get("runtime_binding"):
+            retained, _ = runtime.resolve(operation)
+            if not runtime.is_local(retained):
+                return runtime.invoke(operation, "evaluate", returned=returned, evidence=evidence, decision=decision, context=context, current=current)
         declared = validate_return(returned, operation)
         entry = validate_assignment(assignment, contract)
         require(control_fingerprint(entry) == operation["control_sha256"], "Head/domain controls changed; reassess assignment")
         if not operation["closed"]:
-            require(manager.installed_hashes(Path(operation["skills_dir"]) / entry["skill_name"]) == operation["specialist_files"], "assigned specialist instructions changed during operation")
+            target = retained / "specialist" if retained else Path(operation["skills_dir"]) / entry["skill_name"]
+            require(manager.installed_hashes(target) == operation["specialist_files"], "assigned specialist instructions changed during operation")
         context = {} if context is None else context
         require(isinstance(context, dict) and isinstance(evidence, list), "independent evidence/context required")
         obligations = {e["id"]: e for e in contract["evidence_requirements"]}
@@ -424,6 +457,10 @@ def evaluate(root, contract, operation, returned, evidence, decision=None, conte
 def review(root, contract, assignment_id, returned, evidence, decision=None, context=None):
     root = root.resolve()
     base, operation = load_operation(root, contract, assignment_id)
+    if operation.get("runtime_binding"):
+        retained, _ = runtime.resolve(operation)
+        if not runtime.is_local(retained):
+            return runtime.invoke(operation, "review", returned=returned, evidence=evidence, decision=decision, context=context)
     validate_return(returned, operation)
     sha = behavior.digest(returned)
     require(not operation["closed"] or operation.get("latest_return") == sha, "closed assignment cannot silently change its return")
@@ -483,6 +520,9 @@ def store_transition(base, old, replacement, archive):
             entry = validate_assignment(replacement["assignment"], replacement["contract"])
             require(manager.installed_hashes(Path(old["skills_dir"]) / entry["skill_name"]) == replacement["specialist_files"],
                     "specialist changed before reconciliation")
+            retain_runtime(replacement, base / "operation.json")
+            require(not old.get("runtime_binding") or replacement.get("runtime_binding"),
+                    "migration cannot lose verified runtime isolation; reload the managed default Head")
         manager.write_record(base / "revisions" / (behavior.digest(archive)[:16] + ".json"), archive)
         # Guard first; a failed operation write must not expose active instructions.
         if not replacement["closed"]:
@@ -493,12 +533,14 @@ def store_transition(base, old, replacement, archive):
             markers(old, remove=True)
 
 
-def reassess(root, contract, assignment_id, reason):
+def reassess(root, contract, assignment_id, reason, migrate=False):
     """Reopen the unchanged assignment explicitly; retain findings and prior review."""
     require(behavior.text(reason), "reassessment requires a concrete Head reason")
     root = root.resolve()
-    base, old = load_operation(root, contract, assignment_id)
-    require(old["closed"], "assignment already active; continue its review")
+    base, old = load_operation(root, contract, assignment_id, allow_transition=True)
+    require(old["closed"] or migrate, "assignment already active; continue its review")
+    if old.get("runtime_binding"):
+        require(not runtime.is_local(runtime.resolve(old)[0]), "reassessment/migration must run through the current default Head")
     require("retirement" not in old, "retired assignment requires contract reconciliation")
     # When a task snapshot exists, an old supplied contract cannot bypass revision.
     import project_state
@@ -511,9 +553,51 @@ def reassess(root, contract, assignment_id, reason):
     if (base / "review.json").exists():
         archive["review"] = manager.read_local_json(base / "review.json")
     store_transition(base, old, replacement, archive)
-    return {"gate": "PASS", "accepted": False, "action": "reassessed", "assignment": replacement["assignment"],
+    return {"gate": "PASS", "accepted": False, "action": "migrated" if migrate else "reassessed", "assignment": replacement["assignment"],
             "upstream_revision": replacement["source"]["commit"], "head_contract_sha256": replacement["source"]["package_policy"],
             "record_path": str(base / "operation.json")}
+
+
+def resume_assignment(root, contract, assignment_id):
+    base, operation = load_operation(root, contract, assignment_id)
+    if operation.get("runtime_binding"):
+        result = runtime.invoke(operation, "resume")
+        result["status"] = "retained"
+    else:
+        entry = validate_assignment(operation["assignment"], contract)
+        require(control_fingerprint(entry) == operation["control_sha256"]
+                and manager.installed_hashes(Path(operation["skills_dir"]) / entry["skill_name"]) == operation["specialist_files"],
+                "legacy assignment resources changed; explicit reconciliation required")
+        result = {"status": "legacy-guarded", "assignment_id": assignment_id,
+                  "specialist_skill": str(Path(operation["skills_dir"]) / entry["skill_name"] / "SKILL.md"),
+                  "limitation": operation.get("runtime_limitation", "No verified isolated binding; active update guard retained.")}
+    result.update(closed=operation["closed"], contract_sha256=behavior.digest(contract), record_path=str(base / "operation.json"))
+    required = {}
+    history = sorted((base / "returns").glob("*.json"))
+    require(len(history) <= 1000, "return history limit exceeded")
+    for path in history:
+        returned = manager.read_local_json(path)
+        require(path.stem == behavior.digest(returned)[:16], "retained return history changed")
+        for row in returned["findings"]:
+            if row["required"]:
+                require(row["id"] not in required or required[row["id"]] == row["description"], "retained required finding meaning changed")
+                required[row["id"]] = row["description"]
+    result["required_findings"] = [{"id": key, "description": required[key]} for key in sorted(required)]
+    result["finding_status_note"] = "Retained obligations, not current resolution claims; inspect and revalidate the latest return and Head review."
+    return result
+
+
+def runtime_context(root):
+    """Discover active assignments even without an optional task-state snapshot."""
+    home = capture.local_workspace.project_workspace(root) / "state/specialist-handoffs"
+    operations = sorted(home.glob("*/*/operation.json"))
+    require(len(operations) <= 1000, "assignment ledger limit exceeded")
+    result = []
+    for path in operations:
+        operation = manager.read_local_json(path)
+        if not operation["closed"]:
+            result.append(resume_assignment(root, operation["contract"], operation["assignment"]["assignment_id"]))
+    return result
 
 
 def reconcile(root, contract, previous_contract, assignment_id, reason, specification=None, retire=False):
@@ -536,7 +620,7 @@ def reconcile(root, contract, previous_contract, assignment_id, reason, specific
             require(behavior.digest(behavior.validate(revision["previous_contract"])) == sha, "invalid retained revision history")
             sha = revision["next_sha256"]
     require(sha == target, "missing retained contract revision chain")
-    base, old = load_operation(root, previous_contract, assignment_id)
+    base, old = load_operation(root, previous_contract, assignment_id, allow_transition=True)
     archive = {"operation": old, "reason": reason, "target_contract_sha256": target}
     if (base / "review.json").exists():
         archive["review"] = manager.read_local_json(base / "review.json")
@@ -591,6 +675,11 @@ def completion_failures(root, contract, context=None):
             failures.append("specialist assignment lacks Head acceptance: " + assignment_id)
             continue
         current = operation["assignment"]["completion_binding"] == "current-delivery"
+        if current and operation.get("runtime_binding"):
+            entry = validate_assignment(operation["assignment"], contract)
+            if control_fingerprint(entry) != operation["control_sha256"]:
+                failures.append("current delivery requires migration to changed Head/domain controls: " + assignment_id)
+                continue
         result = evaluate(root, contract, operation, returned, record["evidence"], record["decision"], context if current else record["context"], current=current)
         if not result["accepted"]:
             failures.append("specialist acceptance stale/invalid: " + assignment_id)
@@ -601,7 +690,7 @@ def completion_failures(root, contract, context=None):
 def main():
     behavior.configure_output()
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("mode", choices=("prepare", "assign", "review", "close", "reconcile", "reassess"))
+    ap.add_argument("mode", choices=("prepare", "assign", "review", "close", "reconcile", "reassess", "migrate", "resume"))
     ap.add_argument("--root", required=True, type=Path)
     ap.add_argument("--task-contract", required=True)
     ap.add_argument("--assignment", help="Head-owned assignment JSON for prepare/assign")
@@ -622,11 +711,14 @@ def main():
         if ns.mode in ("prepare", "assign"):
             require(ns.assignment is not None, ns.mode + " requires a Head assignment")
             result = (prepare if ns.mode == "prepare" else assign)(root, contract, read(ns.assignment), ns.skills_dir, ns.state_dir)
-        elif ns.mode == "reassess":
+        elif ns.mode == "resume":
+            require(behavior.text(ns.assignment_id), "resume requires assignment ID")
+            result = resume_assignment(root, contract, ns.assignment_id)
+        elif ns.mode in ("reassess", "migrate"):
             require(behavior.text(ns.assignment_id), "reassess requires assignment ID")
             require(ns.assignment is None and ns.previous_task_contract is None and not ns.retire,
                     "same-contract reassessment cannot revise or retire the assignment")
-            result = reassess(root, contract, ns.assignment_id, ns.reason)
+            result = reassess(root, contract, ns.assignment_id, ns.reason, migrate=ns.mode == "migrate")
         elif ns.mode == "reconcile":
             require(behavior.text(ns.assignment_id) and ns.previous_task_contract is not None, "reconcile requires assignment ID and previous task contract")
             result = reconcile(root, contract, behavior.read(ns.previous_task_contract), ns.assignment_id, ns.reason,

@@ -1020,6 +1020,7 @@ def plan(
     context_facts: dict[str, Any] | None = None,
     stage: str = "discover",
     guidance_evidence: str | None = None,
+    domain_effects: dict | None = None,
 ) -> dict[str, Any]:
     root = root.resolve()
     paths = list(dict.fromkeys(normalize_rel(raw) for raw in paths or [] if raw))
@@ -1231,7 +1232,7 @@ def plan(
         "required_specialists": specialist_manager.select_specialists(
             task, paths, normalized_context_facts, stage=stage, risk_facts=risk_facts,
             guidance_evidence=guidance_evidence, risk_assessment=risk,
-            inspection_complete=not routing_uncertainties and bool(touched)),
+            inspection_complete=not routing_uncertainties and bool(touched), domain_effects=domain_effects),
         "lifecycle": {"stage_owner": "vibe-coding-skill", "stages": load_specialist_manager().registry()["lifecycle"],
                       "rule": "Stage selects the assignment boundary, not all specialists. Reuse settled work; apply only relevant stage controls."},
         "context_plan": {
@@ -1323,6 +1324,7 @@ def main() -> int:
     ap.add_argument("--context-concern", action="append", default=[])
     ap.add_argument("--stage", choices=load_specialist_manager().registry()["lifecycle"], default="discover")
     ap.add_argument("--guidance-evidence", help="Head diff review confirming mechanical use of settled decisions")
+    ap.add_argument("--domain-effect", action="append", default=[], help="Inspected concern=preserved|changed|unknown")
     ap.add_argument("--json", action="store_true")
     ns = ap.parse_args()
 
@@ -1345,6 +1347,7 @@ def main() -> int:
         context_facts or None,
         ns.stage,
         ns.guidance_evidence,
+        load_specialist_manager().parse_domain_effects(ns.domain_effect),
     )
     if ns.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))

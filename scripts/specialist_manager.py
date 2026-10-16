@@ -65,6 +65,8 @@ def registry() -> dict:
                 raise ValueError("unapproved shared resource root")
             if not set(entry.get("guidance_only_concerns", [])) <= set(entry["activation"]["concerns"]):
                 raise ValueError("guidance concerns must belong to the specialist domain")
+            if not set(entry.get("context_only_concerns", [])) <= set(entry["activation"]["concerns"]):
+                raise ValueError("context concerns must belong to the specialist domain")
             for pattern in entry["activation"].get("path_patterns", []):
                 re.compile(pattern)
     if data["primary_ui_specialist"] not in {item["id"] for item in data["specialists"]} or data["policy"] != {
@@ -115,7 +117,7 @@ def select_specialists(task: str, paths: list[str] | None = None,
                        facts: dict | None = None, explicit: list[str] | None = None,
                        stage: str = "discover", risk_facts: dict | None = None,
                        guidance_evidence: str | None = None, risk_assessment: dict | None = None,
-                       inspection_complete: bool = True) -> list[dict]:
+                       inspection_complete: bool = True, domain_effects: dict | None = None) -> list[dict]:
     data = registry()
     entries = {item["id"]: item for item in data["specialists"]}
     if stage not in data["lifecycle"]:
@@ -124,6 +126,11 @@ def select_specialists(task: str, paths: list[str] | None = None,
         raise ValueError("select registered specialists only")
     concerns = (facts or {}).get("concern", [])
     concerns = {concerns} if isinstance(concerns, str) else set(concerns)
+    effects = {} if domain_effects is None else domain_effects
+    if (not isinstance(effects, dict) or set(effects) - supported_concerns()
+            or any(value not in ("preserved", "changed", "unknown") for value in effects.values())):
+        raise ValueError("domain effects require known concerns and preserved/changed/unknown values")
+    concerns.update(effects)
     classifier = load_risk_classifier()
     canonical = classifier.normalized_facts(risk_facts)
     if canonical["data_sensitivity"] in {"personal", "sensitive", "financial", "payment", "health", "medical", "credentials", "secret", "private-key"}:
@@ -166,19 +173,41 @@ def select_specialists(task: str, paths: list[str] | None = None,
             if any(re.search(pattern, path.casefold()) for pattern in activation["path_patterns"] for path in paths):
                 reasons.append("affected domain boundary")
         if reasons:
+            # Presence is not an effect. Only explicitly reviewed, preserved context
+            # can qualify; missing/conflicting effects keep the ordinary handoff.
+            preserved_context = {c for c in entry.get("context_only_concerns", []) if effects.get(c) == "preserved"}
             guidance = (mechanical and entry["id"] not in (explicit or [])
-                        and not (concerns - set(entry.get("guidance_only_concerns", []))))
+                        and all(value == "preserved" for value in effects.values())
+                        and not (concerns - set(entry.get("guidance_only_concerns", [])) - preserved_context))
             selected.append({**entry, "reason": "; ".join(reasons), "required": True, "head_precedence": True,
                              "stage": stage, "active_in_stage": stage in entry["stages"],
                              "permissions": data["permissions"], "stage_owner": data["head"]["id"],
                              "participation": "guidance-only" if guidance else "formal-assignment",
                              "guidance_evidence": evidence if guidance else None,
+                             "domain_effects": dict(effects),
                              "handoff_required": not guidance})
     return selected
 
 
 def supported_concerns() -> set[str]:
     return {concern for item in registry()["specialists"] for concern in item["activation"]["concerns"]}
+
+
+def domain_contract(entry):
+    domain = {k: entry.get(k) for k in ("mode", "capability", "assignment", "stages", "primary_stages", "guidance_only_concerns")}
+    if "context_only_concerns" in entry:
+        domain["context_only_concerns"] = entry["context_only_concerns"]
+    return domain
+
+
+def parse_domain_effects(values: list[str]) -> dict:
+    effects = {}
+    for value in values:
+        name, separator, effect = value.partition("=")
+        if not separator or name in effects or name not in supported_concerns() or effect not in ("preserved", "changed", "unknown"):
+            raise ValueError("use one --domain-effect concern=preserved|changed|unknown per known concern")
+        effects[name] = effect
+    return effects
 
 
 def resource_references(text: str, *, explicit_only: bool = False) -> list[tuple[int, int, str, bool]]:
@@ -468,9 +497,11 @@ def ensure(entry: dict, skills_dir: Path, state: Path, apply: bool = False) -> d
             and previous["source"].get("package_policy") == source["package_policy"]):
         write_record(record_path, {**result, "files": current, "installation": str(target), "status": "current"})
         return {**result, "status": "current"}
-    if any((state / "active-assignments" / entry["id"]).glob("*.json")):
+    import assignment_runtime
+    blocker = assignment_runtime.update_blocker(entry, skills_dir, state)
+    if blocker:
         return {**result, "status": "update-deferred-active-assignment",
-                "action": "finish or explicitly abandon the active assignment before replacing its instructions"}
+                "action": blocker + "; continue with verified retained resources or explicitly reconcile the assignment"}
     try:
         files = source_package(entry, source)
     except (OSError, ValueError, KeyError, BadZipFile) as exc:
@@ -535,7 +566,7 @@ def compatibility_packet(entry: dict, skills_dir: Path, state: Path, installatio
     binding = {"specialist_id": entry["id"],
                "source": {k: source[k] for k in ("repository", "skill_path", "commit", "package_policy")}, "files": files,
                "head_controls": registry()["permissions"],
-               "domain": {k: entry.get(k) for k in ("mode", "capability", "assignment", "stages", "primary_stages", "guidance_only_concerns")}}
+               "domain": domain_contract(entry)}
     key = canonical_digest(binding)
     home = state / "compatibility" / entry["id"]
     cached = home / key
@@ -738,6 +769,7 @@ def main() -> int:
     parser.add_argument("--specialist", action="append", default=[])
     parser.add_argument("--stage", choices=registry()["lifecycle"], default="discover")
     parser.add_argument("--guidance-evidence", help="Head diff review: mechanical use of settled decisions, no new domain behavior")
+    parser.add_argument("--domain-effect", action="append", default=[], help="Inspected concern=preserved|changed|unknown; never a risk override")
     for field in load_risk_classifier().INPUT_FIELDS:
         parser.add_argument("--risk-" + field.replace("_", "-"))
     parser.add_argument("--skills-dir", type=Path, default=Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))) / "skills")
@@ -759,7 +791,7 @@ def main() -> int:
         risk_facts = {field: getattr(args, "risk_" + field) for field in load_risk_classifier().INPUT_FIELDS
                       if getattr(args, "risk_" + field) is not None}
         selected = select_specialists(args.task, args.path, {"concern": args.concern}, args.specialist, args.stage,
-                                      risk_facts or None, args.guidance_evidence)
+                                      risk_facts or None, args.guidance_evidence, domain_effects=parse_domain_effects(args.domain_effect))
         if (args.mode == "assess") != bool(args.assessment) or (args.mode == "assess" and len(selected) != 1):
             raise ValueError("assess requires one selected registered specialist and --assessment")
         result = run(args.mode, skills, state, selected, args.apply,

@@ -1,6 +1,8 @@
 # Improvement Implementation and Acceptance Index
 
-Historical snapshot from source commit `e75a8cae9f27c3e5f6305fb5e14523ed9fe06401`, archived on 2026-10-15. Recorded phase, next-action, runtime and installation statements below describe their original dates, not current work. Only relative links have been relocated; closed specifications and verification evidence are preserved. See the [current roadmap](../../ROADMAP.md) and [implementation index](../improvement-implementation-plan.md).
+Roadmap IDs were normalized on 2026-10-16 to the permanent R sequence. See the [canonical register](../../ROADMAP.md#roadmap-register) for legacy aliases. Recorded outcomes, evidence and delivery identities are unchanged; old heading anchors remain available. Finding IDs and runtime/schema identifiers retain their separate meaning.
+
+Historical snapshot from source commit `e75a8cae9f27c3e5f6305fb5e14523ed9fe06401`, archived on 2026-10-15. Recorded phase, next-action, runtime and installation statements below describe their original dates, not current work. Relative links and roadmap package IDs have been normalized; closed specifications and verification evidence are preserved. See the [current roadmap](../../ROADMAP.md) and [implementation index](../improvement-implementation-plan.md).
 
 Current progress is maintained only in [ROADMAP.md](improvement-roadmap-through-1.5.0.md). This page specifies the five remediation packages, implementation boundaries and acceptance criteria. Historical packages remain delivered and retain their original evidence.
 
@@ -8,21 +10,25 @@ Closed specifications, dependencies and original design decisions: [implementati
 
 ## Confirmed audit findings
 
-Baseline: `a6e43fe73500367e52a257e0f9f725166d9c79dc`, audited 2026-10-07; runtime `1.4.0`. All seven findings have high confidence from repository tracing and isolated reproductions. **F1-F7 below are audit finding IDs, not the historical F1 feedback package.** Links identify the implementation to revisit, not immutable future line numbers.
+Baseline: `a6e43fe73500367e52a257e0f9f725166d9c79dc`, audited 2026-10-07; runtime `1.4.0`. All seven findings have high confidence from repository tracing and isolated reproductions. **F1-F7 below are audit finding IDs, not the historical R10 feedback package.** Links identify the implementation to revisit, not immutable future line numbers.
 
 | Finding | Severity | Reproduced failure and evidence | Package |
 |---|---|---|---|
-| F1 | High | [Workspace identity](../../scripts/local_workspace.py) changes when `origin` is added/changed, hiding retained state. [Recovery](../../scripts/state_recovery.py) regenerates corrupt project state without the accepted contract; [resume](../../scripts/resume_context.py) returned `PASS`, no warnings and no retained acceptance in a documented clean fixture. This proves lost continuity, not a demonstrated false `Done`. | A1 |
-| F2 | High | After specialist acceptance, [state capture](../../scripts/project_state.py) accepts an authorized scope extension, but [specialist completion](../../scripts/specialist_handoff.py) raises `operation belongs to another root/contract`. It checks every retained operation against the replacement contract; there is no supported revision transition for those operations. | A1 |
-| F3 | High | [Router normalization](../../scripts/context_router.py) uses `lstrip("./")`: `.github/workflows/validate-skill.yml` becomes `github/workflows/validate-skill.yml`. The affected scan inspected zero files without a limitation; matching nested `AGENTS.md` selections were lost. | A2 |
-| F4 | Medium | [Graph refresh](../../scripts/graph_provider.py) copies source before execution but fingerprints the live tree afterward. An injected source edit during generation left an old graph reported as `fresh: true`. | A2 |
-| F5 | Medium | [Dependency guard](../../scripts/dependency_guard.py) accepted `MIT AND GPL-3.0-only` with an MIT-only allow-list. Its npm adapter also used package-level repository/license metadata when the selected version had different or missing metadata. | A3 |
-| F6 | Medium | [WordPress runner](../../scripts/wordpress_artifact.py) truncates merged stdout/stderr before JSON parsing. A valid 60-plugin response of 6,240 characters became invalid after truncation to 4,000. | A4 |
-| F7 | Medium | [Integration guard](../../scripts/integration_guard.py) returned `FAIL`/exit 2 for Tier 3 development solely because Trivy was missing, with no publication request. [Head policy](../../SKILL.md) and [security policy](../../references/security-and-dependencies.md) permit safe development while blocking publication; the guard has no stage/equivalence input. | A5 |
+| F1 | High | [Workspace identity](../../scripts/local_workspace.py) changes when `origin` is added/changed, hiding retained state. [Recovery](../../scripts/state_recovery.py) regenerates corrupt project state without the accepted contract; [resume](../../scripts/resume_context.py) returned `PASS`, no warnings and no retained acceptance in a documented clean fixture. This proves lost continuity, not a demonstrated false `Done`. | R18 |
+| F2 | High | After specialist acceptance, [state capture](../../scripts/project_state.py) accepts an authorized scope extension, but [specialist completion](../../scripts/specialist_handoff.py) raises `operation belongs to another root/contract`. It checks every retained operation against the replacement contract; there is no supported revision transition for those operations. | R18 |
+| F3 | High | [Router normalization](../../scripts/context_router.py) uses `lstrip("./")`: `.github/workflows/validate-skill.yml` becomes `github/workflows/validate-skill.yml`. The affected scan inspected zero files without a limitation; matching nested `AGENTS.md` selections were lost. | R19 |
+| F4 | Medium | [Graph refresh](../../scripts/graph_provider.py) copies source before execution but fingerprints the live tree afterward. An injected source edit during generation left an old graph reported as `fresh: true`. | R19 |
+| F5 | Medium | [Dependency guard](../../scripts/dependency_guard.py) accepted `MIT AND GPL-3.0-only` with an MIT-only allow-list. Its npm adapter also used package-level repository/license metadata when the selected version had different or missing metadata. | R20 |
+| F6 | Medium | [WordPress runner](../../scripts/wordpress_artifact.py) truncates merged stdout/stderr before JSON parsing. A valid 60-plugin response of 6,240 characters became invalid after truncation to 4,000. | R21 |
+| F7 | Medium | [Integration guard](../../scripts/integration_guard.py) returned `FAIL`/exit 2 for Tier 3 development solely because Trivy was missing, with no publication request. [Head policy](../../SKILL.md) and [security policy](../../references/security-and-dependencies.md) permit safe development while blocking publication; the guard has no stage/equivalence input. | R22 |
 
 These are the complete implementation scope for this cycle. Existing-tag/partial-release retry behavior remains unconfirmed and is not an additional package. The audit's passing checks and package/installation comparison are recorded in the roadmap; they do not qualify a future fix.
 
-## A1: Retained-state and contract continuity
+## R18: Retained-state and contract continuity
+
+<a id="r18"></a>
+
+<a id="a1-retained-state-and-contract-continuity"></a>
 
 **Purpose:** Fix F1/F2 without weakening independent acceptance, receipt freshness or required specialist findings. **Complexity:** Medium. Start here; no earlier package is required.
 
@@ -44,9 +50,13 @@ These are the complete implementation scope for this cycle. Existing-tag/partial
 
 **Verification:** Extend the existing state/recovery, receipt and handoff fixtures with remote-change and corrupt-state cases, plus an accepted-specialist -> authorized-revision -> renewed-evidence/acceptance -> completion route. Include a conflicting-project negative case and exercise the affected route from the extracted portable package. Reuse unaffected receipt tests; do not rerun checks merely because unrelated files changed.
 
-## A2: Reliable routing and graph inputs
+## R19: Reliable routing and graph inputs
 
-**Purpose:** Fix F3/F4 so context and freshness refer to the actual source. **Complexity:** Medium. Follow A1; reuse its accepted workspace identity if changed.
+<a id="r19"></a>
+
+<a id="a2-reliable-routing-and-graph-inputs"></a>
+
+**Purpose:** Fix F3/F4 so context and freshness refer to the actual source. **Complexity:** Medium. Follow R18; reuse its accepted workspace identity if changed.
 
 **Affected components:** `context_router.py`, `graph_provider.py`; context-routing and graph-provider references. Inspect repeated path normalization at all affected router call sites, not only the first helper.
 
@@ -60,9 +70,13 @@ These are the complete implementation scope for this cycle. Existing-tag/partial
 
 **Verification:** Add path fixtures to existing context-routing tests and a provider stub that mutates source during graph generation to the existing graph contract tests. Check the affected routing entrypoint in the portable integration suite; no live Graphify installation or model run is needed for these regressions.
 
-## A3: Version-bound dependency decisions
+## R20: Version-bound dependency decisions
 
-**Purpose:** Fix F5's false acceptance paths. **Complexity:** Medium. No runtime dependency on A2.
+<a id="r20"></a>
+
+<a id="a3-version-bound-dependency-decisions"></a>
+
+**Purpose:** Fix F5's false acceptance paths. **Complexity:** Medium. No runtime dependency on R19.
 
 **Affected components:** `dependency_guard.py`, its existing registry/policy tests and security/dependency guidance.
 
@@ -76,9 +90,13 @@ These are the complete implementation scope for this cycle. Existing-tag/partial
 
 **Verification:** Use deterministic registry-response fixtures with conflicting/missing version metadata and table-driven expression cases in existing dependency tests. Run live registry checks only at their existing CI gate or if adapter behavior actually requires live confirmation.
 
-## A4: WordPress command output integrity
+## R21: WordPress command output integrity
 
-**Purpose:** Fix F6 without changing the plugin lifecycle contract. **Complexity:** Small. No dependency on A3.
+<a id="r21"></a>
+
+<a id="a4-wordpress-command-output-integrity"></a>
+
+**Purpose:** Fix F6 without changing the plugin lifecycle contract. **Complexity:** Small. No dependency on R20.
 
 **Affected components:** `wordpress_artifact.py`, its runtime fixtures and WordPress delivery guidance if the output contract changes.
 
@@ -92,9 +110,13 @@ These are the complete implementation scope for this cycle. Existing-tag/partial
 
 **Verification:** Extend the existing WP-CLI stub fixtures with a long plugin list, separate warning output and malformed output. Run affected artifact/runtime tests; use the existing WordPress Artifact Contract CI for real-environment validation at integration, without touching a user's live site.
 
-## A5: Stage-aware integration controls
+## R22: Stage-aware integration controls
 
-**Purpose:** Fix F7's instruction/runtime contradiction. **Complexity:** Medium. No dependency on A4; reuse A2 freshness semantics where relevant.
+<a id="r22"></a>
+
+<a id="a5-stage-aware-integration-controls"></a>
+
+**Purpose:** Fix F7's instruction/runtime contradiction. **Complexity:** Medium. No dependency on R21; reuse R19 freshness semantics where relevant.
 
 **Affected components:** `integration_guard.py`, its callers/tests, `references/risk-classifier-and-integrations.md` and canonical security guidance; update Head instructions only if the public control contract needs clarification.
 
@@ -117,28 +139,30 @@ When runtime resources change, synchronize the portable mirror and verify the af
 
 Record progress, branch/PR, merge evidence and the next action only in the roadmap. A locally tested fix is not yet a completed package. Release and installation evidence must be recorded separately after those actions are authorized and verified; this plan does not select a release number or modify an installed skill.
 
-## Targeted hardening cycle R1-R4
+## Targeted hardening cycle R11-R14
+
+<a id="targeted-hardening-cycle-r1-r4"></a>
 
 | Package | Preserved acceptance boundary | Specification / evidence |
 |---|---|---|
-| R1 | Fresh structured tasks require receipts; legacy compatibility is explicit; required specialist IDs cannot disappear without reconciliation. | [Archived criteria](improvement-roadmap-through-1.4.0.md#r1-retained-contract-and-required-completion-controls) · [current completion guidance](../../references/execution-and-verification.md#receipt-backed-completion-e2). |
-| R2 | Large plugin headers retain platform routing; unrelated PHP stays unrelated; incomplete relevant inspection is visible. | [Archived criteria](improvement-roadmap-through-1.4.0.md#r2-bounded-discovery-without-silent-platform-loss) · [context routing](../../references/context-routing-and-execution.md). |
-| R3 | Root scope covers nested paths and overlaps nested writers; disjoint/literal paths remain valid. | [Archived criteria](improvement-roadmap-through-1.4.0.md#r3-consistent-project-root-ownership) · [planning guidance](../../references/context-routing-and-execution.md). |
-| R4 | Release rules match the implemented gate; portable commands resolve or are explicitly optional full-source routes. | [Archived criteria](improvement-roadmap-through-1.4.0.md#r4-one-accurate-operational-validation-path) · [validation policy](../../references/validation-and-benchmarking.md). |
+| <a id="r11"></a>R11 | Fresh structured tasks require receipts; legacy compatibility is explicit; required specialist IDs cannot disappear without reconciliation. | [Archived criteria](improvement-roadmap-through-1.4.0.md#r11-retained-contract-and-required-completion-controls) · [current completion guidance](../../references/execution-and-verification.md#receipt-backed-completion-e2). |
+| <a id="r12"></a>R12 | Large plugin headers retain platform routing; unrelated PHP stays unrelated; incomplete relevant inspection is visible. | [Archived criteria](improvement-roadmap-through-1.4.0.md#r12-bounded-discovery-without-silent-platform-loss) · [context routing](../../references/context-routing-and-execution.md). |
+| <a id="r13"></a>R13 | Root scope covers nested paths and overlaps nested writers; disjoint/literal paths remain valid. | [Archived criteria](improvement-roadmap-through-1.4.0.md#r13-consistent-project-root-ownership) · [planning guidance](../../references/context-routing-and-execution.md). |
+| <a id="r14"></a>R14 | Release rules match the implemented gate; portable commands resolve or are explicitly optional full-source routes. | [Archived criteria](improvement-roadmap-through-1.4.0.md#r14-one-accurate-operational-validation-path) · [validation policy](../../references/validation-and-benchmarking.md). |
 
 ## Current contract ownership
 
 | Mechanism | Canonical instructions | Key boundary |
 |---|---|---|
-| P0 formats / migration | [Shared improvement contracts](../../references/shared-improvement-contracts.md) | Identity, origins, storage/trust limits and supported migration; records grant no authorization. |
-| B1 observable behavior | [Behavior contract](../../references/operating-model.md#observable-behavior-contract) | Actor action/result and only meaningful failure/protected-state expectations. Tiny tasks stay inline. |
-| B2 retained behavior | [Plan propagation](../../references/context-routing-and-execution.md#retained-behavior-in-a-plan-b2), [state/handoff](../../references/project-state-automation.md#preserve-task-behavior-and-useful-delivery-details-b2) | Preserve criteria, protected outcomes and commitments; detect removal or material change. |
-| E1 local collection | [Execution receipts](../../references/execution-and-verification.md#local-execution-receipts-e1) | Explicit authorized commands, bounded execution, scoped inputs and exact artifacts outside product source. |
-| E2 completion | [Receipt-backed completion](../../references/execution-and-verification.md#receipt-backed-completion-e2) | Required failed/missing/stale evidence blocks; manual/legacy evidence is accurately labeled. |
-| S1 instruction compatibility | [Compatibility assessment](../../references/specialist-composition.md#instruction-compatibility-assessment-s1) | Source currency/package validity is separate from Head acceptance of current instructions. |
-| S2 task acceptance | [Stage returns](../../references/specialist-composition.md#stage-return-and-head-acceptance-s2) | Assess actual scope/contracts/findings/receipts; specialist Done is not whole-task completion. |
-| I1 portable integration | [Verification snapshot](../i1-integration-verification.md) | Exercise installed entrypoints from the extracted ZIP; fixtures do not prove arbitrary agent outcomes. |
-| F1 feedback | [Skill feedback](../../references/skill-feedback.md) | Attribute confirmed/suspected skill defects, protect sensitive content and send nothing automatically. |
+| R1 formats / migration | [Shared improvement contracts](../../references/shared-improvement-contracts.md) | Identity, origins, storage/trust limits and supported migration; records grant no authorization. |
+| R2 observable behavior | [Behavior contract](../../references/operating-model.md#observable-behavior-contract) | Actor action/result and only meaningful failure/protected-state expectations. Tiny tasks stay inline. |
+| R3 retained behavior | [Plan propagation](../../references/context-routing-and-execution.md#retained-behavior-in-a-plan-b2), [state/handoff](../../references/project-state-automation.md#preserve-task-behavior-and-useful-delivery-details-b2) | Preserve criteria, protected outcomes and commitments; detect removal or material change. |
+| R4 local collection | [Execution receipts](../../references/execution-and-verification.md#local-execution-receipts-e1) | Explicit authorized commands, bounded execution, scoped inputs and exact artifacts outside product source. |
+| R5 completion | [Receipt-backed completion](../../references/execution-and-verification.md#receipt-backed-completion-e2) | Required failed/missing/stale evidence blocks; manual/legacy evidence is accurately labeled. |
+| R6 instruction compatibility | [Compatibility assessment](../../references/specialist-composition.md#instruction-compatibility-assessment-s1) | Source currency/package validity is separate from Head acceptance of current instructions. |
+| R7 task acceptance | [Stage returns](../../references/specialist-composition.md#stage-return-and-head-acceptance-s2) | Assess actual scope/contracts/findings/receipts; specialist Done is not whole-task completion. |
+| R8 portable integration | [Verification snapshot](../i1-integration-verification.md) | Exercise installed entrypoints from the extracted ZIP; fixtures do not prove arbitrary agent outcomes. |
+| R10 feedback | [Skill feedback](../../references/skill-feedback.md) | Attribute confirmed/suspected skill defects, protect sensitive content and send nothing automatically. |
 
 ## Necessary verification
 
