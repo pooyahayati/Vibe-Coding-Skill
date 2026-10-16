@@ -6,15 +6,15 @@ Canonical progress tracker. Reviewed: 2026-10-16, Asia/Tehran. All documented im
 
 | State | Position |
 |---|---|
-| Published runtime | Stable [1.6.1](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.6.1), release commit `f18e1a30a7fbeb488b9853b4de7672cafc8f2cf5`. |
-| Local installation | Active **1.6.1**, checked against current release provenance and canonical package files on 2026-10-16. R31-R32 use temporary test installations; the active installation and real assignments were not changed. |
+| Published runtime | Stable [1.7.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.7.0), release commit `e556f0a1b41b43c6001d03739905001249be574d`. |
+| Local installation | Active **1.7.0**, verified on 2026-10-16. All 81 installed files match the published ZIP byte-for-byte; offline installation check passed without failures or warnings. Previous installation retained as a backup outside skill discovery. |
 | Review baseline | Main `8a7d51d978f651244842e6a743677718b6f1b14b`, runtime 1.6.1; current code review and retained implementation/delivery records. |
-| Overall progress | **R1-R30 complete; R31-R32 implemented and locally accepted, merge pending.** The counts track packages, not quality or coverage. |
-| Current phase | Local implementation and scoped acceptance completed in order: **R31 -> R32**. Authorized delivery of **1.7.0** is in progress. |
-| Next action | Commit and merge after the existing integration CI; publish 1.7.0 after exact-revision release checks and native Trivy, then update the local Head installation. |
+| Overall progress | **R1-R32 complete.** The counts track packages, not quality or coverage. |
+| Current phase | R31-R32 accepted and merged; 1.7.0 published and installed locally. |
+| Next action | No approved implementation remains open. Allocate R33 only when the next improvement is approved. |
 | Next unallocated ID | **R33**. Continue the same sequence for later improvements. |
-| Delivery state | Local branch `codex/specialist-workflow-roadmap`; HEAD `8a7d51d978f651244842e6a743677718b6f1b14b`, cached `origin/main` ahead/behind 0/0. Working tree changed; uncommitted and unpushed. No PR/issue/milestone, merge commit or hosted CI created for this cycle. |
-| Blockers / limits | No local implementation blocker. Hosted integration/platform evidence is pending; selection is full because runtime manifests changed. Legacy or unverifiable assignment bindings retain their update guard. Project speed gains remain unmeasured. |
+| Delivery state | [PR #104](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/104) merged at the release commit above. Full same-revision hosted checks and native final-artifact Trivy passed; publication and installation verified separately below. No issue or milestone created for this cycle. |
+| Blockers / limits | No delivery blocker. Legacy or unverifiable assignment bindings retain their update guard. Project speed gains remain unmeasured. |
 
 ## Current cycle: R31-R32
 
@@ -22,7 +22,7 @@ Canonical progress tracker. Reviewed: 2026-10-16, Asia/Tehran. All documented im
 
 **R32, medium priority:** Let new tasks use the current default installation while open assignments retain verified resources and obligations through continuation or explicit migration.
 
-The order reflects impact and implementation risk. R32 has no functional dependency on R31; its implementation began after R31 passed scoped source and extracted-package acceptance. Both are locally accepted. They remain open in the register until merge evidence exists.
+The order reflects impact and implementation risk. R32 has no functional dependency on R31; its implementation began after R31 passed scoped source and extracted-package acceptance. Both are accepted and merged, with publication and installation evidence recorded below.
 
 ## Roadmap register
 
@@ -62,8 +62,8 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 | R28 | H1 | [Same-contract specialist reassessment](docs/archive/improvement-roadmap-through-1.6.1.md#r28) | **Complete** | `1.6.1` / [PR #102](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/102) |
 | R29 | H2 | [Dynamic regression-test dependencies](docs/archive/improvement-roadmap-through-1.6.1.md#r29) | **Complete** | `1.6.1` / [PR #102](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/102) |
 | R30 | H3 | [Verified release recovery](docs/archive/improvement-roadmap-through-1.6.1.md#r30) | **Complete** | `1.6.1` / [PR #102](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/102) |
-| R31 | W1 (planning draft) | [Effect-based specialist participation](docs/improvement-implementation-plan.md#r31) | **In progress — locally accepted** | 34 specialist tests and the extracted light-route/preparation scenario passed; canonical resources synchronized. Merge pending. |
-| R32 | W2 (planning draft) | [Assignment-isolated skill updates](docs/improvement-implementation-plan.md#r32) | **In progress — locally accepted** | Two-project continuation, migration, retained findings/history, interruption protection and reference-based cleanup passed; extracted-package route verified. Merge pending. |
+| R31 | W1 (planning draft) | [Effect-based specialist participation](docs/improvement-implementation-plan.md#r31) | **Complete** | `1.7.0` / [PR #104](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/104); scoped selection, extracted route and full hosted checks passed. |
+| R32 | W2 (planning draft) | [Assignment-isolated skill updates](docs/improvement-implementation-plan.md#r32) | **Complete** | `1.7.0` / [PR #104](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/104); two-project continuation/migration, retained history, interruption protection, cleanup and extracted-package checks passed. |
 
 ## Numbering policy
 
@@ -95,7 +95,18 @@ Verification-cost changes need evidence of unnecessary execution from existing r
 | Recovery and package | Two existing recovery tests, three manifest/dependency-selection checks and two affected extracted-ZIP routes passed. Package construction included offline installation verification. Canonical runtime mirror: 79 files. |
 | Policy and consistency | All 16 deterministic risk/policy scenarios passed; skill structure, local links, mirror and diff checks passed. Purity has no forbidden files; only the pre-existing optional local-exclude setup warning remains. |
 
-These are local mechanism checks, not hosted CI, cross-platform matrix results, model evaluations or release evidence. Native Trivy remains required at publication. Analysis used inspected source and existing tests; no new Graphify freshness claim is made. No dependency, provider key, global installation or real assignment change was needed.
+These are local mechanism checks, not model evaluations or measurements of project speed. Implementation used temporary installations. Analysis used inspected source and existing tests; no new Graphify freshness claim is made. Hosted delivery and the authorized local update are verified separately below.
+
+## Verified delivery: 1.7.0
+
+All release evidence below belongs to `e556f0a1b41b43c6001d03739905001249be574d`; subsequent tracker-only commits do not change the immutable release target.
+
+| Outcome | Evidence |
+|---|---|
+| Full hosted baseline | [Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38901047295), [four platform jobs](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38901047180), [repository validation](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38901047358), [Skill specification](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38901047429), [tool contracts](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38901047396) and [WordPress artifact](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38901047177) passed. Collected schema-2 readiness reports PASS with full scope. |
+| Publication | [Release workflow, attempt 2](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38901339748/attempts/2) passed readiness, native Trivy, extracted-package verification and publication. The first attempt stopped while rereading the new draft; the existing bounded recovery completed the same draft without changing its tag or replacing assets. |
+| Consumer package | Published stable tag resolves to the release commit. Downloaded ZIP/checksum verified; all 81 files match canonical release resources. ZIP SHA-256: `7d362e60b897cdab14332e5b58459fbdc6d98fec3eaccd8fa1be8192e072e91b`. |
+| Local activation | Managed Head update to `v1.7.0` completed with backup/provenance. Installed contents match the downloaded ZIP; installed offline check PASS, no failures or warnings. No unrelated specialist was updated and no real assignment was closed. |
 
 ## Retained planning evidence
 
