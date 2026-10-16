@@ -113,11 +113,19 @@ def load_risk_classifier():
     return module
 
 
+def load_context_router():
+    spec = importlib.util.spec_from_file_location("_specialist_context_router", ROOT / "scripts/context_router.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def select_specialists(task: str, paths: list[str] | None = None,
                        facts: dict | None = None, explicit: list[str] | None = None,
                        stage: str = "discover", risk_facts: dict | None = None,
                        guidance_evidence: str | None = None, risk_assessment: dict | None = None,
-                       inspection_complete: bool = True, domain_effects: dict | None = None) -> list[dict]:
+                       inspection_complete: bool = False, domain_effects: dict | None = None) -> list[dict]:
     data = registry()
     entries = {item["id"]: item for item in data["specialists"]}
     if stage not in data["lifecycle"]:
@@ -765,7 +773,9 @@ def main() -> int:
     parser.add_argument("mode", choices=("prepare", "inventory", "assess"))
     parser.add_argument("--task", default="")
     parser.add_argument("--path", action="append", default=[])
-    parser.add_argument("--concern", action="append", default=[])
+    parser.add_argument("--concern", "--context-concern", action="append", default=[])
+    for field in ("runtime", "platform", "capability"):
+        parser.add_argument("--context-" + field, action="append", default=[])
     parser.add_argument("--specialist", action="append", default=[])
     parser.add_argument("--stage", choices=registry()["lifecycle"], default="discover")
     parser.add_argument("--guidance-evidence", help="Head diff review: mechanical use of settled decisions, no new domain behavior")
@@ -774,7 +784,7 @@ def main() -> int:
         parser.add_argument("--risk-" + field.replace("_", "-"))
     parser.add_argument("--skills-dir", type=Path, default=Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))) / "skills")
     parser.add_argument("--state-dir", type=Path, default=Path(os.environ.get("VIBE_CODING_HOME", str(Path.home() / ".vibe-coding"))) / "specialists")
-    parser.add_argument("--project-root", type=Path)
+    parser.add_argument("--project-root", type=Path, help="Project inspected by prepare; defaults to the working directory")
     parser.add_argument("--apply", action="store_true", help="install/update registered sources within existing authorization")
     parser.add_argument("--assessment", type=Path, help="Head-authored compatibility decision JSON; assess mode only")
     parser.add_argument("--json", action="store_true")
@@ -790,12 +800,26 @@ def main() -> int:
             raise ValueError("unknown specialist concerns: " + ", ".join(sorted(unknown_concerns)))
         risk_facts = {field: getattr(args, "risk_" + field) for field in load_risk_classifier().INPUT_FIELDS
                       if getattr(args, "risk_" + field) is not None}
-        selected = select_specialists(args.task, args.path, {"concern": args.concern}, args.specialist, args.stage,
-                                      risk_facts or None, args.guidance_evidence, domain_effects=parse_domain_effects(args.domain_effect))
+        route = None
+        effects = parse_domain_effects(args.domain_effect)
+        if args.mode == "prepare":
+            context = {field: getattr(args, "context_" + field) for field in ("runtime", "platform", "capability")}
+            context["concern"] = args.concern
+            route = load_context_router().plan(
+                args.project_root or Path.cwd(), args.task, args.path,
+                risk_facts=risk_facts or None, context_facts=context, stage=args.stage,
+                guidance_evidence=args.guidance_evidence, domain_effects=effects,
+                explicit_specialists=args.specialist)
+            selected = route["required_specialists"]
+        else:
+            selected = select_specialists(args.task, args.path, {"concern": args.concern}, args.specialist, args.stage,
+                                          risk_facts or None, args.guidance_evidence, domain_effects=effects)
         if (args.mode == "assess") != bool(args.assessment) or (args.mode == "assess" and len(selected) != 1):
             raise ValueError("assess requires one selected registered specialist and --assessment")
         result = run(args.mode, skills, state, selected, args.apply,
                      read_local_json(args.assessment) if args.assessment else None)
+        if route is not None:
+            result["route"] = route
     except (OSError, ValueError, KeyError) as exc:
         result = {"gate": "BLOCK", "error": str(exc)}
     print(json.dumps(result, indent=2, ensure_ascii=False) if args.json else f"Specialist preflight: {result['gate']}")

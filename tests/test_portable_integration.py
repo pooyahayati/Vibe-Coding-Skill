@@ -144,6 +144,14 @@ class PortableIntegrationTests(unittest.TestCase):
             modules = [importlib.import_module(name) for name in ("specialist_manager", "specialist_handoff")]
             assert all(Path(m.__file__).resolve().is_relative_to(installed) for m in modules)
             sys.path.append(str(tests))
+            import test_specialists as routing
+            routing.ROOT = installed
+            case = routing.SpecialistTests()
+            try:
+                case.setUp()
+                case.test_router_and_plan_keep_guidance_separate_and_incomplete_inspection_formal()
+            finally:
+                case.doCleanups()
             import test_handoffs as fixtures
             fixtures.ROOT = installed
             case = fixtures.HandoffTests()

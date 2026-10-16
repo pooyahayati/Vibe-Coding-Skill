@@ -65,13 +65,13 @@ class SpecialistTests(unittest.TestCase):
         for task, paths in [("Correct the label", ["src/Button.tsx"]), ("Adjust spacing", ["styles/site.css"])]:
             with self.subTest(task=task):
                 selected = manager.select_specialists(task, paths, {"concern": ["ui"]}, stage="build",
-                                                      risk_facts=facts, guidance_evidence=evidence)
+                                                      risk_facts=facts, guidance_evidence=evidence, inspection_complete=True)
                 self.assertEqual([s["id"] for s in selected], ["ui-ux-skill"])
                 self.assertEqual(selected[0]["participation"], "guidance-only")
                 self.assertFalse(selected[0]["handoff_required"])
                 self.assertTrue(selected[0]["required"])
         comments = dict(facts, change_effect="non-runtime", scope_evidence="Inspected auth.py: comment spelling only; access behavior unchanged.")
-        selected = manager.select_specialists("Correct comment spelling", ["src/auth/session.py"], risk_facts=comments)
+        selected = manager.select_specialists("Correct comment spelling", ["src/auth/session.py"], risk_facts=comments, inspection_complete=True)
         self.assertFalse(selected[0]["handoff_required"])
         for task, path, risk, concerns in [
                 ("Add a UI flow", "src/Form.tsx", dict(facts, operation="feature"), ["ui"]),
@@ -81,17 +81,20 @@ class SpecialistTests(unittest.TestCase):
                 ("Correct the label", "src/Button.tsx", {}, ["ui"])]:
             with self.subTest(task=task, risk=risk):
                 rows = manager.select_specialists(task, [path], {"concern": concerns}, stage="build",
-                                                   risk_facts=risk, guidance_evidence=evidence)
+                                                   risk_facts=risk, guidance_evidence=evidence, inspection_complete=True)
                 self.assertTrue(rows and all(s["handoff_required"] for s in rows))
         self.assertTrue(manager.select_specialists("Correct label", ["src/Button.tsx"], risk_facts=facts)[0]["handoff_required"])
         self.assertTrue(manager.select_specialists("Correct label", ["src/Button.tsx"], explicit=["ui-ux-skill"],
+                                                  risk_facts=facts, guidance_evidence=evidence, inspection_complete=True)[0]["handoff_required"])
+        # Direct callers without current inspection cannot qualify through text alone.
+        self.assertTrue(manager.select_specialists("Correct label", ["src/Button.tsx"],
                                                   risk_facts=facts, guidance_evidence=evidence)[0]["handoff_required"])
         for context in ([], ["rtl"], ["responsive"], ["rtl", "responsive"]):
             effects = {c: "preserved" for c in context}
             with self.subTest(context=context):
                 row = manager.select_specialists("Correct label spelling", ["src/Button.tsx"],
                     {"concern": ["ui", *context]}, risk_facts=facts, guidance_evidence=evidence,
-                    domain_effects=effects)[0]
+                    domain_effects=effects, inspection_complete=True)[0]
                 self.assertFalse(row["handoff_required"])
                 self.assertEqual(row["domain_effects"], effects)
         for overrides in (
@@ -104,7 +107,7 @@ class SpecialistTests(unittest.TestCase):
                 {"risk_facts": {}}, {"explicit": ["ui-ux-skill"]},
                 {"risk_facts": dict(facts, operation="auth")},
                 {"risk_facts": dict(facts, data_sensitivity="personal")}):
-            args = dict(risk_facts=facts, guidance_evidence=evidence, domain_effects={"rtl": "preserved"})
+            args = dict(risk_facts=facts, guidance_evidence=evidence, domain_effects={"rtl": "preserved"}, inspection_complete=True)
             args.update(overrides)
             with self.subTest(overrides=overrides):
                 rows = manager.select_specialists("Correct label", ["src/Button.tsx"], {"concern": ["ui", "rtl"]}, **args)
@@ -117,7 +120,7 @@ class SpecialistTests(unittest.TestCase):
                                     ("public-api", {"api-and-interface-design", "security-and-hardening"}),
                                     ("payment", {"security-and-hardening", "api-and-interface-design"})]:
             selected = manager.select_specialists("Small correction", ["policy.md"],
-                                                  risk_facts=dict(facts, operation=operation), guidance_evidence=evidence)
+                                                  risk_facts=dict(facts, operation=operation), guidance_evidence=evidence, inspection_complete=True)
             self.assertEqual({s["id"] for s in selected}, expected)
             self.assertTrue(all(s["handoff_required"] for s in selected))
 
@@ -125,24 +128,55 @@ class SpecialistTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("guidance_planner_test", ROOT / "scripts/execution_plan.py")
         planner = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(planner)
-        path = self.root / "src/Button.tsx"
-        path.parent.mkdir()
+        project = self.root / "project"
+        path = project / "src/Button.tsx"
+        path.parent.mkdir(parents=True)
         path.write_text("export const Label = () => <span>Save</span>;", encoding="utf-8")
         args = {"paths": ["src/Button.tsx"], "stage": "build", "context_facts": {"concern": ["ui"]},
                 "risk_facts": {"operation": "tiny", "environment": "local", "data_sensitivity": "none", "change_boundary": "local"},
                 "guidance_evidence": "Compared with accepted design: label spelling only, same layout, flow and accessibility."}
-        result = planner.draft(self.root, "Correct label spelling", **args)
-        self.assertEqual(result["specialist_assignments"], [])
-        self.assertEqual([s["id"] for s in result["specialist_guidance"]], ["ui-ux-skill"])
+        def compare(light):
+            task = "Correct label spelling"
+            route = manager.load_context_router().plan(project, task, **args)
+            plan = planner.draft(project, task, **args)
+            argv = ["specialist_manager.py", "prepare", "--project-root", str(project), "--task", task,
+                    "--path", args["paths"][0], "--stage", args["stage"], "--json",
+                    "--skills-dir", str(self.skills), "--state-dir", str(self.state),
+                    "--guidance-evidence", args["guidance_evidence"]]
+            for key, value in args["risk_facts"].items():
+                argv.extend(["--risk-" + key.replace("_", "-"), value])
+            for concern in args["context_facts"]["concern"]:
+                argv.extend(["--concern", concern])
+            for concern, effect in args.get("domain_effects", {}).items():
+                argv.extend(["--domain-effect", concern + "=" + effect])
+            for name in args.get("explicit_specialists", []):
+                argv.extend(["--specialist", name])
+            output = io.StringIO()
+            with patch.object(sys, "argv", argv), redirect_stdout(output), patch.object(manager, "run", return_value={"gate": "PASS"}) as prepare:
+                self.assertEqual(manager.main(), 0)
+            actual = json.loads(output.getvalue())["route"]
+            self.assertEqual(prepare.call_args.args[3], route["required_specialists"])
+            self.assertEqual(actual["required_specialists"], route["required_specialists"])
+            self.assertEqual(actual["task"]["risk"], route["task"]["risk"])
+            self.assertEqual(actual["context_plan"]["inspection"], route["context_plan"]["inspection"])
+            self.assertEqual(bool(plan["specialist_guidance"]), light)
+            self.assertEqual(bool(plan["specialist_assignments"]), not light)
+            self.assertEqual(actual["required_specialists"][0]["handoff_required"], not light)
+
+        compare(True)
         args.update(context_facts={"concern": ["ui", "rtl", "responsive"]},
                     domain_effects={"rtl": "preserved", "responsive": "preserved"})
-        result = planner.draft(self.root, "Correct label spelling", **args)
-        self.assertEqual(result["specialist_assignments"], [])
-        self.assertEqual(result["specialist_guidance"][0]["domain_effects"], args["domain_effects"])
+        compare(True)
+        args["domain_effects"]["rtl"] = "changed"
+        compare(False)
+        args["domain_effects"]["rtl"] = "preserved"
+        args["explicit_specialists"] = ["ui-ux-skill"]
+        compare(False)
+        args.pop("explicit_specialists")
         path.unlink()
-        result = planner.draft(self.root, "Correct label spelling", **args)
-        self.assertEqual(result["specialist_guidance"], [])
-        self.assertTrue(result["specialist_assignments"][0]["handoff_required"])
+        compare(False)
+        path.write_text("export const Label = () => <span>Saved</span>;", encoding="utf-8")
+        compare(True)
 
     def test_domain_semantics_docs_and_sensitive_risk_do_not_select_unrelated_skills(self):
         self.assertEqual(manager.select_specialists("Describe API authentication", ["docs/API.md"]), [])

@@ -506,7 +506,8 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual(inspected["gate"], "UNVERIFIED")
         light = manager.select_specialists("Correct label", ["src/view.tsx"], facts={"concern": ["ui"]},
                                             risk_facts={"operation": "tiny", "environment": "local", "data_sensitivity": "none", "change_boundary": "local"},
-                                            guidance_evidence="Inspected the follow-up diff: mechanical label only, existing decisions preserved.")
+                                            guidance_evidence="Inspected the follow-up diff: mechanical label only, existing decisions preserved.",
+                                            inspection_complete=True)
         self.assertFalse(light[0]["handoff_required"])
         # New lightweight routing never accepts/removes the retained formal work.
         self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "BLOCK")

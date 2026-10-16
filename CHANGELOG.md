@@ -4,7 +4,7 @@ Technical release history. Entries describe their release; current operating and
 
 ## Unreleased
 
-No pending changes.
+- R33: reuse current router inspection and risk evaluation in specialist preparation; return the same route for context loading, preserve explicit selections across entry points, and make uninspected direct selection conservative. Keep verified mechanical edits lightweight without a routing cache.
 
 ## 1.7.0 — Focused specialist participation and isolated assignments
 
