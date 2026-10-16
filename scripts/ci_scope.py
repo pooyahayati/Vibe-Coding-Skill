@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OVERVIEWS = {"README.md", "ROADMAP.md", "CHANGELOG.md", "UPDATES.md", "CONTRIBUTING.md", "HOW_TO_INSTALL.md", "LICENSE"}
 OVERVIEW_DOCS = {"docs/improvement-implementation-plan.md", "docs/i1-integration-verification.md"}
 FULL_INPUTS = {"VERSION", "scripts/ci_scope.py", "scripts/collect_release_checks.py", "scripts/release_readiness.py",
-               "scripts/build_release.py", "scripts/sync_package.py", "scripts/validate_skill.py"}
+               "scripts/build_release.py", "scripts/publish_release.py", "scripts/sync_package.py", "scripts/validate_skill.py"}
 PLATFORM_TESTS = ["tests.test_cross_platform", "tests.test_review_regressions", "tests.test_portable_integration",
                   "tests.test_scripts.GraphProviderContractTests", "tests.test_scripts.GitHubTraceabilityTests"]
 INSTRUCTION_TESTS = ["tests.test_context_routing", "tests.test_scripts.RiskClassifierTests", "tests.test_scripts.CompletionGateTests"]
@@ -31,6 +31,14 @@ def dependencies(node: ast.AST) -> set[str]:
         elif isinstance(item, ast.ImportFrom):
             result.add((item.module or "").rsplit(".", 1)[-1])
             result.update(alias.name for alias in item.names)
+        elif isinstance(item, ast.Call) and isinstance(item.func, ast.Name) and item.func.id == "load":
+            # Repository loader convention: load("module") or load("module.py").
+            # A computed target makes focused coverage unknowable, not empty.
+            if (len(item.args) != 1 or item.keywords or not isinstance(item.args[0], ast.Constant)
+                    or not isinstance(item.args[0].value, str)
+                    or not re.fullmatch(r"[A-Za-z_]\w*(?:\.py)?", item.args[0].value)):
+                raise ValueError("unresolved dynamic module dependency")
+            result.add(item.args[0].value.removesuffix(".py"))
         elif isinstance(item, ast.Constant) and isinstance(item.value, str):
             result.update(re.findall(r"\b([A-Za-z_]\w*)\.py\b", item.value))
     return result
@@ -39,19 +47,18 @@ def dependencies(node: ast.AST) -> set[str]:
 def affected_tests(root: Path, paths: list[str]) -> list[str]:
     files = [*sorted((root / "scripts").glob("*.py")), *sorted((root / "tests").glob("test_*.py"))]
     trees = {file.stem: ast.parse(file.read_text(encoding="utf-8")) for file in files}
-    graph = {name: dependencies(tree) for name, tree in trees.items()}
-    affected = {Path(path).stem for path in paths if path.endswith(".py")}
-    # Script callers and test helpers propagate impact transitively. Test classes
-    # are selected below, rather than treating one helper import as a whole suite.
     script_names = {file.stem for file in (root / "scripts").glob("*.py")}
-    helper_changes = {name for name in affected if name.startswith("test_")}
+    # Only module-level test helpers propagate whole-module impact. A dependency
+    # inside one test class must not select unrelated classes in that file.
+    graph = {name: dependencies(tree if name in script_names else ast.Module(
+        body=[node for node in tree.body if not isinstance(node, ast.ClassDef)], type_ignores=[]))
+        for name, tree in trees.items()}
+    affected = {Path(path).stem for path in paths if path.endswith(".py")}
     while True:
-        expanded = affected | {name for name, deps in graph.items()
-                               if deps & affected and (name in script_names or deps & helper_changes)}
+        expanded = affected | {name for name, deps in graph.items() if deps & affected}
         if expanded == affected:
             break
         affected = expanded
-        helper_changes |= affected - script_names
     selected = []
     for name, tree in trees.items():
         if not name.startswith("test_"):
@@ -93,7 +100,7 @@ def select(paths: list[str] | None, event: str, root: Path = ROOT) -> dict:
     if code and not full:
         try:
             tests = affected_tests(root, code)
-        except (OSError, SyntaxError, UnicodeError):
+        except (OSError, SyntaxError, UnicodeError, ValueError):
             full = True
             reasons.append("dependency inspection incomplete")
         if not tests:

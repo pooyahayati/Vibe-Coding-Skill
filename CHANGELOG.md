@@ -6,6 +6,14 @@ Technical release history. Entries describe their release; current operating and
 
 No pending changes.
 
+## 1.6.1 — Specialist reassessment and verified delivery
+
+- H3: Verify the actual tag commit, channel/state and ZIP/checksum content before claiming publication. Recover matching drafts through explicit bounded retries, upload missing assets only, and preserve full same-revision CI and final-artifact native Trivy gates. Never move existing tags or replace published assets.
+
+- H2: Select regressions loaded through literal dynamic module names and propagate module-level helper dependencies. Keep unrelated classes/overview edits selective and fall back to full validation for unresolved loaders.
+
+- H1: Add explicit same-contract specialist reassessment with archived acceptance, preserved findings/authority and active instruction guards. Require fresh assigned receipts and a separate new Head decision without revising unrelated task evidence.
+
 ## 1.6.0 — Proportionate verification and focused CI
 
 - T5: Select CI checks by changed inputs: overview structure/links/mirror, instruction policy/routing, affected runtime regressions/platform checks, or the full baseline for version/CI controls and unknown impact. Remove duplicate feature-branch push runs and cancel only obsolete PR runs. Keep full same-revision publication evidence and native final-artifact Trivy. Release-readiness schema 2 and its collector inspect actual full-validation steps and the latest run attempt, exclude PR/fork evidence, and require recollection of legacy reports. Local implementation and hosted rollout status remain separate in ROADMAP.

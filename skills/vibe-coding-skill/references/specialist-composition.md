@@ -140,6 +140,16 @@ Changes are observed against the starting commit plus preexisting dirty files, s
 
 Ignored changes outside observed scope, concurrent writers, insufficient assertions and actors able to edit both source and records remain limits. Use existing writer boundaries or an isolated worktree when necessary. Records/hashes are consistency controls, not an OS sandbox, installation permission or automatic semantic proof. No blanket model evaluation, additional user approval or full-suite requirement is introduced.
 
+## Same-contract reassessment
+
+When an accepted operation needs fresh input/context/control review while the task contract and assignment remain unchanged, use an explicit Head reason:
+
+```bash
+python scripts/specialist_handoff.py reassess --root <project> --task-contract <contract.json> --assignment-id <id> --reason "<why this accepted work needs reassessment>"
+```
+
+This checks current specialist compatibility, archives the prior operation/review and reopens the same assignment with active-instruction protection. Scope, authority, invariants, original change baseline and required finding history stay intact. Collect relevant receipts after reopening, submit the return and make a fresh Head decision; prior receipts/decisions cannot accept this cycle. Unrelated task receipts remain reusable under their existing freshness rules. Transition success is not acceptance. An active assignment continues its existing review; changed requirements use contract reconciliation below. If interrupted, inspect/retry the retained transition instead of deleting the ledger or inventing a contract revision.
+
 ## Contract revisions
 
 After an authorized task-contract change, first capture the replacement with `project_state.py capture --accept-contract-change "<reason>"`. Retained operations remain bound to the previous contract and block completion until explicitly reconciled. Preserve both contracts for the transition:

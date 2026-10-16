@@ -31,6 +31,12 @@ The `validate` job always reports its selected checks; the platform `result` job
 
 A version or CI/delivery-control change also triggers all auxiliary release baselines. To release a revision that received partial checks, dispatch the required workflows on that exact unchanged `main` revision. The collector reads the latest run attempt and actual successful full-validation steps; if a retry has incomplete job evidence, rerun all jobs. Never substitute a PR run, reuse a different revision, or relabel a partial/legacy report as full. Hosted execution is verified when the authorized PR/main runs finish, not by local fixtures.
 
+## Release retry and recovery
+
+After the exact-revision readiness and native Trivy artifact gates, `scripts/publish_release.py` verifies the actual lightweight/annotated tag commit, release channel/state and both consumer asset contents against the freshly built ZIP/checksum. A complete matching published release is reused. Existence alone is never success.
+
+The publication workflow explicitly enables `--recover-draft`: it can upload missing assets to a matching draft and publish only after rechecking it. Interrupted operations stop with retained state for a bounded retry; mismatched content, failed upload placeholders, wrong targets or incomplete published releases block for inspection. The helper never moves tags, deletes releases or replaces existing assets. Rerun the authorized publication workflow so readiness and final-artifact security run again; running the helper alone is not release evidence. Manual invocation without `--recover-draft` cannot resume an existing draft.
+
 ## Roadmap progress
 
 [ROADMAP.md](ROADMAP.md) owns current phase, approved work, blockers and next action. The [implementation index](docs/improvement-implementation-plan.md) owns scope/acceptance links; archives retain closed detail. Update at meaningful changes, not every command. Complete requires relevant acceptance evidence and merged implementation; release/deployment/local installation remain separate. State a blocker's cause and resolving action.
