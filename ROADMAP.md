@@ -1,20 +1,20 @@
 # Improvement Roadmap
 
-Canonical current status. Reviewed: 2026-10-16, Asia/Tehran. This cycle addresses three confirmed reliability gaps in 1.6.0, preserving proportionate verification.
+Canonical current status. Reviewed: 2026-10-16, Asia/Tehran. The three confirmed reliability gaps from the 1.6.0 audit are fixed and released in 1.6.1, preserving proportionate verification.
 
 ## Current position
 
 | State | Position |
 |---|---|
-| Published runtime | Stable [1.6.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.6.0), release commit `c23f9ae97fd14a0433ddf1a4d12e5ec2499ba339`. |
-| Local installation | `1.6.0`; the 2026-10-16 audit matched all 80 active files to the published ZIP, with no extra or missing runtime files. |
-| Audit baseline | Main `80defe5d8061ea85df7a6c523f7120dc85699807`; code tracing, isolated reproductions and hosted release evidence. |
-| Current phase | **H1-H3 accepted locally; integration and 1.6.1 delivery pending.** H1-H3 implementation, acceptance, merge, release and local update are authorized. |
-| Approved scope | Same-contract specialist reassessment, dynamic test-dependency selection, and verified release recovery. |
-| Next action | Run required integration CI, merge accepted H1-H3, publish **1.6.1**, then update and verify the local installation. |
-| Progress | **3/3 implemented and locally accepted; 0/3 merged.** Branch `codex/1.6.0-audit-roadmap`; H1: 20 handoff tests and the extracted specialist route passed. H2: all six selector tests passed, including the six-module normal/platform mapping. H3: 20 publication/readiness tests passed; real release/tag/asset transport verified read-only. |
-| Blockers / limits | No implementation blocker. Hosted CI, publication and local installation are still pending. Project latency and general agent quality remain unmeasured. |
-| Delivery baseline | All six required workflows and the native Trivy publication gate passed for 1.6.0. The current release is complete; H3 addresses a recovery defect, not a broken published artifact. [Delivery evidence](docs/archive/improvement-roadmap-through-1.6.0.md#current-position). |
+| Published runtime | Stable [1.6.1](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.6.1), release commit `f18e1a30a7fbeb488b9853b4de7672cafc8f2cf5`. |
+| Local installation | Active **1.6.0**, unchanged at the owner's explicit request. The staged 1.6.1 candidate passed installation checks and matched all 80 published runtime files; it is not the active installation. |
+| Audit baseline | Main `80defe5d8061ea85df7a6c523f7120dc85699807`, runtime 1.6.0; code tracing, isolated reproductions and hosted evidence. |
+| Current phase | **H1-H3 complete and released. Local rollout deferred by the owner.** |
+| Delivered scope | Same-contract specialist reassessment, dynamic test-dependency selection, and verified release recovery. |
+| Next action | No remaining H1-H3 implementation. Replace the active local installation only when the owner resumes that rollout and active-assignment protection is resolved. |
+| Progress | **3/3 accepted and merged** in [PR #102](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/102). |
+| Blockers / limits | No implementation or publication blocker. Local activation is deferred; project latency and general agent quality remain unmeasured. |
+| Delivery evidence | All six full baselines passed on the exact release commit; [publication attempt 2](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38877760579/attempts/2) passed readiness, native Trivy, artifact build and verified draft recovery. |
 
 ## Current cycle: targeted reliability H1-H3
 
@@ -22,9 +22,18 @@ Execution order: **H1 -> H2 -> H3**. The packages have no technical dependency o
 
 | Order | Package / finding | Required result | Priority | Status |
 |---|---|---|---|---|
-| 1 | [H1: Same-contract specialist reassessment](docs/improvement-implementation-plan.md#h1-same-contract-specialist-reassessment) / F1 | Fresh evidence can be accepted after an in-scope correction without inventing a contract revision or losing retained findings. | High | **In progress — locally accepted; merge pending** |
-| 2 | [H2: Dynamic regression-test dependencies](docs/improvement-implementation-plan.md#h2-dynamic-regression-test-dependencies) / F2 | Runtime changes select their existing dynamically loaded regressions; overview edits retain lightweight checks. | Medium | **In progress — locally accepted; merge pending** |
-| 3 | [H3: Verified release recovery](docs/improvement-implementation-plan.md#h3-verified-release-recovery) / F3 | Existing releases qualify only after identity, publication state and assets are verified; incomplete publication has an explicit recovery path. | Medium | **In progress — locally accepted; merge pending** |
+| 1 | [H1: Same-contract specialist reassessment](docs/improvement-implementation-plan.md#h1-same-contract-specialist-reassessment) / F1 | Fresh evidence can be accepted after an in-scope correction without inventing a contract revision or losing retained findings. | High | **Complete** |
+| 2 | [H2: Dynamic regression-test dependencies](docs/improvement-implementation-plan.md#h2-dynamic-regression-test-dependencies) / F2 | Runtime changes select their existing dynamically loaded regressions; overview edits retain lightweight checks. | Medium | **Complete** |
+| 3 | [H3: Verified release recovery](docs/improvement-implementation-plan.md#h3-verified-release-recovery) / F3 | Existing releases qualify only after identity, publication state and assets are verified; incomplete publication has an explicit recovery path. | Medium | **Complete** |
+
+## Acceptance and delivery evidence
+
+- **H1:** 20 focused handoff tests plus the extracted-package specialist route passed. The same-contract cycle preserves findings/baseline/authority, rejects prior receipts and decisions, and requires new Head acceptance. Interrupted transition retains instruction protection.
+- **H2:** All six selector tests passed, including each of the six dynamically loaded runtime modules on normal/platform routes, transitive helpers, unrelated-class exclusion, unresolved-loader fallback and overview/full profiles.
+- **H3:** 20 publication/readiness tests passed. Actual tag resolution and asset download were checked against GitHub. The first publication stopped when its new draft was not yet visible in the release listing; one explicit retry recovered the same draft without moving the tag or replacing assets. No false publication success was claimed.
+- **Exact-commit CI:** [Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38877522789), [Cross Platform Smoke](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38877522724) (Linux, macOS, Windows), [Real World Repository Validation](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38877522793), [Agent Skills Spec Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38877522782), [Tool Contract Tests](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38877522711), and [WordPress Artifact Contract](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/38877522709) passed on `f18e1a30a7fbeb488b9853b4de7672cafc8f2cf5`.
+- **Consumer artifact:** The stable release contains its ZIP and matching checksum, 80 files / 261,112 bytes. ZIP SHA-256: `28e9adfbbe4869eae7f3aaf6ecd74d8f79363d03308df9755788dd08581dbf8e`. Independent download verification matched the actual tag and every staged installation file. Native Trivy found no blocking or other secret findings.
+- **Local rollout:** Candidate 1.6.1 returned installation `PASS` with no warnings. Activation was then explicitly deferred; the existing installation and retained assignments were left unchanged. No model evaluation/provider key was used.
 
 ## Execution and completion rules
 
