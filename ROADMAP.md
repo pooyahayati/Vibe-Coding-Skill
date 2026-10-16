@@ -9,10 +9,10 @@ Canonical current status. Reviewed: 2026-10-16, Asia/Tehran. This cycle addresse
 | Published runtime | Stable [1.6.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.6.0), release commit `c23f9ae97fd14a0433ddf1a4d12e5ec2499ba339`. |
 | Local installation | `1.6.0`; the 2026-10-16 audit matched all 80 active files to the published ZIP, with no extra or missing runtime files. |
 | Audit baseline | Main `80defe5d8061ea85df7a6c523f7120dc85699807`; code tracing, isolated reproductions and hosted release evidence. |
-| Current phase | **H1 accepted locally; H2 in progress.** H1-H3 implementation, acceptance, merge, release and local update are authorized. |
+| Current phase | **H1-H2 accepted locally; H3 in progress.** H1-H3 implementation, acceptance, merge, release and local update are authorized. |
 | Approved scope | Same-contract specialist reassessment, dynamic test-dependency selection, and verified release recovery. |
-| Next action | Implement **H2** dynamic test dependencies after H1 acceptance. |
-| Progress | **1/3 implemented and locally accepted; 0/3 merged.** Branch `codex/1.6.0-audit-roadmap`; H1: 20 handoff tests and the extracted specialist integration route passed. |
+| Next action | Implement **H3** verified release recovery after H1/H2 acceptance. |
+| Progress | **2/3 implemented and locally accepted; 0/3 merged.** Branch `codex/1.6.0-audit-roadmap`; H1: 20 handoff tests and the extracted specialist route passed. H2: all six selector tests passed, including the six-module normal/platform mapping. |
 | Blockers / limits | No planning blocker identified. Reconfirm each reproduction against current source at implementation start. Project latency and general agent quality remain unmeasured. |
 | Delivery baseline | All six required workflows and the native Trivy publication gate passed for 1.6.0. The current release is complete; H3 addresses a recovery defect, not a broken published artifact. [Delivery evidence](docs/archive/improvement-roadmap-through-1.6.0.md#current-position). |
 
@@ -23,8 +23,8 @@ Execution order: **H1 -> H2 -> H3**. The packages have no technical dependency o
 | Order | Package / finding | Required result | Priority | Status |
 |---|---|---|---|---|
 | 1 | [H1: Same-contract specialist reassessment](docs/improvement-implementation-plan.md#h1-same-contract-specialist-reassessment) / F1 | Fresh evidence can be accepted after an in-scope correction without inventing a contract revision or losing retained findings. | High | **In progress — locally accepted; merge pending** |
-| 2 | [H2: Dynamic regression-test dependencies](docs/improvement-implementation-plan.md#h2-dynamic-regression-test-dependencies) / F2 | Runtime changes select their existing dynamically loaded regressions; overview edits retain lightweight checks. | Medium | **In progress** |
-| 3 | [H3: Verified release recovery](docs/improvement-implementation-plan.md#h3-verified-release-recovery) / F3 | Existing releases qualify only after identity, publication state and assets are verified; incomplete publication has an explicit recovery path. | Medium | **Not started** |
+| 2 | [H2: Dynamic regression-test dependencies](docs/improvement-implementation-plan.md#h2-dynamic-regression-test-dependencies) / F2 | Runtime changes select their existing dynamically loaded regressions; overview edits retain lightweight checks. | Medium | **In progress — locally accepted; merge pending** |
+| 3 | [H3: Verified release recovery](docs/improvement-implementation-plan.md#h3-verified-release-recovery) / F3 | Existing releases qualify only after identity, publication state and assets are verified; incomplete publication has an explicit recovery path. | Medium | **In progress** |
 
 ## Execution and completion rules
 

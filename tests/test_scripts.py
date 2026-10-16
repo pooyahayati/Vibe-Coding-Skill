@@ -1494,8 +1494,32 @@ class CISelectionTests(unittest.TestCase):
             self.assertEqual(selected["tests"], ["tests.test_cases.Related"])
             self.assertTrue(selected["cross_platform"])
             self.assertFalse(selected["full"])
+            # Supported dynamic edges compose with static callers and test helpers.
+            (root / "scripts/wrapper.py").write_text('core = load("core")\n')
+            (root / "tests/test_helper.py").write_text('wrapper = load("wrapper.py")\n')
+            (root / "tests/test_cases.py").write_text(
+                "import unittest\nclass Related(unittest.TestCase):\n def test_it(self):\n  import test_helper\n"
+                "class Other(unittest.TestCase):\n def test_it(self):\n  pass\n")
+            self.assertEqual(mod.select(["scripts/core.py"], "pull_request", root)["tests"], ["tests.test_cases.Related"])
+            (root / "scripts/wrapper.py").write_text("core = load(module_name)\n")
+            unresolved = mod.select(["scripts/core.py"], "pull_request", root)
+            self.assertTrue(unresolved["full"])
+            self.assertIn("dependency inspection incomplete", unresolved["reasons"])
             (root / "scripts/wrapper.py").write_text("broken Python :\n")
             self.assertTrue(mod.select(["scripts/core.py"], "pull_request", root)["full"])
+
+    def test_dynamic_runtime_loaders_select_existing_regressions_on_both_routes(self):
+        mod = load_script("ci_scope.py")
+        classes = {"completion_gate": "RiskAndCompletionRegressions", "risk_classifier": "RiskAndCompletionRegressions",
+                   "execution_plan": "RiskAndCompletionRegressions", "context_router": "ProjectBoundaryRegressions",
+                   "dependency_guard": "ArtifactEvidenceRegressions", "wordpress_artifact": "ArtifactEvidenceRegressions"}
+        for module, name in classes.items():
+            with self.subTest(module=module):
+                plan = mod.select([f"scripts/{module}.py"], "pull_request")
+                target = "tests.test_review_regressions." + name
+                self.assertFalse(plan["full"])
+                self.assertIn(target, plan["tests"])
+                self.assertIn(target, plan["platform_tests"])
 
     def test_git_paths_keep_deleted_runtime_and_test_the_checked_out_revision(self):
         mod = load_script("ci_scope.py")
