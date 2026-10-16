@@ -554,6 +554,12 @@ class PortableIntegrationTests(unittest.TestCase):
                     revision_case.test_accepted_specialist_reopens_after_revision_with_new_receipts_and_acceptance()
                 finally:
                     revision_case.doCleanups()
+                reassessment_case = fixtures.HandoffTests()
+                try:
+                    reassessment_case.setUp()
+                    reassessment_case.test_same_contract_reassessment_requires_fresh_evidence_and_preserves_history()
+                finally:
+                    reassessment_case.doCleanups()
                 print(json.dumps({"installed_runtime": True, "head_acceptance": True, "stale_blocked": True}))
             finally:
                 case.doCleanups()

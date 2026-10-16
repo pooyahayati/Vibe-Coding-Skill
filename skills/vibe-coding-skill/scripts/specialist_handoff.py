@@ -336,6 +336,9 @@ def evaluate(root, contract, operation, returned, evidence, decision=None, conte
             require(obligation is not None and obligation["id"] in assignment["evidence_requirement_ids"], "return references an unassigned evidence obligation")
             try:
                 receipt = receipts.read_receipt(capture.receipt_directory(root, contract["task_id"]), row.get("receipt_ref"))
+                if "reassessment" in operation:
+                    require(receipts.timestamp(receipt.get("started_at")) >= receipts.timestamp(operation["reassessment"]["started_at"]),
+                            "receipt predates explicit specialist reassessment")
                 if current:
                     verified = receipts.validate(receipt, row, contract, obligation, root, context or {})
                 else:
@@ -376,7 +379,10 @@ def evaluate(root, contract, operation, returned, evidence, decision=None, conte
         inputs = {r["path"]: r for r in scope_snapshot(root, assignment)} if current else operation["accepted_inputs"]
         if current and actual:
             inputs.update({r["path"]: r for r in capture.snapshot(root, sorted(actual), [], require_file=False)})
-        delivery = behavior.digest({"assignment": assignment, "inputs": inputs, "context": context or {}, "evidence": evidence})
+        binding = {"assignment": assignment, "inputs": inputs, "context": context or {}, "evidence": evidence}
+        if "reassessment" in operation:
+            binding["reassessment"] = operation["reassessment"]
+        delivery = behavior.digest(binding)
         outside = sorted(p for p in actual if not covered(p, assignment["scope"]))
         review = {"return_sha256": behavior.digest(returned), "delivery_sha256": delivery, "actual_changes": actual,
                   "scope_reconciliation_paths": outside, "unresolved_required_finding_ids": unresolved, "qualified_evidence_ids": sorted(qualified)}
@@ -454,6 +460,62 @@ def accepted_record(base, operation):
     return record, returned
 
 
+def reopened_operation(old, contract, assignment, entry):
+    skills, state = Path(old["skills_dir"]), Path(old["specialist_state"])
+    preflight = manager.run("prepare", skills, state, [{**entry, "active_in_stage": True}], False)
+    require(preflight["gate"] in ("PASS", "WARN"), "current compatible specialist required for reopening")
+    installed = next(s for s in preflight["skills"] if s["id"] == entry["id"])
+    require(installed.get("compatibility", {}).get("status") == "accepted", "specialist compatibility requires Head acceptance")
+    packet = manager.compatibility_packet(entry, skills, state, installed)
+    require(packet["binding_sha256"] == installed["compatibility"]["binding_sha256"], "specialist changed during reconciliation")
+    replacement = {k: v for k, v in old.items() if not k.startswith("accepted_")
+                   and k not in ("latest_return", "retirement", "abandoned_reason", "reassessment")}
+    replacement.update(assignment=assignment, contract=contract, closed=False, source=installed["source"],
+                       specialist_files=packet["binding"]["files"], control_sha256=control_fingerprint(entry),
+                       compatibility_binding_sha256=packet["binding_sha256"])
+    return replacement
+
+
+def store_transition(base, old, replacement, archive):
+    with manager.installation_lock(Path(old["skills_dir"])):
+        require(manager.read_local_json(base / "operation.json") == old, "operation changed during transition; inspect again")
+        if not replacement["closed"]:
+            entry = validate_assignment(replacement["assignment"], replacement["contract"])
+            require(manager.installed_hashes(Path(old["skills_dir"]) / entry["skill_name"]) == replacement["specialist_files"],
+                    "specialist changed before reconciliation")
+        manager.write_record(base / "revisions" / (behavior.digest(archive)[:16] + ".json"), archive)
+        # Guard first; a failed operation write must not expose active instructions.
+        if not replacement["closed"]:
+            markers(replacement)
+        manager.write_record(base / "operation.json", replacement)
+        # Same-contract reassessment uses the same marker key: do not remove it.
+        if replacement["closed"] or replacement["assignment"] != old["assignment"]:
+            markers(old, remove=True)
+
+
+def reassess(root, contract, assignment_id, reason):
+    """Reopen the unchanged assignment explicitly; retain findings and prior review."""
+    require(behavior.text(reason), "reassessment requires a concrete Head reason")
+    root = root.resolve()
+    base, old = load_operation(root, contract, assignment_id)
+    require(old["closed"], "assignment already active; continue its review")
+    require("retirement" not in old, "retired assignment requires contract reconciliation")
+    # When a task snapshot exists, an old supplied contract cannot bypass revision.
+    import project_state
+    retained = project_state.load_previous(root) or {}
+    require(retained.get("task_contract", contract) == contract, "task contract changed; use contract reconciliation")
+    entry = validate_assignment(old["assignment"], contract)
+    replacement = reopened_operation(old, contract, old["assignment"], entry)
+    replacement["reassessment"] = {"started_at": capture.now(), "reason": reason, "previous_operation_sha256": behavior.digest(old)}
+    archive = {"operation": old, "reassessment": replacement["reassessment"]}
+    if (base / "review.json").exists():
+        archive["review"] = manager.read_local_json(base / "review.json")
+    store_transition(base, old, replacement, archive)
+    return {"gate": "PASS", "accepted": False, "action": "reassessed", "assignment": replacement["assignment"],
+            "upstream_revision": replacement["source"]["commit"], "head_contract_sha256": replacement["source"]["package_policy"],
+            "record_path": str(base / "operation.json")}
+
+
 def reconcile(root, contract, previous_contract, assignment_id, reason, specification=None, retire=False):
     """Explicitly reopen or retire work after a retained, authorized revision.
 
@@ -496,27 +558,8 @@ def reconcile(root, contract, previous_contract, assignment_id, reason, specific
         require(set(old["assignment"]["protected_invariants"]) <= set(assignment["protected_invariants"]), "reopening cannot drop protected invariants")
         require(all(row in assignment.get("shared_contracts", []) for row in old["assignment"].get("shared_contracts", [])), "reopening cannot drop shared contracts")
         require(not (old["assignment"]["completion_binding"] == "current-delivery" and assignment["completion_binding"] != "current-delivery"), "reopening cannot weaken evidence freshness")
-        skills, state = Path(old["skills_dir"]), Path(old["specialist_state"])
-        preflight = manager.run("prepare", skills, state, [{**entry, "active_in_stage": True}], False)
-        require(preflight["gate"] in ("PASS", "WARN"), "current compatible specialist required for reopening")
-        installed = next(s for s in preflight["skills"] if s["id"] == entry["id"])
-        require(installed.get("compatibility", {}).get("status") == "accepted", "specialist compatibility requires Head acceptance")
-        packet = manager.compatibility_packet(entry, skills, state, installed)
-        require(packet["binding_sha256"] == installed["compatibility"]["binding_sha256"], "specialist changed during reconciliation")
-        replacement = {k: v for k, v in old.items() if not k.startswith("accepted_") and k not in ("latest_return", "retirement", "abandoned_reason")}
-        replacement.update(assignment=assignment, contract=contract, closed=False, source=installed["source"],
-                           specialist_files=packet["binding"]["files"], control_sha256=control_fingerprint(entry),
-                           compatibility_binding_sha256=packet["binding_sha256"])
-    with manager.installation_lock(Path(old["skills_dir"])):
-        if not retire:
-            require(manager.installed_hashes(Path(old["skills_dir"]) / entry["skill_name"]) == replacement["specialist_files"], "specialist changed before reconciliation")
-        manager.write_record(base / "revisions" / (behavior.digest(archive)[:16] + ".json"), archive)
-        # New update guard first: an interruption must not permit updating the
-        # instructions of an operation already reopened in the ledger.
-        if not retire:
-            markers(replacement)
-        manager.write_record(base / "operation.json", replacement)
-        markers(old, remove=True)
+        replacement = reopened_operation(old, contract, assignment, entry)
+    store_transition(base, old, replacement, archive)
     return {"gate": "PASS", "accepted": False, "action": "retired" if retire else "reopened",
             "assignment": replacement["assignment"], "upstream_revision": replacement["source"]["commit"],
             "head_contract_sha256": replacement["source"]["package_policy"], "record_path": str(base / "operation.json")}
@@ -558,7 +601,7 @@ def completion_failures(root, contract, context=None):
 def main():
     behavior.configure_output()
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("mode", choices=("prepare", "assign", "review", "close", "reconcile"))
+    ap.add_argument("mode", choices=("prepare", "assign", "review", "close", "reconcile", "reassess"))
     ap.add_argument("--root", required=True, type=Path)
     ap.add_argument("--task-contract", required=True)
     ap.add_argument("--assignment", help="Head-owned assignment JSON for prepare/assign")
@@ -567,7 +610,7 @@ def main():
     ap.add_argument("--evidence", help="independent Head receipt catalog JSON array")
     ap.add_argument("--decision", help="separate Head acceptance JSON")
     ap.add_argument("--context", help="independent delivery runtime/dataset JSON object")
-    ap.add_argument("--reason", help="Head reason for closing or reconciling an operation; never completion")
+    ap.add_argument("--reason", help="Head reason for closing, reconciling or reassessing; never completion")
     ap.add_argument("--previous-task-contract", help="prior retained contract JSON for reconciliation")
     ap.add_argument("--retire", action="store_true", help="retire an accepted assignment removed from the revised contract")
     ap.add_argument("--skills-dir", type=Path, default=Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))) / "skills")
@@ -579,6 +622,11 @@ def main():
         if ns.mode in ("prepare", "assign"):
             require(ns.assignment is not None, ns.mode + " requires a Head assignment")
             result = (prepare if ns.mode == "prepare" else assign)(root, contract, read(ns.assignment), ns.skills_dir, ns.state_dir)
+        elif ns.mode == "reassess":
+            require(behavior.text(ns.assignment_id), "reassess requires assignment ID")
+            require(ns.assignment is None and ns.previous_task_contract is None and not ns.retire,
+                    "same-contract reassessment cannot revise or retire the assignment")
+            result = reassess(root, contract, ns.assignment_id, ns.reason)
         elif ns.mode == "reconcile":
             require(behavior.text(ns.assignment_id) and ns.previous_task_contract is not None, "reconcile requires assignment ID and previous task contract")
             result = reconcile(root, contract, behavior.read(ns.previous_task_contract), ns.assignment_id, ns.reason,

@@ -1,131 +1,89 @@
 # Improvement Implementation and Acceptance Index
 
-Progress and the next action are maintained only in [ROADMAP.md](../ROADMAP.md). This document prepares the five approved T1-T5 corrections; it does not implement them or authorize publication/installation. Follow the roadmap order and retain one owner for shared policy/state changes.
+Progress and the next action are maintained only in [ROADMAP.md](../ROADMAP.md). This document prepares H1-H3 in priority order. Implementation, commits, publication and installation are not performed by this planning change.
 
 ## Confirmed audit findings
 
-Baseline: `e75a8cae9f27c3e5f6305fb5e14523ed9fe06401`, runtime `1.5.0`, reviewed 2026-10-15. Confidence is high in the behaviors below; their share of elapsed time in individual user projects has not been measured. The earlier F1-F7 findings belong to the closed [A1-A5 archive](archive/improvement-plan-through-1.5.0.md#confirmed-audit-findings).
+Baseline: main `80defe5d8061ea85df7a6c523f7120dc85699807`, runtime `1.6.0`, audited 2026-10-16. F1-F3 below refer to this audit only; findings in earlier archives retain their historical meaning. Confidence is high in all three findings. No new model evaluation or performance benchmark was run.
 
-| Package | Evidence and realistic failure | Basis |
+| Finding / package | Severity | Confirmed behavior and evidence |
 |---|---|---|
-| T1 | `risk_classifier.classify` returns Tier 2 for an authentication-documentation typo and Tier 3 for a production-instructions typo despite explicit tiny/local/no-data/local-boundary facts. The router preserves the heavy route. | In-memory reproduction; `scripts/risk_classifier.py` combines text/path and fact tiers with `max`; `SKILL.md` treats it as a floor. |
-| T2 | A label typo in `.tsx`, spacing in `.css`, and a comment typo under `src/auth/` select required specialists with formal handoff. Task preparation and assignment also independently resolve upstream versions. | Pure `select_specialists` reproductions; tracing `specialist_manager.py` and `specialist_handoff.assign`. Network latency was not benchmarked. |
-| T3 | Tier 2/3 requires two evidence items and two semantic families. Two passing integration/contract items can be blocked solely by the family quota; schema-3 resolution delegates to the same gate. | In-memory declared-gate reproduction and schema-3 call tracing in `receipt_validation.py`. This is not a requirement for two automated tests: review can be a family. |
-| T4 | `evidence_capture.capture` sends stdout/stderr to `DEVNULL` and retains a generic nonzero-exit reason. Checks without their own report lose actionable failure output. | Code tracing and existing fixture expectations; no claim about a particular user's failed test. |
-| T5 | `validate-skill.yml` and `cross-platform-smoke.yml` run on unrestricted push and pull-request events. README-only PR #98 ran each twice: two validation jobs plus eight platform jobs. | Workflow definitions and [push](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37600141507)/[PR](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37600148384) validation and [push](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37600141467)/[PR](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/37600148420) platform runs for head `16497316b454a00a195d87915e264228a3e0c989`. This overhead belongs to the Skill repository. |
+| F1 / H1 | High | An accepted `current-delivery` specialist operation blocks completion after an input changes. A fresh passing execution cannot be accepted because the closed return changes; reopening requires a different task contract. Reproduced with the existing temporary handoff fixture. [Closed-return check](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/80defe5d8061ea85df7a6c523f7120dc85699807/scripts/specialist_handoff.py#L418-L446); [reconciliation restriction](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/80defe5d8061ea85df7a6c523f7120dc85699807/scripts/specialist_handoff.py#L457-L472). |
+| F2 / H2 | Medium | The selector misses literal `load("module")` dependencies in `test_review_regressions.py` (14 tests in three classes). Separate changes to its six runtime modules select none of those classes in either normal or platform selection. [Dependency extraction](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/80defe5d8061ea85df7a6c523f7120dc85699807/scripts/ci_scope.py#L26-L67); [dynamic loader](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/80defe5d8061ea85df7a6c523f7120dc85699807/tests/test_review_regressions.py#L14-L40). Full release validation still includes them. |
+| F3 / H3 | Medium | The release workflow exits successfully as soon as `gh release view` succeeds, without checking draft state, target identity or required assets. The exact shell branch returned success for simulated existing-draft, missing-ZIP and wrong-target states. [Existing-release branch](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/80defe5d8061ea85df7a6c523f7120dc85699807/.github/workflows/release.yml#L82-L108). The real 1.6.0 release was independently verified complete. |
 
-Additional instruction ambiguity supports T3: `packs/browser-js.md` lists configured build/lint/typecheck as required without a stage distinction, while the core asks for the cheapest relevant check. This establishes conflicting pressure, not proof that every agent executes all checks. Do not infer all project delays from these findings.
+## H1: Same-contract specialist reassessment
 
-## T1: Risk grounded in actual change
+**Priority:** High. **Complexity:** Medium. **Dependency:** None; first implementation package.
 
-**Priority:** Very high. **Complexity:** Medium. **Dependency:** None.
+**Why it matters:** An ordinary in-scope correction after specialist acceptance can strand structured completion. Changing the accepted task contract just to reopen the specialist can invalidate unrelated receipts and create unnecessary work.
 
-**Correction:** Treat keywords and paths as discovery signals; distinguish discussion of a sensitive domain from changing its behavior. Use verified operation, affected behavior, data, environment and boundary facts to resolve incidental signals. Do not create another keyword allowlist or let a caller's unsupported `tiny` claim override actual sensitive/destructive effects.
+**Correction:** Add an explicit, reasoned reassessment transition for the same task contract. Preserve the previous acceptance and finding history, reopen the assignment under valid Head/specialist controls, and require a fresh return and separate Head acceptance. Do not invent a contract field, remove a retained assignment or relabel an old receipt to bypass the closed state.
 
-**Components:** `scripts/risk_classifier.py`, affected context-router/planner and retained-state callers; `SKILL.md`, risk/classifier guidance and existing routing/risk fixtures.
+**Likely components:** `scripts/specialist_handoff.py`; receipt/completion/state callers only if required by the transition; `references/specialist-composition.md`; existing `tests/test_handoffs.py` and the affected portable integration route.
 
 **Acceptance:**
 
-- Documentation and comment-only changes with inspected non-runtime scope use a focused route even when their text/path mentions authentication or production. Ambiguous scope remains explicit rather than silently downgraded.
-- Real authorization, destructive-data, financial and production changes retain the appropriate controls despite cosmetic wording. Equivalent semantic facts behave consistently across supported task wording.
-- Routing, planning and retained state agree. Previously retained false escalation can be reconciled explicitly with evidence; actual protected obligations and known material risk cannot disappear.
+- With task identity, contract digest, scope and outcomes unchanged, an accepted assignment can be explicitly reopened after a relevant input/context/control change. New scope or changed requirements still use the existing contract-reconciliation route.
+- Old acceptance and stale receipts cannot qualify completion. New passing receipts plus a fresh Head decision can qualify the reassessed assignment without recreating unrelated task evidence.
+- Required findings, protected invariants, authorized scope and acceptance history survive reopening. A new assignment ID or abandoning the old operation cannot erase unresolved obligations.
+- Reopened operations restore active-instruction protection until accepted or explicitly abandoned. Retained records remain readable; an interrupted transition must not manufacture acceptance or lose the outstanding operation.
 
-**Verification:** Extend the existing classifier/router/plan-state cases with paired harmless and real-risk scenarios. Exercise the affected portable route if runtime behavior changes. Do not run live services or broad suites merely to test classification.
+**Verification:** Extend the existing handoff fixture from accepted -> relevant change -> stale evidence blocked -> explicit same-contract reopening -> fresh receipt/return/Head decision -> completion. Reuse finding-retention, stale-context, marker and changed-contract checks. Exercise the affected route from the extracted package once runtime behavior is ready; no live specialist installation is needed for the fixture.
 
-## T2: Lightweight specialist participation
+## H2: Dynamic regression-test dependencies
 
-**Priority:** High. **Complexity:** Medium. **Dependency:** Accepted T1 risk/scope semantics.
+**Priority:** Medium. **Complexity:** Small. **Dependency:** None technically; follows H1 by priority.
 
-**Correction:** Separate use of accepted specialist guidance from a new formal domain assignment. Mechanical edits within settled decisions reuse the applicable guidance; new domain decisions or material boundary changes retain scoped assignment and Head acceptance. Reuse a valid freshness/compatibility result within the same assignment instead of repeating identical upstream checks.
+**Why it matters:** Existing regressions can be skipped during development even though their runtime module changed. Preserving selective CI requires an accurate dependency map, not a return to full testing for every edit.
 
-**Components:** `scripts/specialist_manager.py`, `scripts/specialist_handoff.py`, routing callers, `config/specialists.json`; Head/composition/authority instructions and existing specialist/handoff fixtures.
+**Correction:** Recognize the repository's supported dynamic-loading pattern or supply a small explicit dependency mapping where static inference is inadequate. Keep selection explainable and conservatively handle unresolved impact using the existing fallback.
 
-**Acceptance:**
-
-- A verified label, spacing or comment-only correction does not acquire a full assignment solely from its extension/directory. Material UI flows, permissions or public contracts still select the appropriate specialist.
-- Head authority, one UI/UX specialist and latest-stable/default-branch policy remain. Current guidance is reused; no fixed specialist version pin, skipped required finding or broad autonomous delegation is introduced.
-- Preparation and assignment can share a result while source, local resources, controls and scope remain valid. Changed inputs invalidate reuse. Preserve task-start freshness, due inventory and stable instructions during an assignment; cached or offline evidence must be labeled accurately.
-- Existing formal assignments retain their commitments until explicit reconciliation; the lightweight route does not silently abandon accepted work.
-
-**Verification:** Reuse selection, compatibility, resource-change and handoff tests. Add a same-assignment duplicate-resolution check with a stubbed upstream and paired small/material domain cases. No real downloads, host installs or model evaluation are needed for these regressions.
-
-## T3: Outcome- and stage-based verification
-
-**Priority:** High. **Complexity:** Medium. **Dependency:** T1/T2 scope and participation decisions.
-
-**Correction:** Use one canonical policy to derive checks from acceptance, material failure modes, affected boundaries and delivery stage. Remove fixed evidence-count/family requirements where they manufacture unrelated work; require independent corroboration when an identified risk or explicit project policy warrants it. Packs/specialists contribute relevant risks, not additive default suites. Separate everyday selection guidance from conditional receipt/release details.
-
-**Components:** `scripts/completion_gate.py`, `scripts/receipt_validation.py`, affected behavior/plan/state callers; `SKILL.md`, execution/verification and shared-format guidance, relevant packs and existing completion/receipt tests.
-
-| Context | Default verification | Escalation condition |
-|---|---|---|
-| Mechanical text/visual change | Concrete focused observation; normally no new automated test. | Behavior, accessibility, security, data or configuration impact. |
-| Build / defect correction | Smallest existing check or missing regression that can falsify the change. | Failure, new risk or broader affected boundary. |
-| Feature completion / integration | Relevant affected regressions and changed contracts/boundaries. | Shared dependencies or consequential cross-area impact. |
-| Publication | Release-relevant build, final-artifact/security and core-flow checks; migration/recovery when applicable. | Actual target/product requirements. |
-| Sensitive behavior at any stage | Relevant denial, integrity, idempotency or recovery evidence. | Do not postpone these checks until publication. |
+**Likely components:** `scripts/ci_scope.py`, existing selector tests in `tests/test_scripts.py`; test dependency declarations only if chosen. Preserve the current runtime regression scenarios.
 
 **Acceptance:**
 
-- Sufficient relevant evidence can satisfy the accepted outcome without manufacturing a second family. Missing, failed, stale or unrelated evidence still cannot satisfy a required outcome; provenance and actual receipt validation remain enforced.
-- A stage transition alone does not force a rerun. Unchanged scoped inputs/artifacts and relevant context permit reuse; changed dependencies invalidate affected evidence. A finished implementation stage cannot claim release readiness.
-- Check expansion names the changed risk, failed check, affected boundary or explicit project requirement. No fixed test count/coverage target or mandatory new per-edit planning document is added.
-- New and retained completion routes have an explicit policy/compatibility decision; do not bypass schema 3, drop accepted obligations or resurrect old success claims to obtain a pass.
+- Changes to `completion_gate.py`, `context_router.py`, `dependency_guard.py`, `execution_plan.py`, `risk_classifier.py` and `wordpress_artifact.py` select their relevant classes from `tests/test_review_regressions.py`, including the applicable platform route.
+- Supported static and dynamic dependency edges compose with existing callers/helper propagation; an unmapped or ambiguous dependency cannot silently establish reliable focused coverage.
+- Overview-only documentation still uses the overview profile. Ordinary mapped changes remain selective; this fix adds no global test-count or coverage quota.
+- Release/full-validation selection and its evidence markers remain intact.
 
-**Verification:** Adjust current gate/receipt tests to assert sufficient outcome coverage and rejection of missing real obligations, rather than quotas. Preserve existing stale-input, failed-check, handoff/resume and manual-route cases. Test policy decisions/observable behavior, not exact prose.
+**Verification:** Assert actual selector outputs for the existing dynamic loader, representative ordinary imports/helper dependencies, unresolved impact and overview-only edits. Use focused selector checks during implementation. Because `ci_scope.py` controls CI, retain the existing full integration baseline at the authorized PR/merge boundary, rather than rerunning it after every edit.
 
-## T4: Bounded execution diagnostics
+## H3: Verified release recovery
 
-**Priority:** Medium. **Complexity:** Medium. **Dependency:** T3's evidence boundary; prefer the existing receipt format unless a documented compatible change is necessary.
+**Priority:** Medium. **Complexity:** Medium. **Dependency:** None technically; follows H2 by priority.
 
-**Correction:** Make bounded local command diagnostics available from the original execution. Keep output outside product source, with explicit truncation/retention and sensitive-output handling. Do not collect environment dumps, upload logs automatically or treat printed success as execution evidence.
+**Why it matters:** A cancelled/interrupted publication can leave an existing draft or incomplete release. A later successful workflow must not imply that a complete consumer package was published.
 
-**Components:** `scripts/evidence_capture.py`, receipt-validation/storage consumers only where needed, execution guidance and existing collector/receipt/portable fixtures.
+**Correction:** Inspect the existing release and actual tag target before treating publication as complete. Verify expected assets and checksum/content identity. Reuse an already complete matching release without duplicate publication; report an incomplete or inconsistent state explicitly and support bounded recovery of a matching draft under existing publication authorization.
 
-**Acceptance:**
-
-- A failing command without a separate report provides an actionable stdout/stderr diagnostic without rerunning solely to see it.
-- Output limits are enforced while reading, with truncation visible; verbose output cannot create unbounded memory/disk use or deadlock. Timeout/process cleanup and exit-status distinctions remain accurate.
-- Diagnostics stay local and respect sensitive-output controls. Existing receipts remain readable; added diagnostics do not loosen command, input or artifact qualification.
-
-**Verification:** Extend the existing collector fixtures with ordinary failure, bounded verbose output, separate streams and timeout cases; reuse process-tree and receipt-integrity coverage. No new logging service or unrelated test suite.
-
-## T5: Change-aware CI and release checks
-
-**Priority:** Medium. **Complexity:** Medium. **Dependency:** Follow T4 in delivery order; technically independent of its runtime implementation.
-
-**Correction:** Distinguish overview-only documentation, executable/routed skill instructions, runtime/packaging and release changes. Remove redundant branch/PR runs, select affected checks and retain a complete exact-revision publication route. A `.md` extension alone does not establish a harmless change: this repository's Markdown can be runtime instructions.
-
-**Components:** `.github/workflows/validate-skill.yml`, `cross-platform-smoke.yml` and dependent release/contract workflows as needed; `scripts/release_readiness.py` only if its interface changes; contributor/validation guidance and existing workflow checks.
+**Likely components:** `.github/workflows/release.yml`, a focused release-state helper if needed, existing release/readiness tests, and contributor/release guidance. Change build/readiness interfaces only where necessary for the verified result.
 
 **Acceptance:**
 
-- README/roadmap-only edits receive accurate structure/link/mirror checks without a full runtime suite or OS matrix. Changes to `SKILL.md`, routed policies, scripts, config, packaging or workflow logic still trigger their meaningful affected verification.
-- A PR branch does not run the same baseline redundantly on push and PR events. Preserve verification of the intended merge result; obsolete runs may be cancelled without cancelling required publication evidence.
-- Required-check names/statuses and branch protection cannot become indefinitely pending because of filters. Skipped/unavailable checks are not fabricated passes. Confirm actual repository protection before changing triggers.
-- Publication still gathers all required workflows on the exact final revision and performs the native Trivy final-target scan. Selective development CI must not strand or weaken release readiness.
+- Existence alone is insufficient: a draft, missing asset/checksum, mismatched tag target or mismatched asset digest cannot yield publication success.
+- Resolve the actual tag commit, including an annotated tag where applicable; do not rely only on release `target_commitish` or assume `--target` moves an existing tag.
+- A complete matching published release is safely reusable. A matching incomplete draft can be explicitly recovered; incompatible existing content blocks with a concrete next action. Never silently delete a published release, replace its assets or move its tag.
+- Recovery preserves exact-revision full-validation evidence, native Trivy checks for the final artifact and existing authorization. It cannot turn prior partial CI or stale artifacts into new publication evidence.
 
-**Verification:** Inspect representative changed-path/event cases for docs, runtime, instructions and release. Reuse existing workflow/readiness fixtures; confirm actual affected CI when the authorized PR runs. Do not start duplicate live workflows solely to populate this plan.
+**Verification:** Use deterministic GitHub/CLI fixtures for complete, draft, interrupted upload, missing asset, wrong-target and checksum-mismatch states. Verify repeated execution and recovery decisions without creating or deleting a real release. Retain the existing full CI baseline for delivery-control changes; verify real publication only when a release is authorized.
 
 ## Implementation and validation boundaries
 
-Start only T1 when implementation is requested. Reconfirm its smallest reproduction, implement, run affected checks and review before moving on in the approved sequence. Reuse existing tests and record only meaningful new failure scenarios. Broader required integration/publication checks belong at their existing gates, not after every edit. This cycle has no model evaluation, provider-key requirement, new scanner or test framework.
+1. When implementation is requested, begin H1 only. Recheck the current repository and minimal reproduction, then use the existing branch/PR workflow. Keep one owner for shared state and delivery controls.
+2. Run checks justified by the affected behavior. Extend existing regression fixtures rather than introducing a framework or repeating broad suites after each edit. Record audit reproduction separately from fix verification.
+3. Update canonical runtime sources and generated portable resources together when applicable. Documentation-only planning receives structure, links, purity and mirror checks.
+4. Record acceptance, actual check results, branch/PR and merge evidence in the roadmap before marking a package Complete. Follow the existing user-authorized sequence; release and local installation are separate delivery steps.
 
-When a runtime resource changes, update canonical source and the portable mirror together and check the affected extracted entrypoint. Preserve release/local installation separation. Record measured command duplication or relevant elapsed time only when actually observed; do not promise a percentage improvement from source inspection.
+No redesign, new specialist/scanner, model evaluation, provider key, test quota or unrelated cleanup belongs to this cycle. Keep Head authority, one UI/UX specialist, risk-proportionate verification, local retained state, scoped receipt freshness and native Trivy before publication.
 
-The current instruction system already supports scoped evidence reuse, recovery and conditional product-installation checks. Preserve those mechanisms rather than replacing them. Historical partial-release retry concerns and other unverified ideas are outside this cycle.
-
-## Current contract ownership
-
-| Mechanism | Canonical instructions | Boundary to preserve |
-|---|---|---|
-| Formats / migration | [Shared contracts](../references/shared-improvement-contracts.md) | Explicit identity, compatibility and trust limits; records grant no permissions. |
-| Observable outcomes | [Behavior contract](../references/operating-model.md#observable-behavior-contract) | Required behavior and material failures; tiny tasks can remain inline. |
-| State / recovery | [State](../references/project-state-automation.md), [recovery](../references/recovery-and-resume.md) | Retain accepted criteria, required findings and scope across resume/reconciliation. |
-| Execution / completion | [Collection](../references/execution-and-verification.md#local-execution-receipts-e1), [completion](../references/execution-and-verification.md#receipt-backed-completion-e2) | Actual outcomes, current scoped inputs/artifacts and truthful manual/legacy labeling. |
-| Specialist acceptance | [Composition](../references/specialist-composition.md), [authority](../references/specialist-authority.md) | Head ownership and appropriate current guidance; retained formal commitments need explicit reconciliation. |
-| Publication / installation | [Native release gate](../references/security-and-dependencies.md#native-release-gate), [product installation](../references/product-installation-and-runtime.md) | Real final-target security and selected exact-artifact/runtime evidence. |
+Measured speed gains and universal real-agent conformance are not established by these reproductions and are not additional implementation packages.
 
 ## Delivered specifications
 
-Closed [A1-A5 specifications and evidence](archive/improvement-plan-through-1.5.0.md), [earlier implementation history](archive/improvement-plan-through-1.4.0.md) and [delivery records](archive/improvement-roadmap-through-1.5.0.md) remain available. Their old next-action/installation statements are historical snapshots. The [current roadmap](../ROADMAP.md) is the only progress tracker.
+- [T1-T5 specifications through 1.6.0](archive/improvement-plan-through-1.6.0.md) and [delivery evidence](archive/improvement-roadmap-through-1.6.0.md).
+- [A1-A5 specifications through 1.5.0](archive/improvement-plan-through-1.5.0.md) and [delivery evidence](archive/improvement-roadmap-through-1.5.0.md).
+- [Earlier implementation history](archive/improvement-plan-through-1.4.0.md) and [roadmap history](archive/improvement-roadmap-through-1.4.0.md).
+
+Archived next actions and unconfirmed concerns are historical. The formerly unconfirmed partial-release concern is now scoped to the reproduced F3/H3 defect. The [current roadmap](../ROADMAP.md) is the only progress tracker.

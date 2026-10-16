@@ -230,6 +230,69 @@ class HandoffTests(unittest.TestCase):
         base = handoff.directory(self.root, self.contract["task_id"], "ui-build")
         self.assertTrue(list((base / "revisions").glob("*.json")))
 
+    def test_same_contract_reassessment_requires_fresh_evidence_and_preserves_history(self):
+        original_contract = copy.deepcopy(self.contract)
+        returned = self.output(self.start())
+        finding = {"id": "saved", "required": True, "description": "Saved setting must match input",
+                   "status": "resolved", "resolution_evidence_ids": returned["evidence_ids"]}
+        returned["findings"] = [finding]
+        decision = self.decision(returned, self.inspect(returned))
+        self.assertTrue(self.inspect(returned, decision)["accepted"])
+        old_evidence = copy.deepcopy(self.evidence)
+        self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "PASS")
+        with (self.root / "check.py").open("a", encoding="utf-8") as stream:
+            stream.write("# in-scope correction\n")
+        self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "BLOCK")
+        base, old = handoff.load_operation(self.root, self.contract, "ui-build")
+        start = handoff.reassess(self.root, self.contract, "ui-build", "Recheck the corrected input under the unchanged contract")
+        self.assertFalse(start["accepted"])
+        _, active = handoff.load_operation(self.root, self.contract, "ui-build")
+        self.assertEqual(active["assignment"], old["assignment"])
+        self.assertEqual(active["baseline"], old["baseline"])
+        self.assertEqual(self.contract, original_contract)
+        archived = [manager.read_local_json(path) for path in (base / "revisions").glob("*.json")]
+        self.assertTrue(any(row["review"]["decision"] == decision for row in archived))
+        for name in ("vibe-coding-skill", self.entry["id"]):
+            self.assertTrue(list((self.state / "active-assignments" / name).glob("*.json")))
+        # Even reverting inputs cannot resurrect the prior receipt/Head decision.
+        (self.root / "check.py").write_text("from pathlib import Path\nassert Path('src/value.txt').read_text() == 'changed'\n", encoding="utf-8")
+        self.assertEqual(self.inspect(returned, decision)["gate"], "BLOCK")
+        fresh = self.output(start)
+        with self.assertRaisesRegex(ValueError, "required finding"):
+            self.inspect(fresh)
+        fresh["findings"] = [dict(finding, resolution_evidence_ids=fresh["evidence_ids"])]
+        result = self.inspect(fresh)
+        self.assertEqual(result["gate"], "UNVERIFIED")
+        self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "BLOCK")
+        self.assertTrue(self.inspect(fresh, self.decision(fresh, result))["accepted"])
+        self.assertEqual(gate.evaluate(self.report(), task_contract=self.contract, root=self.root)["gate"], "PASS")
+        self.assertNotEqual(self.evidence[0]["id"], old_evidence[0]["id"])
+        self.assertFalse(list((self.state / "active-assignments" / self.entry["id"]).glob("*.json")))
+
+    def test_reassessment_blocks_old_decision_without_receipts_and_retains_guard_on_interruption(self):
+        spec = dict(self.spec, stage="design", completion_binding="stage-handoff", evidence_requirement_ids=[])
+        returned = self.output(self.start(spec))
+        returned["evidence_ids"] = []
+        self.evidence = []
+        decision = self.decision(returned, self.inspect(returned))
+        self.assertTrue(self.inspect(returned, decision)["accepted"])
+        base, before = handoff.load_operation(self.root, self.contract, "ui-build")
+        original = manager.write_record
+        def interrupt(path, value):
+            if path == base / "operation.json":
+                raise OSError("interrupted operation write")
+            return original(path, value)
+        with patch.object(manager, "write_record", side_effect=interrupt), self.assertRaisesRegex(OSError, "interrupted"):
+            handoff.reassess(self.root, self.contract, "ui-build", "Reassess domain controls")
+        self.assertEqual(handoff.load_operation(self.root, self.contract, "ui-build")[1], before)
+        self.assertTrue(list((self.state / "active-assignments" / self.entry["id"]).glob("*.json")))
+        handoff.reassess(self.root, self.contract, "ui-build", "Resume explicit reassessment")
+        with self.assertRaisesRegex(ValueError, "already active"):
+            handoff.reassess(self.root, self.contract, "ui-build", "Duplicate reopen")
+        self.assertEqual(self.inspect(returned, decision)["gate"], "BLOCK")
+        result = self.inspect(returned)
+        self.assertTrue(self.inspect(returned, self.decision(returned, result))["accepted"])
+
     def test_active_revision_cannot_drop_required_findings_or_retire_unresolved_work(self):
         returned = self.output(self.start())
         finding = {"id": "denial", "required": True, "description": "Permission denial needs resolution", "status": "open"}

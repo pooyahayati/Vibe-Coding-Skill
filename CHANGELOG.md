@@ -4,7 +4,7 @@ Technical release history. Entries describe their release; current operating and
 
 ## Unreleased
 
-No pending changes.
+- H1: Add explicit same-contract specialist reassessment with archived acceptance, preserved findings/authority and active instruction guards. Require fresh assigned receipts and a separate new Head decision without revising unrelated task evidence.
 
 ## 1.6.0 — Proportionate verification and focused CI
 
