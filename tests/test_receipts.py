@@ -61,6 +61,118 @@ class ReceiptCompletionTests(unittest.TestCase):
     def evaluate(self, report=None, contract=None, **options):
         return gate.evaluate(report or self.report, task_contract=contract or self.c, root=self.root, **options)
 
+    def test_weakened_check_needs_bound_review_and_equivalent_replacement_can_pass(self):
+        import change_budget
+        from test_cross_platform import git
+        check = self.root / "check.py"
+        check.write_text("from pathlib import Path\nassert Path('src/value.txt').read_text() == 'accepted'\n", encoding="utf-8")
+        git(self.root, "add", "check.py")
+        git(self.root, "commit", "-qm", "accepted check")
+        c = copy.deepcopy(self.c)
+        c["verification_baseline"] = {"revision": git(self.root, "rev-parse", "HEAD"), "paths": ["check.py"]}
+        c["schema_version"] = 2
+        report = copy.deepcopy(self.report)
+        report["contract_sha256"] = behavior.digest(c)
+        def rerun():
+            result = capture.capture(self.root, c, "check", [sys.executable, "check.py"])
+            report["acceptance_criteria"][0]["evidence_ids"] = [result["receipt"]["id"]]
+            report["evidence"][0].update(id=result["receipt"]["id"], result=result["receipt"]["result"],
+                receipt_ref=result["receipt_ref"], receipt_sha256=result["receipt_sha256"])
+            return self.evaluate(report, c)
+        initial = rerun()
+        self.assertEqual(initial["gate"], "PASS", initial)
+        (self.root / "src/value.txt").write_text("lost", encoding="utf-8")
+        self.assertEqual(rerun()["gate"], "BLOCK")
+        check.write_text("assert True", encoding="utf-8")
+        git(self.root, "update-index", "--assume-unchanged", "check.py")
+        blocked = rerun()
+        self.assertEqual(report["evidence"][0]["result"], "pass")
+        self.assertEqual(blocked["gate"], "BLOCK")
+        self.assertIn("integrity review", str(blocked["failures"]))
+        git(self.root, "update-index", "--no-assume-unchanged", "check.py")
+        check.write_text("from pathlib import Path\nvalue = Path('src/value.txt').read_text()\nassert value == 'accepted', value\n", encoding="utf-8")
+        (self.root / "src/value.txt").write_text("accepted", encoding="utf-8")
+        report["verification_review"] = dict(change_budget.verification_changes(self.root, c["verification_baseline"]),
+            decision="equivalent-or-stronger", rationale="Same stored-value assertion with failure diagnostics",
+            replacement_evidence="check.py still rejects the lost value; fresh check receipt")
+        self.assertEqual(rerun()["gate"], "PASS")
+        project_state.capture(self.root, task_contract=c, completion_report=report)
+        check.write_text("assert True", encoding="utf-8")
+        self.assertEqual(rerun()["gate"], "BLOCK")  # earlier review cannot bless a different edit
+        self.assertTrue(behavior.compare(c, self.c))
+        c["verification_baseline"]["revision"] = "a" * 40
+        self.assertEqual(rerun()["gate"], "BLOCK")
+
+    def test_security_denial_that_still_mutates_blocks_through_resume(self):
+        import execution_plan
+        import resume_context
+        import specialist_handoff
+        c = copy.deepcopy(self.c)
+        c["schema_version"] = 2
+        criterion = c["acceptance_criteria"][0]
+        criterion.update(security_boundary=True, behavior={
+            "user_action": "A non-owner attempts to save the protected setting",
+            "expected_result": "Access denied and stored setting unchanged",
+            "failure_expectation": "No write after a denied operation",
+            "protected_invariants": ["Stored setting unchanged"]})
+        plan = execution_plan.draft(self.root, c["objective"], task_contract=c)
+        self.assertEqual(execution_plan.validate_plan(plan, c)["gate"], "PASS")
+        assignment = {"format": "vibe-specialist-assignment", "schema_version": 1, "task_id": c["task_id"],
+            "assignment_id": "security-verify", "specialist_id": "security-and-hardening", "stage": "verify",
+            "contract_sha256": behavior.digest(c), "criterion_ids": [criterion["id"]], "scope": ["src"],
+            "settled_decisions": [], "protected_invariants": ["Stored setting unchanged"], "authorized_actions": [],
+            "evidence_requirement_ids": [], "platform": {"stack": "fixture", "runtime": "Python"}}
+        with self.assertRaisesRegex(ValueError, "omitted"):
+            specialist_handoff.validate_assignment(assignment, c)
+        assignment["stage"] = "design"  # advisory/design handoffs still need no invented test
+        specialist_handoff.validate_assignment(assignment, c)
+        assignment.update(stage="verify", evidence_requirement_ids=["check"])
+        specialist_handoff.validate_assignment(assignment, c)
+        (self.root / "check.py").write_text("from pathlib import Path\nexec(Path('src/handler.py').read_text())\nstate = {'value': 'accepted'}\nassert save(state) == 403\nassert state['value'] == 'accepted'\n", encoding="utf-8")
+        handler = self.root / "src/handler.py"
+        handler.write_text("def save(state):\n    state['value'] = 'lost'\n    return 403\n", encoding="utf-8")
+        report = copy.deepcopy(self.report)
+        report["contract_sha256"] = behavior.digest(c)
+        for implementation, expected in ((None, "BLOCK"), ("def save(state):\n    return 403\n", "PASS")):
+            if implementation:
+                handler.write_text(implementation, encoding="utf-8")
+            result = capture.capture(self.root, c, "check", [sys.executable, "-B", "check.py"])
+            report["acceptance_criteria"] = [dict(criterion, met=True, evidence_ids=[result["receipt"]["id"]])]
+            report["evidence"][0].update(id=result["receipt"]["id"], result=result["receipt"]["result"],
+                receipt_ref=result["receipt_ref"], receipt_sha256=result["receipt_sha256"])
+            state = project_state.capture(self.root, task_contract=c, completion_report=report)
+            self.assertEqual(state["acceptance"]["gate"], expected)
+            resumed = resume_context.build_context(self.root)["local_state"]["project_state"]
+            self.assertEqual(resumed["task_contract"], c)
+            self.assertEqual(resumed["acceptance"]["gate"], expected)
+
+    def test_operational_requirement_binds_recovery_workload_and_environment(self):
+        c = copy.deepcopy(self.c)
+        c["schema_version"] = 2
+        obligation = c["evidence_requirements"][0]
+        obligation.update(kind="recovery-drill", context_keys=["environment", "dataset"])
+        context = {"environment": "isolated-python", "dataset": "stored-setting-v1", "unrelated": "first"}
+        (self.root / "check.py").write_text("from pathlib import Path\nrestored = Path('src/value.txt').read_text()\nassert restored == 'accepted', 'restored value differs'\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "context"):
+            capture.capture(self.root, c, "check", [sys.executable, "check.py"])
+        report = copy.deepcopy(self.report)
+        report["contract_sha256"] = behavior.digest(c)
+        for restored, expected in (("lost", "BLOCK"), ("accepted", "PASS")):
+            (self.root / "src/value.txt").write_text(restored, encoding="utf-8")
+            result = capture.capture(self.root, c, "check", [sys.executable, "check.py"], context=context)
+            report["evidence"][0].update(id=result["receipt"]["id"], kind="recovery-drill", result=result["receipt"]["result"],
+                receipt_ref=result["receipt_ref"], receipt_sha256=result["receipt_sha256"])
+            report["acceptance_criteria"][0]["evidence_ids"] = [result["receipt"]["id"]]
+            self.assertEqual(self.evaluate(report, c, context=context)["gate"], expected)
+        self.assertEqual(self.evaluate(report, c, context=dict(context, unrelated="changed"))["gate"], "PASS")
+        self.assertEqual(self.evaluate(report, c, context=dict(context, dataset="different"))["gate"], "BLOCK")
+        self.assertEqual(self.evaluate(report, c, context={})["gate"], "BLOCK")
+        self.assertEqual(behavior.completion(c, self.report, expected_schema=2)["gate"], "BLOCK")
+        obligation["kind"] = "performance-measurement"
+        obligation.pop("context_keys")
+        with self.assertRaisesRegex(ValueError, "context_keys"):
+            behavior.validate(c)
+
     def test_diagnostics_integrity_and_receipts_without_logs_remain_supported(self):
         self.assertTrue(self.evaluate()["receipt_verified"])
         path = Path(self.r["diagnostics_path"])

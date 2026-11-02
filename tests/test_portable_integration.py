@@ -466,6 +466,8 @@ class PortableIntegrationTests(unittest.TestCase):
         self.git("add", ".")
         self.git("commit", "-qm", "bound fixture")
         contract = self.contract(2, "collected", "integration")
+        contract["schema_version"] = 2
+        contract["verification_baseline"] = {"revision": self.git("rev-parse", "HEAD").stdout.decode().strip(), "paths": ["check.py"]}
         contract["scope"] = ["src", "check.py"]
         contract["evidence_requirements"][0]["input_paths"] = [relative, "check.py"]
         contract_path = self.json_file("contract", contract)
@@ -526,6 +528,11 @@ class PortableIntegrationTests(unittest.TestCase):
         resumed = self.cli("resume_context.py", "--root", self.product, "--json")
         self.assertFalse(resumed["local_state"]["project_state"]["acceptance"]["receipt_verified"])
         self.assertFalse(Path(passed["receipt_path"]).is_relative_to(self.product))
+        (self.product / "check.py").write_text("assert True\n", encoding="utf-8")
+        weakened = self.cli("evidence_capture.py", *args)
+        rejected = self.cli("completion_gate.py", self.json_file("weakened", self.report(contract, weakened)),
+                            "--task-contract", contract_path, "--root", self.product, "--json", expected=2)
+        self.assertIn("integrity review", str(rejected["failures"]))
 
     def test_cross_boundary_specialist_uses_packed_runtime_and_separate_head_acceptance(self):
         # Reuse the existing offline specialist fixture, but preload every runtime

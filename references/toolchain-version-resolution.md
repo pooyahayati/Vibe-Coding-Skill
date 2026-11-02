@@ -6,6 +6,8 @@ External tools are managed by capability and compatibility policy, not by a perm
 
 Current managed tools include Graphify and Trivy.
 
+Context7 documentation retrieval uses the [bounded documentation route](version-matched-documentation.md), not this tool installer's registry. Host connection setup and provider currency are separate from matching documentation to the product's installed/supported version. Do not upgrade a product to match a retrieved example.
+
 ## Resolution algorithm
 
 Use:

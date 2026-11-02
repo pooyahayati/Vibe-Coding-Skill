@@ -140,6 +140,8 @@ Results identify `verification_policy: outcome-and-obligation-v1` and a task/cri
 
 ## Review
 
+When acceptance checks change, compare with their pre-change definitions: removal, skips, weaker assertions, relaxed thresholds and suppressions need a concrete equivalent replacement or an explicitly reconciled requirement. Fresh green execution alone cannot settle this review. Reuse the existing review note for lightweight work; structured tasks retain the [verification baseline and current Head disposition](execution-receipts.md#changed-acceptance-checks). Unchanged checks add no review record.
+
 For meaningful changes, review requirement fit, correctness, unintended scope, architecture fit, error handling, tests, security, maintainability, and operational impact.
 
 For code-structure review, check only observable properties relevant to the change:
@@ -160,6 +162,8 @@ Use diff size as a signal, not an absolute quality metric.
 
 Watch changed file count, added/deleted lines, modules touched, public contracts, manifests, migrations, auth/security, and CI/deployment.
 
+For newly added subsystems, runtime dependencies/services or material boundaries, use the existing diff summary (including `change_budget.py` dependency/infrastructure signals) to identify additions needing the [reuse decision](operating-model.md#solution-and-technology-selection). Review the actual consumer/requirement and inspected alternative; counts, directory names and layer names are indicators, not an architecture gate. Accept a justified boundary; remove only unjustified additions in this change. A contained fix/copy edit needs no alternatives record.
+
 If the change is too broad to review confidently, split it before integration.
 
 ## Debugging
@@ -173,6 +177,8 @@ Do not log secrets or unnecessary sensitive data.
 `Baseline → Change → Compare`
 
 Do not optimize based on intuition alone.
+
+For explicit capacity/latency requirements, an observed regression or consequential stateful deployment, use [measured operational readiness](product-installation-and-runtime.md#measured-capacity-and-recovery). Select only evidence needed for that outcome; ordinary edits do not acquire load tests.
 
 ## Data integrity
 

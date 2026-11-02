@@ -61,7 +61,7 @@ def validate(receipt: dict, entry: dict, contract: dict, obligation: dict, root:
             timestamp(receipt.get("recorded_at"))
         return {"qualified": False, "reason": "receipt did not pass"}
     require(not receipt.get("collection_errors"), "receipt has collection errors")
-    require(isinstance(receipt.get("context"), dict) and receipt["context"] == context, "relevant runtime/dataset context changed or unavailable")
+    require(isinstance(receipt.get("context"), dict) and receipt["context"] == behavior.evidence_context(obligation, context), "relevant runtime/dataset context changed or unavailable")
     if receipt["origin"] == "reported":
         # A claimed resolution flag cannot authorize or stand in for a trusted resolver.
         raise ValueError("reported receipt requires an authorized external resolver; no resolver is configured")
@@ -173,6 +173,16 @@ def evaluate_completion(report, contract, root, receipt_root, context, declared_
             if isinstance(row, dict) and row.get("required") is True:
                 require(any(e in qualified_ids and row["id"] in receipt_links[e] for e in row.get("evidence_ids", [])), "criterion lacks linked qualifying receipt: " + str(row.get("id")))
         result = declared_gate(derived, contract["acceptance_criteria"])
+        if "verification_baseline" in contract:
+            import change_budget
+            integrity = change_budget.verification_changes(root, contract["verification_baseline"])
+            result["verification_review"] = integrity
+            if integrity["changed_paths"] or integrity["baseline_empty"]:
+                review = report.get("verification_review", {})
+                require(isinstance(review, dict) and review.get("sha256") == integrity["sha256"]
+                        and review.get("decision") == "equivalent-or-stronger"
+                        and all(behavior.text(review.get(k)) for k in ("rationale", "replacement_evidence")),
+                        "changed/new acceptance checks need a current Head integrity review; passing execution is insufficient")
         import specialist_handoff
         result["failures"].extend(specialist_handoff.completion_failures(root, contract, context))
         result["failures"].extend(failures)
@@ -194,6 +204,7 @@ def observe(root: Path, contract: dict, requirement_id: str, observation: dict, 
     require(not set(obligation) - capture.REQUIREMENT_FIELDS, "unsupported evidence requirement fields; reconcile before observation")
     require(result in {"pass", "fail"} and isinstance(observation, dict) and all(behavior.text(observation.get(k)) for k in ("description", "method", "environment")), "concrete actual observation required")
     context = {} if context is None else context
+    context = behavior.evidence_context(obligation, context)
     require(isinstance(context, dict), "context must be an object")
     directory = capture.storage(root, contract["task_id"])
     record = capture.envelope(root, contract, obligation)

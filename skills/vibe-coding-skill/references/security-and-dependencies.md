@@ -14,6 +14,16 @@ The Head owns the security floor, dependency decisions and release gates. The re
 
 When relevant, verify authentication, authorization, input validation, secret handling, dependency vulnerabilities, sensitive logging, exposed interfaces, and infrastructure configuration.
 
+### Bind changed security outcomes
+
+During Define/Design, inspect the actual changed boundary with the selected security specialist: actor, operation, resource/state and prohibited effect. Record the smallest applicable protective outcome in the **existing** acceptance criteria, before implementation. Access-changing mutations include rejection **and unchanged protected state**; ownership changes include the relevant cross-owner denial; untrusted input/output includes its actual prohibited effect. These are conditional examples, not an allow/deny test pair for every change.
+
+For structured contracts mark that required criterion `security_boundary: true` and reuse `behavior.user_action`, `expected_result`, `failure_expectation` and nonempty `protected_invariants`. Link required behavioral evidence through existing `evidence_requirements`; one adequate existing check may satisfy several outcomes. The validator rejects missing protection/evidence and scanner-only substitution. Carry those criterion IDs, invariants and obligations into the security verification assignment. Design/advisory work can still return guidance without inventing an execution obligation; final completion must satisfy the retained behavioral requirements independently.
+
+Plan, handoff, resume and completion retain these fields through the task-contract binding. A clean Trivy report, ordinary happy path or reported error status alone cannot discharge a denial/data-protection requirement. The Head inspects actual evidence relevance; field validation cannot prove that an assertion tests the prohibited effect. Apply the [check-integrity review](execution-receipts.md#changed-acceptance-checks) when that evidence's checks change.
+
+This conditional criterion uses task-contract schema 2, not a new security workflow or scanner. [Reconcile legacy contracts](shared-improvement-contracts.md#task-contract-version-2-r35-r39) when a confirmed affected boundary lacks an outcome; do not manufacture historical evidence or infer a boundary solely from a keyword, tier, directory or specialist selection. Small unrelated work and advisory assignments remain unchanged. Older tools reject the new contract version rather than silently dropping the control.
+
 Confirmed exploitable critical/high findings and real exposed credentials block publication. Scanner flags require assessment; an unassessed blocking finding is not release approval.
 
 ## Trivy

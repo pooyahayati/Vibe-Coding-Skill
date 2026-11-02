@@ -15,5 +15,7 @@ Request path ↔ database/cache; application ↔ external latency.
 ## Required checks
 Before/after evidence when performance is material, request/query delta for hot paths, cache/failure behavior, and activation/deactivation comparison where practical.
 
+Use [measured capacity and recovery](../references/product-installation-and-runtime.md#measured-capacity-and-recovery) for representative workload/environment and claim boundaries. Measure first, fix the observed bottleneck, compare under equivalent conditions and stop when the requirement is met. Run recovery checks only for a required affected stateful outcome; no load suite for unrelated edits.
+
 ## Avoid
 Hard-coded global query budgets detached from baseline, premature caching without invalidation semantics, and moving work to cron/background without observability or duplicate protection.

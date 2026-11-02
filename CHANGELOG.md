@@ -6,6 +6,15 @@ Technical release history. Entries describe their release; current operating and
 
 No pending changes.
 
+## 1.8.0 — Bound acceptance and version-matched engineering
+
+- R35: retain pre-change check definitions and require a current Head integrity disposition for changed/new acceptance checks, even after fresh passing execution. Equivalent test maintenance remains allowed; hashes do not prove assertion quality.
+- R36: route version-sensitive decisions to bounded Context7 retrieval with official version-matched/local documentation fallback, scoped provenance reuse and no automatic host setup.
+- R37: bind confirmed security outcomes to existing behavioral criteria/obligations and verification handoffs; scanner-only evidence cannot replace the protective behavior.
+- R38: use existing decision/diff review to justify material new subsystems/dependencies against inspected alternatives, without a new workflow or per-helper document.
+- R39: require representative conditions for capacity/recovery claims and bind explicitly selected relevant evidence context, preserving unrelated-context reuse.
+- Task-contract schema 2 carries these conditional integrity/security/context controls and rejects unsupported fields; explicit legacy reconciliation preserves obligations. Receipt, completion-report and specialist-handoff versions remain unchanged.
+
 ## 1.7.1 — Consistent selection and bounded specialist maintenance
 
 - R33: reuse current router inspection and risk evaluation in specialist preparation; return the same route for context loading, preserve explicit selections across entry points, and make uninspected direct selection conservative. Keep verified mechanical edits lightweight without a routing cache.

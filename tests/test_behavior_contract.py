@@ -26,6 +26,21 @@ def contract(tier=0):
 
 
 class BehaviorContractTests(unittest.TestCase):
+    def test_confirmed_security_outcome_needs_protection_and_behavioral_obligation(self):
+        c = contract(2)
+        row = c["acceptance_criteria"][0]
+        row["security_boundary"] = True
+        with self.assertRaisesRegex(ValueError, "schema 2"):
+            behavior.validate(c)
+        c["schema_version"] = 2
+        with self.assertRaisesRegex(ValueError, "protective outcome"):
+            behavior.validate(c)
+        row["behavior"]["failure_expectation"] = "An unauthorized save is denied without writing the setting"
+        self.assertEqual(behavior.validate(c), c)
+        c["evidence_requirements"][0]["kind"] = "security-scan"
+        with self.assertRaisesRegex(ValueError, "behavioral evidence"):
+            behavior.validate(c)
+
     def test_risk_reclassification_preserves_commitments_and_known_material_facts(self):
         old = contract(3)
         old["objective"] = "Fix a typo in production instructions"

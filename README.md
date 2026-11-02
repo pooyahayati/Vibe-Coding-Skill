@@ -4,13 +4,15 @@
 
 A risk-adaptive engineering Head for AI-assisted development of small, medium and large software projects, including WordPress plugins. Works with OpenAI Codex, Claude Code and compatible skill-based agents.
 
-Current version: `1.7.1` — [stable release and portable ZIP](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.7.1).
+Current version: `1.8.0` — [stable release and portable ZIP](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.8.0).
 
 ## One engineering Head, focused specialists
 
 Vibe is the project manager and senior engineer: it owns scope, stack, architecture, risk, approvals, test selection, integration and final acceptance. Specialists supply domain methods and evidence; the Head retains shared engineering controls and accepts their results.
 
 Prefer existing platform capabilities and suitable extensions before custom code. Keep a working stack unless requirements justify changing it; choose technology from product needs, not project size alone.
+
+Before adding a subsystem, dependency or service, inspect the existing alternative and record the concrete need and maintenance cost in the existing decision note. Small fixes need no architecture exercise.
 
 ## Development workflow
 
@@ -67,16 +69,20 @@ Use specialists only for matching work; never install the entire external collec
 
 Head precedence cannot dismiss a real vulnerability or contradictory evidence. These are instruction boundaries, not an OS sandbox. [Authority contract](references/specialist-authority.md).
 
-## Graphify and Trivy: supporting tools
+## Supporting tools
 
 | Tool | Purpose | When used | Limits |
 |---|---|---|---|
+| [Context7](https://github.com/upstash/context7) | Relevant library/API documentation matched to the project's actual supported version. | Plan/Build for unfamiliar or version-sensitive APIs, configuration and migrations; reuse settled evidence. | Optional provider; official versioned/local docs are the fallback. No automatic host installation, paid plan or lookup for every edit. [Usage and privacy](references/version-matched-documentation.md). |
 | [Graphify](https://github.com/Graphify-Labs/graphify) | Code relationships and consequential impact analysis. | Discover/Plan and targeted Review for unfamiliar or cross-module work. | Confirm relationships in source/runtime; use source analysis if unavailable. Semantic processing needs its own authorization. |
 | [Trivy](https://github.com/aquasecurity/trivy) | Local secret and relevant dependency/configuration scans. | Publication planning: check native availability. Verify/Review: assess findings. Ship: scan the final artifact before publication. | Missing/failed/incomplete scans block publication; a clean scan does not prove application logic or authorization. |
 
 Keep generated reports outside product source. Development uses native project controls; Trivy is the only additional scanner in the Head workflow. [Native release gate](references/security-and-dependencies.md#native-release-gate).
 
 ## Verification and delivery
+
+- Changed acceptance checks need review against their pre-change definitions; a new green result cannot silently excuse deleted assertions or weaker expectations. Relevant security outcomes retain denial/data-protection evidence across handoffs. These controls add no blanket test quota.
+- Capacity, performance and recovery claims need evidence under stated workload/environment conditions. Local Docker/Compose startup alone is not proof of production scalability; ordinary edits do not trigger load tests. [Operational evidence](references/product-installation-and-runtime.md#measured-capacity-and-recovery).
 
 - Define an observable outcome and preserve approved scope, business rules and platform invariants. Use focused checks during implementation, relevant integration checks before merging, and artifact/security checks for publication. Reuse valid evidence; no fixed test-count, evidence-family or coverage quota. Required project checks still apply. [Verification policy](references/execution-and-verification.md#testing-policy).
 - Preserve acceptance criteria, required checks and unresolved findings across handoffs and resumes. For structured tasks, validate recorded results against the relevant code and artifacts. A successful command alone does not prove the intended outcome. [Completion and trust limits](references/execution-and-verification.md#receipt-backed-completion-e2).

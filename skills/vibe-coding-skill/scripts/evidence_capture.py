@@ -24,7 +24,7 @@ MAX_BYTES = 1024 * 1024 * 1024
 OUTPUT_BYTES_PER_STREAM = 32 * 1024
 OUTPUT_READ_BYTES = 8192
 OUTPUT_DRAIN_SECONDS = 1.0
-REQUIREMENT_FIELDS = {"id", "criterion_ids", "kind", "origin", "required", "input_paths", "input_excludes", "artifact_paths", "description"}
+REQUIREMENT_FIELDS = {"id", "criterion_ids", "kind", "origin", "required", "input_paths", "input_excludes", "artifact_paths", "description", "context_keys"}
 
 
 def now() -> str:
@@ -377,6 +377,7 @@ def capture(root: Path, contract: dict, requirement_id: str, argv: list[str], cw
     if not cwd.is_dir():
         raise ValueError("command cwd must be an existing directory inside project")
     context = {} if context is None else context
+    context = behavior.evidence_context(obligation, context)
     if not isinstance(context, dict):
         raise ValueError("context must be an object without secrets")
     behavior.digest(context)

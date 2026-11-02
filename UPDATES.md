@@ -4,6 +4,14 @@ User-facing release summaries; [CHANGELOG.md](CHANGELOG.md) retains technical hi
 
 From `1.0.0`, publication requires no model evaluation/provider key. Recent releases include a verified portable ZIP and checksum; publication does not update local installations. The pre-1.0 entries below describe historical policies, not current release requirements.
 
+## 1.8.0 — Stronger outcomes without blanket verification
+
+- Review changed acceptance checks against their pre-change definitions; fresh green execution alone cannot excuse a weakened check.
+- Use version-matched documentation for unfamiliar/version-sensitive decisions, preferring Context7 when available with official/local fallback. No mandatory provider installation or paid account.
+- Retain relevant security outcomes across planning, delegation and resume; a denial response or clean scan alone cannot prove protected data stayed unchanged.
+- Justify material new subsystems/dependencies against existing capabilities, and ground performance/recovery claims in representative conditions. Reuse valid scoped evidence instead of adding per-edit suites.
+- New conditional controls use task-contract schema 2. Existing tasks remain supported; migrate explicitly without losing obligations or inventing historical evidence. Head authority, native Trivy publication checks and local-installation guards remain unchanged.
+
 ## 1.7.1 — Consistent task entry and less repeated preparation
 
 - Use the same inspected change and risk assessment to choose specialists during routing, planning and task preparation. Verified mechanical edits stay lightweight; missing inspection and changed behavior keep formal handling.

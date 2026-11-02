@@ -158,6 +158,7 @@ def validate_context_facts(
         field: set() for field in CONTEXT_FACT_FIELDS
     }
     supported["concern"].update(load_specialist_manager().supported_concerns())
+    supported["concern"].update({"version-sensitive", "operational-readiness"})
     for pack in config.get("packs", {}).values():
         for field, values in pack.get("context_facts", {}).items():
             if field not in supported:
@@ -1123,6 +1124,10 @@ def plan(
     ]
     core_mode = selected_core_mode(int(risk["tier"]))
     core_refs = list(config["core_context"][core_mode])
+    if "version-sensitive" in normalized_context_facts.get("concern", []):
+        core_refs.append("references/version-matched-documentation.md")
+    if "operational-readiness" in normalized_context_facts.get("concern", []):
+        core_refs.append("references/product-installation-and-runtime.md")
     if (
         complexity["level"] == "large"
         and "references/project-intelligence.md" not in core_refs
