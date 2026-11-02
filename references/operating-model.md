@@ -82,6 +82,8 @@ Before choosing a new language, framework, service, or custom subsystem, check t
 
 For an existing product, keep the current stack unless there is a demonstrable blocker.
 
+Before adding a custom subsystem, runtime dependency, service or material module boundary, inspect the relevant local implementation and platform capability. In the existing decision/review note record the concrete alternative inspected, why it is insufficient, and the current consumer, requirement, repeated behavior or failure isolation the addition serves. Include its maintenance/operating cost, with security/licensing constraints when relevant. This is one scoped rationale, not an alternatives study for every helper or permission to refactor unrelated code. An adequate existing implementation wins unless a concrete incompatibility justifies replacement; package popularity and fewer lines are not performance evidence.
+
 When a meaningful technology decision remains, compare **no more than two or three realistic options** against the constraints that actually matter:
 
 - existing platform and conventions;
@@ -95,6 +97,8 @@ When a meaningful technology decision remains, compare **no more than two or thr
 - migration and exit difficulty.
 
 Verify current version/support status from official sources when the decision depends on it.
+
+For unfamiliar/version-sensitive APIs, configuration or migrations, use the [version-matched documentation route](version-matched-documentation.md). Latest Head/tool currency does not authorize upgrading the product or using APIs absent from its supported versions.
 
 Do not assign one universal "best language" to small, medium, or large projects. Select databases separately from application language using the data model, transaction/concurrency needs, search/query needs, recovery, and deployment environment.
 

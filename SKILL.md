@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Python 3.10+ and Git. Publication requires an installed native Trivy executable and relevant local release scans. Graphify is conditional. Network access is needed for registry, vulnerability data, GitHub and tool-update checks.
 metadata:
   author: "Pooya Hayati"
-  version: "1.7.1"
+  version: "1.8.0"
 ---
 
 # Vibe Coding Skill
@@ -68,6 +68,8 @@ Do not ask the user for inferable implementation details. Prove one runnable ver
 Read `references/operating-model.md` for discovery, technology selection, architecture, and stage interaction decisions.
 
 For new products or changed installation/deployment paths, read `references/product-installation-and-runtime.md`. The Head selects the simplest reproducible startup path, offers local Docker/Compose execution where suitable, and requires evidence for a selected installation outcome.
+
+For explicit capacity/performance requirements, observed regressions or consequential stateful deployment, use that reference's measured capacity/recovery route (`operational-readiness` concern). Bind claims to representative conditions; no universal load test or extra infrastructure.
 
 ## Risk and controls
 
@@ -177,6 +179,8 @@ Use the Dependency Guard when its ecosystem is supported; missing or contradicto
 
 Security controls follow actual trust boundaries and threat scenarios. Scanner output supplements application-level security review.
 
+For a confirmed changed security boundary, retain its protective outcome and relevant behavioral evidence before implementation; use the [existing contract and assignment binding](references/security-and-dependencies.md#bind-changed-security-outcomes). A clean scan or a denial message alone cannot prove preserved protected state.
+
 Use native project controls during development and Trivy as the only additional security scanner in this Head workflow. Check native Trivy availability when planning delivery; before publication require its actual local scan of the final source/artifact, current relevant data and resolved findings. Missing tooling or unverified scans block publication, not unrelated development. Retain this as required security evidence in the existing task contract/completion route.
 
 Read `references/security-and-dependencies.md`.
@@ -206,6 +210,8 @@ Conditional capabilities:
 - official registries, OSV, GitHub, and optional deps.dev: dependency evidence.
 
 Managed external tools use compatibility-gated latest-stable resolution and an exact selected runtime version. Read `references/toolchain-version-resolution.md`.
+
+For unfamiliar/version-sensitive API or configuration work, dependency changes and migrations, read `references/version-matched-documentation.md` (router concern `version-sensitive`). Resolve actual product versions first; prefer Context7 when available, with official version-matched/local documentation as fallback. Reuse settled evidence; no lookup or installation for every edit.
 
 For installation, rollback, or Skill lifecycle work, read `references/installation-and-lifecycle.md`.
 

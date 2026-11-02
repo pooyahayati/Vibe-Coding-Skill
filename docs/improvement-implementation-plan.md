@@ -2,7 +2,7 @@
 
 Package numbers belong to the permanent [repository roadmap register](../ROADMAP.md#roadmap-register); they do not restart with a new release or cycle.
 
-[ROADMAP.md](../ROADMAP.md) is the only current progress tracker. This document defines the R35-R39 planning scope and acceptance in priority order and retains the delivered R31-R34 specifications below. Runtime behavior belongs to canonical scripts and operating references; implementation evidence belongs in the roadmap. Planning approval does not start implementation or authorize installation, publication or local activation.
+[ROADMAP.md](../ROADMAP.md) is the only current progress tracker. This document defines R35-R39 scope and acceptance in priority order and retains the delivered R31-R34 specifications below. Runtime behavior belongs to canonical scripts and operating references; implementation evidence belongs in the roadmap. The execution boundaries below reflect the subsequent implementation authorization; installation and publication remain separate.
 
 ## Review baseline and evidence boundaries
 
@@ -20,7 +20,7 @@ The R35 observation is retained audit evidence, not a committed regression or a 
 
 ## Execution and validation boundaries
 
-1. **Authorization:** This request prepares documents only. Begin R35 only on a subsequent implementation request; continue **R35 -> R36 -> R37 -> R38 -> R39** after scoped acceptance within that request's authority. Do not require a new approval after every step when the user has authorized the sequence. Commit, merge, release and local installation remain separate authorized outcomes.
+1. **Authorization:** The planning-only request was superseded by explicit authorization to commit/merge the plan and implement **R35 -> R36 -> R37 -> R38 -> R39**, including the README update. Continue after scoped acceptance without another approval for every step. The subsequent delivery request authorizes implementation commit/merge, a new release and local Head update; verify and record each outcome separately.
 2. **Existing mechanisms first:** Reuse task contracts, evidence obligations, Head acceptance, routing, state and receipt freshness. R37 depends on R35's integrity handling; R36, R38 and R39 otherwise follow priority/integration order, not a requirement to install each other's providers. Define compatibility/migration before changing a persisted format; retain obligations and handle legacy/unknown state explicitly.
 3. **No extra workflow:** Add no new orchestrator, mandatory specialist, global test quota, model evaluation, blanket scanner, recurring service or per-edit document. Keep the sole UI/UX specialist. A small non-runtime edit must not acquire formal security work, documentation lookups or load tests from this cycle.
 4. **Proportionate verification:** Reuse sufficient existing cases and receipts. Extend existing fixtures only for an uncovered acceptance failure; run affected checks during implementation. When portable behavior changes, synchronize the canonical resources and check the affected extracted route. Existing full integration/publication and native final-artifact Trivy gates keep their current triggers; no full suite after every edit.

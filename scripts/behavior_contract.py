@@ -62,8 +62,16 @@ def path_covered(path: str, scopes: list[str]) -> bool:
 def validate(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict) or value.get("format") != "vibe-task-contract":
         raise ValueError("expected vibe-task-contract object")
-    if type(value.get("schema_version")) is not int or value["schema_version"] != 1:
+    if type(value.get("schema_version")) is not int or value["schema_version"] not in {1, 2}:
         raise ValueError("unsupported task-contract schema_version")
+    if value["schema_version"] == 1 and ("verification_baseline" in value or (
+            isinstance(value.get("acceptance_criteria"), list) and any(
+                isinstance(c, dict) and "security_boundary" in c for c in value["acceptance_criteria"]))):
+        raise ValueError("integrity/security bindings require task-contract schema 2; explicitly reconcile legacy state")
+    if value["schema_version"] == 2 and set(value) - {
+            "format", "schema_version", "task_id", "objective", "scope", "risk_tier", "risk_facts",
+            "specialist_assignment_ids", "verification_baseline", "acceptance_criteria", "evidence_requirements"}:
+        raise ValueError("unsupported task-contract schema 2 fields")
     if not all(text(value.get(k)) for k in ("task_id", "objective")) or not strings(value.get("scope"), True):
         raise ValueError("task contract requires task_id, objective and scope")
     if not _gate.valid_risk_tier(value.get("risk_tier")):
@@ -76,18 +84,33 @@ def validate(value: Any) -> dict[str, Any]:
             raise ValueError("task contract is below its assessed risk floor")
     if "specialist_assignment_ids" in value and (not strings(value["specialist_assignment_ids"]) or len(set(value["specialist_assignment_ids"])) != len(value["specialist_assignment_ids"])):
         raise ValueError("invalid retained specialist assignment IDs")
+    if "verification_baseline" in value:
+        baseline = value["verification_baseline"]
+        if (not isinstance(baseline, dict) or set(baseline) != {"revision", "paths"}
+                or not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", str(baseline.get("revision", "")))
+                or not strings(baseline.get("paths"), True)
+                or any(not path_covered(p, ["."]) for p in baseline["paths"])):
+            raise ValueError("invalid pre-change verification baseline")
     criteria = value.get("acceptance_criteria")
     obligations = value.get("evidence_requirements")
     if not isinstance(criteria, list) or not criteria or not isinstance(obligations, list) or not obligations:
         raise ValueError("task contract requires criteria and evidence requirements")
     ids: set[str] = set()
     for row in criteria:
+        if value["schema_version"] == 2 and isinstance(row, dict) and set(row) - {"id", "description", "required", "behavior", "security_boundary"}:
+            raise ValueError("unsupported schema 2 criterion fields")
         if (not isinstance(row, dict) or not text(row.get("id")) or row["id"] in ids
                 or not text(row.get("description")) or type(row.get("required")) is not bool):
             raise ValueError("invalid or duplicate acceptance criterion")
         ids.add(row["id"])
         if "met" in row or "evidence_ids" in row:
             raise ValueError("task snapshot must not contain completion outcome fields")
+        if "security_boundary" in row:
+            b = row.get("behavior", {})
+            if (row["security_boundary"] is not True or not row["required"]
+                    or not isinstance(b, dict) or not text(b.get("failure_expectation"))
+                    or not strings(b.get("protected_invariants"), True)):
+                raise ValueError("confirmed security boundary needs a required protective outcome and failure/state expectation")
         if "behavior" in row:
             b = row["behavior"]
             allowed = {"user_action", "expected_result", "starting_state", "failure_expectation", "protected_invariants"}
@@ -102,6 +125,8 @@ def validate(value: Any) -> dict[str, Any]:
     seen: set[str] = set()
     covered: set[str] = set()
     for row in obligations:
+        if value["schema_version"] == 2 and isinstance(row, dict) and set(row) - {"id", "criterion_ids", "kind", "origin", "required", "input_paths", "input_excludes", "artifact_paths", "description", "context_keys"}:
+            raise ValueError("unsupported schema 2 requirement fields")
         if (not isinstance(row, dict) or not text(row.get("id")) or row["id"] in seen
                 or not strings(row.get("criterion_ids"), True) or set(row["criterion_ids"]) - ids
                 or not _gate.evidence_family(row.get("kind")) or not text(row.get("origin")) or row["origin"] not in {"collected", "reported", "manual"}
@@ -111,12 +136,24 @@ def validate(value: Any) -> dict[str, Any]:
         for field in ("input_paths", "input_excludes", "artifact_paths"):
             if field in row and not strings(row[field]):
                 raise ValueError("invalid requirement " + field)
+        if "context_keys" in row:
+            if (value["schema_version"] != 2 or not strings(row["context_keys"], True)
+                    or len(set(row["context_keys"])) != len(row["context_keys"])):
+                raise ValueError("explicit context_keys require task-contract schema 2 and unique keys")
+        if value["schema_version"] == 2 and row["required"] and _gate.evidence_family(row["kind"]) in {"performance", "recovery"} and not row.get("context_keys"):
+            raise ValueError("operational evidence requires relevant environment/workload context_keys")
         if row["origin"] == "collected" and not strings(row.get("input_paths"), True):
             raise ValueError("collected requirement needs meaningful input_paths")
         if row["required"]:
             covered.update(row["criterion_ids"])
     if required_ids - covered:
         raise ValueError("required outcomes lack required evidence obligations")
+    for criterion in criteria:
+        if criterion.get("security_boundary"):
+            if not any(e["required"] and criterion["id"] in e["criterion_ids"]
+                       and _gate.evidence_family(e["kind"]) in {"verification", "integration", "runtime", "data", "manual"}
+                       for e in obligations):
+                raise ValueError("security outcome needs behavioral evidence; a scan or design review alone is insufficient")
     digest(value)  # Reject non-JSON/non-finite extensions before persistence.
     return copy.deepcopy(value)
 
@@ -125,15 +162,31 @@ def read(path: str | Path) -> dict[str, Any]:
     return validate(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
+def evidence_context(requirement: dict, context: Any) -> dict:
+    """Bind only explicitly accepted relevant context; legacy scopes stay intact."""
+    if not isinstance(context, dict):
+        raise ValueError("evidence context must be an object")
+    keys = requirement.get("context_keys")
+    if keys is None:
+        return context
+    if any(k not in context or context[k] is None or context[k] == "" or context[k] == {} or context[k] == [] for k in keys):
+        raise ValueError("required evidence context is missing or empty")
+    return {k: context[k] for k in keys}
+
+
 def compare(baseline: dict[str, Any], current: dict[str, Any]) -> list[str]:
     baseline, current = validate(baseline), validate(current)
     failures = []
+    if current["schema_version"] != baseline["schema_version"]:
+        failures.append("task-contract version transition requires explicit reconciliation")
     for field in ("task_id", "objective", "scope"):
         if baseline[field] != current[field]:
             failures.append("retained task " + field + " changed")
     if current["risk_tier"] < baseline["risk_tier"]:
         failures.append("retained risk floor lowered")
     failures.extend(material_risk_losses(baseline, current))
+    if "verification_baseline" in baseline and current.get("verification_baseline") != baseline["verification_baseline"]:
+        failures.append("retained verification baseline changed or removed")
     for field in ("acceptance_criteria", "evidence_requirements"):
         actual = {r["id"]: r for r in current[field]}
         for row in baseline[field]:
@@ -147,6 +200,8 @@ def compare(baseline: dict[str, Any], current: dict[str, Any]) -> list[str]:
 
 def material_risk_losses(baseline: dict[str, Any], current: dict[str, Any]) -> list[str]:
     """Keep known material facts even through an explicit contract revision."""
+    if current.get("schema_version", 1) < baseline.get("schema_version", 1):
+        return ["retained task-contract schema cannot downgrade"]
     if "risk_facts" in baseline and "risk_facts" not in current:
         return ["retained risk facts removed; provide an explicit reassessment"]
     old = _risk.normalized_facts(baseline.get("risk_facts"))
@@ -223,6 +278,9 @@ def plan_failures(plan: dict[str, Any], baseline: dict[str, Any] | None = None) 
 
 def completion(contract: dict[str, Any], report: dict[str, Any] | None, stale: bool = False,
                *, root=None, expected_schema=2, context=None) -> dict[str, Any]:
+    if contract.get("schema_version") == 2 and expected_schema != 3:
+        return {"gate": "BLOCK", "outcomes": [], "execution_verified": False,
+                "reason": "task-contract schema 2 requires receipt completion; explicitly migrate retained workflow"}
     outcomes = [{"id": c["id"], "description": c["description"], "behavior": c.get("behavior"),
                  "required": c["required"], "status": "unverified", "evidence_ids": []}
                 for c in contract["acceptance_criteria"]]

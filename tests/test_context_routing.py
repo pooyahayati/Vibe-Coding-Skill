@@ -52,6 +52,23 @@ class ContextRouterTests(unittest.TestCase):
     def setUp(self):
         self.router = load_script("context_router.py")
 
+    def test_version_sensitive_documentation_route_is_conditional(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            init_project(root)
+            write(root, "app.py", "print('hello')\n")
+            plain = self.router.plan(root, "Fix a typo", ["app.py"])
+            matched = self.router.plan(root, "Update the library configuration", ["app.py"],
+                                       context_facts={"concern": ["version-sensitive"]})
+            reference = "references/version-matched-documentation.md"
+            self.assertNotIn(reference, plain["context_plan"]["load"])
+            self.assertIn(reference, matched["context_plan"]["load"])
+            self.assertFalse(matched["required_specialists"])
+            operational = self.router.plan(root, "Check the supported operating conditions", ["app.py"],
+                                           context_facts={"concern": ["operational-readiness"]})
+            self.assertNotIn("references/product-installation-and-runtime.md", plain["context_plan"]["load"])
+            self.assertIn("references/product-installation-and-runtime.md", operational["context_plan"]["load"])
+
     def test_reviewed_non_runtime_scope_stays_light_through_router_and_planner(self):
         facts = {"operation": "tiny", "environment": "local", "data_sensitivity": "none",
                  "change_boundary": "local", "change_effect": "non-runtime",

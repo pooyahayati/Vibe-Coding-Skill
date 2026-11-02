@@ -42,7 +42,15 @@ The CLI exits zero only for a collected pass, and two for other results/configur
 
 ## Receipt-backed completion (E2)
 
-For new structured-completion tasks, retain the accepted version-1 contract outside product source before implementation. Use schema 3 at completion, supplying that contract and the actual intended delivery root independently of the report:
+### Changed acceptance checks
+
+Before changing a check used for acceptance, retain `verification_baseline: {"revision":"<exact pre-change commit>","paths":["tests/relevant_check.py","relevant-check-config"]}` in a schema-2 task contract. Select check definitions/configuration, including suppressions and thresholds; do not include unrelated tests. Compare against that accepted revision, never a newly weakened test or its fresh receipt. For new/untracked checks or unavailable history, explicitly review the missing baseline and actual requirement instead of claiming preserved detection power.
+
+`change_budget.py --root <project> --base <accepted-commit> --check-path <check-path> --json` returns a working-tree `verification_review` digest. Any change in that selected scope requires Head review of deleted assertions/tests, skips, relaxed expectations, thresholds and suppressions; no language pattern can prove equivalent coverage. At schema-3 completion supply `verification_review` with the current `sha256`, `decision: "equivalent-or-stronger"`, concrete `rationale` and `replacement_evidence`. The gate blocks missing/stale review even when execution passes. The Head must actually inspect that replacement evidence; the record is not independent proof of semantic equivalence. A real requirement change uses explicit contract reconciliation, not a review claiming equivalence.
+
+This conditional binding survives plan/state/resume. Version-1 contracts remain supported with their previous limits; reconcile an active task into version 2 before adding these controls. Older tools reject version 2 instead of silently ignoring protection. A missing Git baseline blocks this bound review; use independent retained evidence and explicit reconciliation, never silently reset it to current HEAD. No new test quota, mandatory mutation testing or approval for ordinary test maintenance is introduced. See [migration](shared-improvement-contracts.md#task-contract-version-2-r35-r39).
+
+For structured-completion tasks, retain the accepted contract outside product source before implementation. Version 2 is required for the conditional integrity/security/context controls; legacy version 1 remains supported. Use schema 3 at completion, supplying that contract and the actual intended delivery root independently of the report:
 
 ```bash
 python /path/to/skill/scripts/completion_gate.py /path/to/local/report.json --task-contract /path/to/local/task.json --root /path/to/project --json
@@ -53,6 +61,8 @@ The report has `schema_version: 3`, `status`, `risk_tier`, `task_id`, `contract_
 Every required obligation needs its own qualifying receipt. Required outcomes must retain their description, behavior, required status and actual evidence links. Resolution checks task/contract/obligation/origin/result identity, actual launch/exit or concrete observation, ordered timestamps, matching before/after manifests and the current scoped inputs/artifacts. A partial scope, changed required input/artifact, failed/timeout/unavailable check or unresolved external claim blocks completion. An unrelated excluded change does not require rerunning an unchanged relevant check. Optional failed/unverified evidence needs a real justification and cannot satisfy a required outcome.
 
 Pass independent current runtime/dataset identity via `--context '<JSON object>'` when relevant; it must match the receipt. The runner/gate cannot infer mutable remote state or inspect all host dependencies. Missing adequate context is a Head evidence gap; refresh it from actual project evidence rather than copying the receipt's old claim.
+
+Schema-2 task requirements may select explicit `context_keys`; the runner/manual writer retains that projection and completion compares it to independently supplied current context. Missing/empty selected values block; requirements without keys keep the full-context comparison. This scopes receipts only: retained current-delivery specialist/Head acceptance may still require reassessment of broader context. Reuse qualifying checks during that reassessment.
 
 Resolved provenance binds the current delivery HEAD through fresh scoped hashes. `receipt_resolution[].tested_commit` preserves the original observed test revision; the receipt is not rewritten to claim the command ran on a later commit. A report's target commit must equal actual delivery HEAD. Head review must still establish the scope/check covers the criterion; successful exit and metadata validity do not prove assertion quality or all vulnerabilities absent.
 

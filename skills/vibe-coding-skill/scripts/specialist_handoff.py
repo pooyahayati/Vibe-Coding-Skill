@@ -61,6 +61,12 @@ def validate_assignment(value, contract):
     require(behavior.strings(value["criterion_ids"], True) and len(set(value["criterion_ids"])) == len(value["criterion_ids"]) and not set(value["criterion_ids"]) - criteria.keys(), "assignment has unknown/duplicate criterion links")
     require(behavior.strings(value["evidence_requirement_ids"]) and len(set(value["evidence_requirement_ids"])) == len(value["evidence_requirement_ids"]) and not set(value["evidence_requirement_ids"]) - obligations.keys(), "assignment has unknown evidence obligations")
     require(all(set(obligations[e]["criterion_ids"]) & set(value["criterion_ids"]) for e in value["evidence_requirement_ids"]), "assignment evidence is unrelated to its criteria")
+    if value["specialist_id"] == "security-and-hardening" and value["stage"] == "verify":
+        security_ids = {c for c in value["criterion_ids"] if criteria[c].get("security_boundary")}
+        assigned = {c for e in value["evidence_requirement_ids"] if obligations[e]["required"]
+                    and behavior._gate.evidence_family(obligations[e]["kind"]) in {"verification", "integration", "runtime", "data", "manual"}
+                    for c in obligations[e]["criterion_ids"]}
+        require(security_ids <= assigned, "security verification assignment omitted its behavioral evidence obligation")
     for k in ("settled_decisions", "protected_invariants", "authorized_actions"):
         require(behavior.strings(value[k]) and len(set(value[k])) == len(value[k]), "invalid assignment constraints")
     inherited = {i for c in value["criterion_ids"] for i in criteria[c].get("behavior", {}).get("protected_invariants", [])}

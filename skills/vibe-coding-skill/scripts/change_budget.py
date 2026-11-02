@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import subprocess
+import hashlib
 from pathlib import Path
 
 SENSITIVE = {
@@ -19,6 +20,59 @@ SENSITIVE = {
         re.I,
     ),
 }
+
+
+def verification_changes(root: Path, baseline: dict) -> dict:
+    """Compare accepted check definitions, not the implementation-time receipt.
+
+    Any edit needs Head review: patterns can explain signals but cannot prove
+    equivalent assertions across languages. Explicit paths include check config.
+    """
+    import evidence_capture as capture
+    import behavior_contract as behavior
+    revision = baseline["revision"]
+    paths = [capture.relative(p) for p in baseline["paths"]]
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", revision):
+        raise ValueError("verification baseline needs an exact accepted commit")
+    def read(*args):
+        p = subprocess.run(["git", *args], cwd=root, capture_output=True)
+        if p.returncode:
+            raise ValueError("verification baseline unavailable; reconcile before completion")
+        return p.stdout
+    read("cat-file", "-e", revision + "^{commit}")
+    entries = read("--literal-pathspecs", "ls-tree", "-r", "-z", revision, "--", *paths).split(b"\0")
+    before = {}
+    total = 0
+    def content_digest(raw):
+        # Ignore only UTF-8 checkout CRLF differences, not index flags/filters.
+        try:
+            raw.decode("utf-8")
+        except UnicodeDecodeError:
+            pass
+        else:
+            if b"\0" not in raw:
+                raw = raw.replace(b"\r\n", b"\n")
+        return hashlib.sha256(raw).hexdigest()
+    for entry in filter(None, entries):
+        metadata, name = entry.split(b"\t", 1)
+        mode, kind, oid = metadata.split()
+        if kind != b"blob" or mode not in (b"100644", b"100755"):
+            raise ValueError("unsupported verification baseline entry")
+        total += int(read("cat-file", "-s", oid.decode()))
+        if len(before) >= capture.MAX_FILES or total > capture.MAX_BYTES:
+            raise ValueError("verification baseline exceeds collection limits")
+        before[name.decode("utf-8")] = content_digest(read("cat-file", "blob", oid.decode()))
+    after_rows = capture.snapshot(root, paths, [], require_file=False)
+    after = {}
+    for row in after_rows:
+        if "sha256" in row:
+            raw = capture.checked_path(root, root / row["path"]).read_bytes()
+            if hashlib.sha256(raw).hexdigest() != row["sha256"]:
+                raise ValueError("check definition changed during integrity review")
+            after[row["path"]] = content_digest(raw)
+    changed = sorted(p for p in before.keys() | after.keys() if before.get(p) != after.get(p))
+    return {"changed_paths": changed, "baseline_empty": not before,
+            "sha256": behavior.digest({"baseline": baseline, "before": before, "after": after_rows})}
 
 
 def git(root: Path, args: list[str]) -> str:
@@ -34,6 +88,7 @@ def main() -> int:
     ap.add_argument("--base", default="HEAD~1")
     ap.add_argument("--head", default="HEAD")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--check-path", action="append", default=[], help="Accepted check/config path; compare --base to working tree")
     ns = ap.parse_args()
     root = Path(ns.root).resolve()
 
@@ -78,6 +133,9 @@ def main() -> int:
         "sensitive_paths": {k: v for k, v in flags.items() if v},
         "files": files,
     }
+    if ns.check_path:
+        revision = git(root, ["rev-parse", ns.base + "^{commit}"]).strip()
+        result["verification_review"] = verification_changes(root, {"revision": revision, "paths": ns.check_path})
 
     if ns.json:
         print(json.dumps(result, indent=2))
@@ -86,6 +144,8 @@ def main() -> int:
         print(f"Files: {file_count}  +{added_total} -{deleted_total}  churn={churn}")
         for name, paths in result["sensitive_paths"].items():
             print(f"{name}: {', '.join(paths)}")
+        if "verification_review" in result:
+            print("Verification review: " + json.dumps(result["verification_review"]))
     return 0
 
 
