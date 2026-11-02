@@ -1,6 +1,6 @@
 # Improvement Roadmap
 
-Canonical progress tracker. Reviewed: 2026-10-16, Asia/Tehran. All documented improvement packages now use one permanent sequence, starting at **R1**.
+Canonical progress tracker. Reviewed: 2026-11-02, Asia/Tehran. All documented improvement packages use one permanent sequence, starting at **R1**.
 
 ## Current position
 
@@ -8,21 +8,31 @@ Canonical progress tracker. Reviewed: 2026-10-16, Asia/Tehran. All documented im
 |---|---|
 | Published runtime | Stable [1.7.1](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.7.1), release commit `74a57bc9397e41e919cc59d25b4dd6009676a9bd`. |
 | Local installation | Active **1.7.1**, verified on 2026-10-16. All 81 installed files match the published ZIP byte-for-byte; offline installation check and fresh installed Head preflight passed without failures or warnings. Previous installation retained as a backup outside skill discovery. |
-| Review baseline | Main `1204b41fced7cb144721bebc90a5ec03d84dad50`, runtime 1.7.0; inspected source and bounded reproductions of selection disagreement and repeated unrelated inventory checks. |
-| Overall progress | **R1-R34 complete.** The counts track packages, not quality or coverage. |
-| Current phase | R33-R34 accepted, merged in [PR #107](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/107), released and installed locally. |
-| Next action | No approved implementation remains. Allocate R35 only after a meaningful follow-up is approved. |
-| Next unallocated ID | **R35**. Continue the same sequence for later improvements. |
-| Delivery state | Implementation, exact-commit hosted checks, stable publication and local activation completed; see verified 1.7.1 delivery below. |
-| Blockers / limits | No known delivery blocker. Legacy or unverifiable assignment bindings retain their update guard; project speed gains remain unmeasured. |
+| Review baseline | Main `38925f29a733528321004389f3a337779406ad9f`, runtime 1.7.1; source review, a bounded verification-weakening reproduction and current documentation research. See the [evidence boundaries](docs/improvement-implementation-plan.md#review-baseline-and-evidence-boundaries). |
+| Overall progress | **R1-R34 complete; R35-R39 not started.** The counts track packages, not quality or coverage. |
+| Current phase | R35-R39 planning only: scope and acceptance prepared in priority order. Runtime implementation has not started. |
+| Next action | Await an explicit implementation request, then start R35. Continue in order after each package's scoped acceptance, within that request's authorization. |
+| Next unallocated ID | **R40**. Continue the same sequence for later improvements. |
+| Delivery state | The verified 1.7.1 delivery remains the published runtime. This cycle has no implementation, merge, release or installation evidence yet. |
+| Blockers / limits | No planning blocker. R36 host integration/provider coverage and project speed gains remain unverified. Historical assignment/update guards remain binding. |
 
-## Current cycle: R33-R34
+## Current cycle: R35-R39
 
-**R33, first / high priority:** Make task entry and specialist preparation use the same current inspection, risk and domain-effect assessment. Preserve guidance-only handling for verified mechanical edits; incomplete inspection must not become complete by default. [Scope and acceptance](docs/improvement-implementation-plan.md#r33).
+| Priority | Package | Intended improvement | Status |
+|---|---|---|---|
+| 1 | [R35: Verification integrity](docs/improvement-implementation-plan.md#r35) | Detect weakened acceptance checks before a fresh passing receipt is used to claim completion. | **Not started** |
+| 2 | [R36: Version-matched documentation](docs/improvement-implementation-plan.md#r36) | Ground version-sensitive implementation in relevant sources; use Context7 preferentially with a valid fallback. | **Not started** |
+| 3 | [R37: Security acceptance binding](docs/improvement-implementation-plan.md#r37) | Turn a confirmed changed security boundary into retained, relevant acceptance/evidence obligations. | **Not started** |
+| 4 | [R38: Reuse and structural growth](docs/improvement-implementation-plan.md#r38) | Review the need for a new subsystem, runtime dependency or architectural boundary before adding maintenance cost. | **Not started** |
+| 5 | [R39: Measured operational readiness](docs/improvement-implementation-plan.md#r39) | Support performance, capacity and recovery claims with representative, scoped evidence. | **Not started** |
 
-**R34, second / high priority:** Separate required task preparation from periodic checks of unrelated installed specialists. Bound retries of unrelated failures without weakening current-source checks before use, compatibility or active-assignment safeguards. [Scope and acceptance](docs/improvement-implementation-plan.md#r34).
+Execution order is **R35 -> R36 -> R37 -> R38 -> R39**. R37 builds on R35's evidence-integrity controls; the other ordering is primarily prioritization and integration sequencing. Acceptance of a package is not permission to exceed the user's authorized scope.
 
-Implemented sequentially: R33 established consistent required-specialist selection before R34 changed preparation scheduling around it. R34 shared preparation code and followed R33 acceptance. Neither package introduced a new workflow framework, broad instruction rewrite or testing-policy expansion.
+These are five planned improvements, not five proven defects. R35 has a reproduced control limitation; R36-R39 address evidenced coverage or execution gaps. No measured speed gain, product vulnerability or production-capacity result is claimed. Implementation steps, components and bounded verification belong in the [execution plan](docs/improvement-implementation-plan.md#execution-and-validation-boundaries).
+
+<a id="current-cycle-r33-r34"></a>
+
+R33-R34 are delivered history: accepted, merged in [PR #107](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/107), released in 1.7.1 and installed locally. Their specifications and evidence remain linked below.
 
 ## Roadmap register
 
@@ -66,6 +76,11 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 | R32 | W2 (planning draft) | [Assignment-isolated skill updates](docs/improvement-implementation-plan.md#r32) | **Complete** | `1.7.0` / [PR #104](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/104); two-project continuation/migration, retained history, interruption protection, cleanup and extracted-package checks passed. |
 | R33 | None | [Consistent inspected specialist selection](docs/improvement-implementation-plan.md#r33) | **Complete** | `1.7.1` / [PR #107](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/107); specialist/routing agreement, affected extracted-package route and full hosted checks passed. |
 | R34 | None | [Bounded periodic specialist inventory](docs/improvement-implementation-plan.md#r34) | **Complete** | `1.7.1` / [PR #107](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/107); bounded retry, required-selection failure, interrupted/legacy inventory, preparation reuse/invalidation and full hosted checks passed. |
+| R35 | None | [Verification integrity and evidence protection](docs/improvement-implementation-plan.md#r35) | **Not started** | Planning only; implementation evidence pending. |
+| R36 | None | [Version-matched documentation with controlled Context7 retrieval](docs/improvement-implementation-plan.md#r36) | **Not started** | Planning only; no provider installation or activation. |
+| R37 | None | [Security outcomes bound to change acceptance](docs/improvement-implementation-plan.md#r37) | **Not started** | Planning only; no new security control implemented. |
+| R38 | None | [Evidence-based reuse and structural growth review](docs/improvement-implementation-plan.md#r38) | **Not started** | Planning only; no product refactoring started. |
+| R39 | None | [Measured performance, capacity and recovery](docs/improvement-implementation-plan.md#r39) | **Not started** | Planning only; no load/recovery experiment performed for this package. |
 
 ## Numbering policy
 
@@ -76,19 +91,21 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 
 ## Scope and execution rules
 
-- The authorized R33-R34 implementation, merge, publication and local Head installation are complete. Real assignments and unrelated specialist installations were preserved; new implementation needs its own authorization.
+- Current authorization covers the R35-R39 roadmap and execution plan only. Do not start runtime work, install providers, modify real assignments, commit, publish or update the local Head from this planning request. Historical delivery permissions do not authorize this cycle.
 - Work on one package at a time. Record its branch/PR, relevant checks, acceptance, blocker and next action at meaningful transitions.
 - Preserve Head authority, the sole UI/UX specialist, risk floors, required findings, scoped evidence freshness and current-source checks for new tasks.
 - Reuse existing preparation caching, test selection and valid evidence. Add only meaningful missing regressions; no test-count target, coverage quota, model evaluation or new framework.
 - During Build, run affected checks. Keep existing integration/publication gates, including native Trivy; do not repeat full suites after each edit.
-- During implementation, synchronize changed canonical runtime resources with the portable mirror and check the affected extracted route.
+- During implementation, synchronize changed canonical runtime resources with the portable mirror and check the affected extracted route. Planning-only edits do not change the runtime version or portable resources.
 - **Complete** requires accepted behavior and merged implementation. Publication and local installation remain separate outcomes. Historical permissions do not authorize a new cycle.
 
 ## Deferred proposals
 
-Broad instruction slimming is not a separate stage: R33 may clarify only the task-entry and conditional-reference instructions needed for its correction. General testing-policy changes still need evidence of unnecessary execution from existing receipts; broader observability needs a concrete operational requirement. Neither is allocated in R33-R34. Do not add a routing cache, background service, model evaluation or test-count target.
+No general instruction rewrite, new workflow engine, routing cache, background service, testing quota or blanket multi-agent/model evaluation is allocated. R36 does not make Context7 installation or a paid account universal prerequisites. R37 retains native controls and Trivy as the only additional scanner. R38 does not authorize unrelated product refactoring. R39 permits only requirement-triggered operational evidence, not a universal monitoring stack or per-edit load test.
 
-## Current acceptance evidence
+<a id="current-acceptance-evidence"></a>
+
+## Retained local acceptance evidence: R33-R34
 
 | Package | Verified locally |
 |---|---|
