@@ -73,6 +73,7 @@ REQUIRED_REFS = [
     "installation-and-lifecycle.md",
     "context-routing-and-execution.md",
     "toolchain-version-resolution.md",
+    "version-matched-documentation.md",
     "wordpress-delivery.md",
     "specialist-composition.md",
 ]
