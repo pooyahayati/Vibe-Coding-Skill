@@ -6,29 +6,29 @@ Canonical progress tracker. Reviewed: 2026-11-02, Asia/Tehran. All documented im
 
 | State | Position |
 |---|---|
-| Published runtime | Stable [1.7.1](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.7.1), release commit `74a57bc9397e41e919cc59d25b4dd6009676a9bd`. |
-| Local installation | Active **1.7.1**, verified on 2026-10-16. All 81 installed files match the published ZIP byte-for-byte; offline installation check and fresh installed Head preflight passed without failures or warnings. Previous installation retained as a backup outside skill discovery. |
+| Published runtime | Stable [1.8.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.8.0), release commit `8c9972710eb1c92093f643818822e47537b9a209`. |
+| Local installation | Active **1.8.0**, verified on 2026-11-02. All 82 installed files match the published ZIP byte-for-byte. Offline installation and fresh installed Head preflight passed without failures or warnings; the previous installation is backed up outside discovery. |
 | Review baseline | Main `38925f29a733528321004389f3a337779406ad9f`, runtime 1.7.1; source review, a bounded verification-weakening reproduction and current documentation research. See the [evidence boundaries](docs/improvement-implementation-plan.md#review-baseline-and-evidence-boundaries). |
-| Overall progress | **R1-R34 complete; R35-R39 accepted locally, not merged.** The counts track packages, not quality or coverage. |
-| Current phase | R35-R39 scoped implementation and local acceptance finished on `codex/r35-r39-implementation`; planning merged in [PR #109](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/109). |
-| Next action | Authorized: merge R35-R39, publish 1.8.0 after exact-revision release gates, then update the local Head while preserving retained assignments. |
+| Overall progress | **R1-R39 complete.** The counts track packages, not quality or coverage. |
+| Current phase | R35-R39 accepted and merged in [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110), released as 1.8.0 and installed locally. Planning history: [PR #109](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/109). |
+| Next action | No active implementation package. Allocate R40 only for a meaningful, evidence-backed follow-up. |
 | Next unallocated ID | **R40**. Continue the same sequence for later improvements. |
-| Delivery state | Planning merged at `ce745cffcdb6b418759e5993962fd4ee7bddef16` (PR #109). R35-R39 source changes are local/uncommitted; implementation is not merged, released or installed. |
-| Blockers / limits | No known blocker for the locally accepted scope. Live Context7 availability/coverage, other-host CI and measured project speed/capacity remain unverified. Historical assignment/update guards remain binding. |
+| Delivery state | Source, stable tag, consumer ZIP/checksum and active installation verified. Exact-revision hosted baselines and native final-artifact Trivy passed; see delivery evidence below. |
+| Blockers / limits | No delivery blocker. Live Context7 availability/coverage and measured product speed/capacity remain unverified; no host provider setup was performed. Existing assignment/update guards remain binding. |
 
 ## Current cycle: R35-R39
 
 | Priority | Package | Intended improvement | Status |
 |---|---|---|---|
-| 1 | [R35: Verification integrity](docs/improvement-implementation-plan.md#r35) | Detect weakened acceptance checks before a fresh passing receipt is used to claim completion. | **Accepted locally; not merged** |
-| 2 | [R36: Version-matched documentation](docs/improvement-implementation-plan.md#r36) | Ground version-sensitive implementation in relevant sources; use Context7 preferentially with a valid fallback. | **Accepted locally; not merged** |
-| 3 | [R37: Security acceptance binding](docs/improvement-implementation-plan.md#r37) | Turn a confirmed changed security boundary into retained, relevant acceptance/evidence obligations. | **Accepted locally; not merged** |
-| 4 | [R38: Reuse and structural growth](docs/improvement-implementation-plan.md#r38) | Review the need for a new subsystem, runtime dependency or architectural boundary before adding maintenance cost. | **Accepted locally; not merged** |
-| 5 | [R39: Measured operational readiness](docs/improvement-implementation-plan.md#r39) | Support performance, capacity and recovery claims with representative, scoped evidence. | **Accepted locally; not merged** |
+| 1 | [R35: Verification integrity](docs/improvement-implementation-plan.md#r35) | Detect weakened acceptance checks before a fresh passing receipt is used to claim completion. | **Complete** |
+| 2 | [R36: Version-matched documentation](docs/improvement-implementation-plan.md#r36) | Ground version-sensitive implementation in relevant sources; use Context7 preferentially with a valid fallback. | **Complete** |
+| 3 | [R37: Security acceptance binding](docs/improvement-implementation-plan.md#r37) | Turn a confirmed changed security boundary into retained, relevant acceptance/evidence obligations. | **Complete** |
+| 4 | [R38: Reuse and structural growth](docs/improvement-implementation-plan.md#r38) | Review the need for a new subsystem, runtime dependency or architectural boundary before adding maintenance cost. | **Complete** |
+| 5 | [R39: Measured operational readiness](docs/improvement-implementation-plan.md#r39) | Support performance, capacity and recovery claims with representative, scoped evidence. | **Complete** |
 
 Execution order is **R35 -> R36 -> R37 -> R38 -> R39**. R37 builds on R35's evidence-integrity controls; the other ordering is primarily prioritization and integration sequencing. Acceptance of a package is not permission to exceed the user's authorized scope.
 
-These are five planned improvements, not five proven defects. R35 has a reproduced control limitation; R36-R39 address evidenced coverage or execution gaps. No measured speed gain, product vulnerability or production-capacity result is claimed. Implementation steps, components and bounded verification belong in the [execution plan](docs/improvement-implementation-plan.md#execution-and-validation-boundaries).
+These packages address one reproduced control limitation (R35) and four evidenced coverage/execution gaps (R36-R39), not five proven product defects. No measured speed gain, product vulnerability or production-capacity result is claimed. Implementation steps, components and bounded verification belong in the [execution plan](docs/improvement-implementation-plan.md#execution-and-validation-boundaries).
 
 ## Local acceptance evidence: R35-R39
 
@@ -42,7 +42,15 @@ These are five planned improvements, not five proven defects. R35 has a reproduc
 
 Validation: 105 checks from the selected behavior/routing/completion/portable suites passed; the two modules initially unavailable through package-style imports then passed all 48 checks with the existing test-helper path. The final extracted contract-v2 route and affected collector suite passed 15 checks. No blanket model evaluation, live provider calls or new test quota. Independent disposable-fixture review confirmed migration/resume, blocked downgrade, hidden-check protection and unchanged light routing; no unresolved material finding remained.
 
-Structure, changed local links/anchors and portable mirror checks passed. Repository purity has no tracked/staged forbidden artifacts; the pre-existing optional local Git-exclude setup warning remains. The auxiliary skill-creator validator could not run because its PyYAML dependency is absent; the repository's own dependency-free structural validator passed. Graphify has no current graph, so impact analysis used source/import/caller and fixture tracing. Other-host CI and publication checks were not run for this local, uncommitted implementation; no release/install readiness is claimed.
+Structure, changed local links/anchors and portable mirror checks passed. Repository purity has no tracked/staged forbidden artifacts; the pre-existing optional local Git-exclude setup warning remains. The auxiliary skill-creator validator could not run because its PyYAML dependency is absent; the repository's own dependency-free structural validator passed. Graphify has no current graph, so impact analysis used source/import/caller and fixture tracing. At local implementation acceptance, hosted CI and publication had not yet run. The subsequent verified delivery is recorded below.
+
+## Verified delivery: 1.8.0
+
+- **Source and release:** [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110) merged as `8c9972710eb1c92093f643818822e47537b9a209`; stable [v1.8.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.8.0) targets that exact commit. Release preparation also fixed the missing new-reference entry in the offline installation manifest; its existing regression and final CI passed.
+- **Exact-commit hosted baseline:** [Validate Skill](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/41416456285), [Cross Platform Smoke](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/41416456379) (Linux Python 3.10/3.13, macOS and Windows), [Real World Repository Validation](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/41416456345), [Agent Skills Spec Compatibility](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/41416456297), [Tool Contract Tests](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/41416456311) and [WordPress Artifact Contract](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/41416456293) passed. No model evaluation/provider key was required.
+- **Publication:** [Release workflow, successful recovery attempt](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/41416768256/attempts/2) enforced full readiness, built/checked the portable package and passed native Trivy's final-package secret scan. The initial attempt stopped after draft creation; bounded recovery completed the same matching draft without moving its tag or replacing assets.
+- **Consumer artifact:** 82-file ZIP and checksum are published. ZIP SHA-256: `9661a87d9032ffd13522004d4781263f16aa8d5fd74d4b5f65105a50f05bb182`. Downloaded bytes match the checksum and the canonical release resources.
+- **Local activation:** managed Head update selected v1.8.0 at the release commit; all 82 installed files match the published ZIP exactly. Offline installation and fresh reloaded Head preflight returned PASS without warnings/failures. Version 1.7.1 is retained as a backup outside skill discovery; no assignment was stopped or silently migrated. Existing task-contract v1 state remains supported under its documented limits.
 
 <a id="current-cycle-r33-r34"></a>
 
@@ -90,11 +98,11 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 | R32 | W2 (planning draft) | [Assignment-isolated skill updates](docs/improvement-implementation-plan.md#r32) | **Complete** | `1.7.0` / [PR #104](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/104); two-project continuation/migration, retained history, interruption protection, cleanup and extracted-package checks passed. |
 | R33 | None | [Consistent inspected specialist selection](docs/improvement-implementation-plan.md#r33) | **Complete** | `1.7.1` / [PR #107](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/107); specialist/routing agreement, affected extracted-package route and full hosted checks passed. |
 | R34 | None | [Bounded periodic specialist inventory](docs/improvement-implementation-plan.md#r34) | **Complete** | `1.7.1` / [PR #107](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/107); bounded retry, required-selection failure, interrupted/legacy inventory, preparation reuse/invalidation and full hosted checks passed. |
-| R35 | None | [Verification integrity and evidence protection](docs/improvement-implementation-plan.md#r35) | **Accepted locally; not merged** | Real weakened-check regression blocks; equivalent replacement and stale-review rejection checked. Scoped integration and independent fixture review passed. |
-| R36 | None | [Version-matched documentation with controlled Context7 retrieval](docs/improvement-implementation-plan.md#r36) | **Accepted locally; not merged** | Conditional routing and bounded official/local fallback added; no provider installation or live-lookup claim. |
-| R37 | None | [Security outcomes bound to change acceptance](docs/improvement-implementation-plan.md#r37) | **Accepted locally; not merged** | Missing protection/scanner-only substitution rejected; denial-with-mutation and retained resume checked. |
-| R38 | None | [Evidence-based reuse and structural growth review](docs/improvement-implementation-plan.md#r38) | **Accepted locally; not merged** | Existing decision/diff review extended; no new detector, runtime dependency or product refactoring. |
-| R39 | None | [Measured performance, capacity and recovery](docs/improvement-implementation-plan.md#r39) | **Accepted locally; not merged** | Operational conditions and scoped context binding added; local fixture only, no product capacity claim. |
+| R35 | None | [Verification integrity and evidence protection](docs/improvement-implementation-plan.md#r35) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); weakened-check, equivalent-replacement and stale-review scenarios passed. |
+| R36 | None | [Version-matched documentation with controlled Context7 retrieval](docs/improvement-implementation-plan.md#r36) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); conditional routing and official/local fallback checked; no live-provider claim. |
+| R37 | None | [Security outcomes bound to change acceptance](docs/improvement-implementation-plan.md#r37) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); missing protection, scanner-only substitution, denial-with-mutation and retained resume checked. |
+| R38 | None | [Evidence-based reuse and structural growth review](docs/improvement-implementation-plan.md#r38) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); existing decision/diff review extended; no new detector or runtime dependency. |
+| R39 | None | [Measured performance, capacity and recovery](docs/improvement-implementation-plan.md#r39) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); operational conditions and scoped context binding checked; no product capacity claim. |
 
 ## Numbering policy
 
