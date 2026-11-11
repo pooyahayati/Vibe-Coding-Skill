@@ -6,15 +6,21 @@ Canonical progress tracker. Reviewed: 2026-11-11, Asia/Tehran. All documented im
 
 | State | Position |
 |---|---|
-| Published runtime | Stable [1.8.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.8.0), release commit `8c9972710eb1c92093f643818822e47537b9a209`. |
-| Local installation | Active **1.8.0**, verified on 2026-11-02. All 82 installed files match the published ZIP byte-for-byte. Offline installation and fresh installed Head preflight passed without failures or warnings; the previous installation is backed up outside discovery. |
+| Published runtime | Stable [1.8.1](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.8.1), release commit `2302346737646fc2b423b0e513fb6c40d044f0fd`. |
+| Local installation | Active **1.8.1**, verified on 2026-11-11. All 82 installed files match the published ZIP byte-for-byte. Offline installation and fresh installed Head preflight passed without failures or warnings; 1.8.0 is backed up outside discovery. |
 | Review baseline | Main `38925f29a733528321004389f3a337779406ad9f`, runtime 1.7.1; source review, a bounded verification-weakening reproduction and current documentation research. See the [evidence boundaries](docs/improvement-implementation-plan.md#review-baseline-and-evidence-boundaries). |
 | Overall progress | **R1-R39 complete.** The counts track packages, not quality or coverage. |
-| Current phase | Maintenance: Trivy Git-checkout report compatibility accepted locally; preparing patch release 1.8.1. R35-R39 remain complete in [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110). |
-| Next action | Merge the scoped fix, publish 1.8.1 after exact-revision release gates, then update the local Head. R40 remains the next planned improvement ID. |
+| Current phase | Trivy Git-checkout compatibility merged in [PR #112](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/112), released as 1.8.1 and installed locally. R35-R39 remain complete in [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110). |
+| Next action | No active implementation package. Allocate R40 only for a meaningful, evidence-backed follow-up. |
 | Next unallocated ID | **R40**. Continue the same sequence for later improvements. |
-| Delivery state | Published/installed 1.8.0 evidence remains below. The 1.8.1 candidate has nine passing native-gate regressions, extracted-package installation checks and a real Trivy 0.76.2 checkout scan through the portable runtime; merge/publication/install remain pending. |
-| Blockers / limits | Stable 1.8.0 falsely rejects valid `repository` reports from local Git-checkout scans; the local fix preserves path/image binding and blocking findings. Live Context7 coverage and measured product speed/capacity remain unverified. Assignment/update guards remain binding. |
+| Delivery state | Source, stable tag, consumer ZIP/checksum and active installation verified for 1.8.1. Exact-revision hosted baselines and native final-artifact Trivy passed; maintenance evidence is below. |
+| Blockers / limits | No delivery blocker. Live Context7 coverage and measured product speed/capacity remain unverified. Assignment/update guards remain binding. |
+
+## Verified maintenance delivery: 1.8.1
+
+- **Fix:** [PR #112](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/112), merged as `2302346737646fc2b423b0e513fb6c40d044f0fd`, accepts path-bound native `repository` reports for filesystem scans while retaining image/report/finding controls. The original reproduction failed before the fix; nine focused release-gate regressions and a real Trivy 0.76.2 Git-checkout scan through the portable CLI passed afterward.
+- **Release:** all six exact-revision hosted baselines passed, including [validation](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/43003269527) and the [four-platform matrix](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/43003269544). [Publication attempt 2](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/43003589544/attempts/2) completed the matching draft through bounded recovery after the initial identity-check interruption; native Trivy 0.76.2 scanned the final extracted package successfully. The tag was not moved and assets were not replaced.
+- **Package and activation:** the published 82-file ZIP matches canonical release resources; SHA-256 `0bf80b054b808e883161e6a9897ad8c81e07351613c902953a766b8abd7f44db`. Managed installation selected v1.8.1 at that commit, all installed bytes match the ZIP, and offline installation plus fresh reloaded Head preflight passed without failures or warnings. The prior default is backed up outside discovery; no assignment was stopped or silently migrated.
 
 ## Current cycle: R35-R39
 
