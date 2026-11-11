@@ -4,6 +4,11 @@ User-facing release summaries; [CHANGELOG.md](CHANGELOG.md) retains technical hi
 
 From `1.0.0`, publication requires no model evaluation/provider key. Recent releases include a verified portable ZIP and checksum; publication does not update local installations. The pre-1.0 entries below describe historical policies, not current release requirements.
 
+## 1.8.1 — Reliable release scans of Git checkouts
+
+- Fix false publication blocks when a native Trivy filesystem scan identifies the local checkout as a repository.
+- Keep exact target matching, image checks and blocking security findings intact. Existing projects and task contracts need no migration.
+
 ## 1.8.0 — Stronger outcomes without blanket verification
 
 - Review changed acceptance checks against their pre-change definitions; fresh green execution alone cannot excuse a weakened check.

@@ -1,6 +1,6 @@
 # Improvement Roadmap
 
-Canonical progress tracker. Reviewed: 2026-11-02, Asia/Tehran. All documented improvement packages use one permanent sequence, starting at **R1**.
+Canonical progress tracker. Reviewed: 2026-11-11, Asia/Tehran. All documented improvement packages use one permanent sequence, starting at **R1**.
 
 ## Current position
 
@@ -10,11 +10,11 @@ Canonical progress tracker. Reviewed: 2026-11-02, Asia/Tehran. All documented im
 | Local installation | Active **1.8.0**, verified on 2026-11-02. All 82 installed files match the published ZIP byte-for-byte. Offline installation and fresh installed Head preflight passed without failures or warnings; the previous installation is backed up outside discovery. |
 | Review baseline | Main `38925f29a733528321004389f3a337779406ad9f`, runtime 1.7.1; source review, a bounded verification-weakening reproduction and current documentation research. See the [evidence boundaries](docs/improvement-implementation-plan.md#review-baseline-and-evidence-boundaries). |
 | Overall progress | **R1-R39 complete.** The counts track packages, not quality or coverage. |
-| Current phase | R35-R39 accepted and merged in [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110), released as 1.8.0 and installed locally. Planning history: [PR #109](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/109). |
-| Next action | No active implementation package. Allocate R40 only for a meaningful, evidence-backed follow-up. |
+| Current phase | Maintenance: Trivy Git-checkout report compatibility accepted locally; preparing patch release 1.8.1. R35-R39 remain complete in [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110). |
+| Next action | Merge the scoped fix, publish 1.8.1 after exact-revision release gates, then update the local Head. R40 remains the next planned improvement ID. |
 | Next unallocated ID | **R40**. Continue the same sequence for later improvements. |
-| Delivery state | Source, stable tag, consumer ZIP/checksum and active installation verified. Exact-revision hosted baselines and native final-artifact Trivy passed; see delivery evidence below. |
-| Blockers / limits | No delivery blocker. Live Context7 availability/coverage and measured product speed/capacity remain unverified; no host provider setup was performed. Existing assignment/update guards remain binding. |
+| Delivery state | Published/installed 1.8.0 evidence remains below. The 1.8.1 candidate has nine passing native-gate regressions, extracted-package installation checks and a real Trivy 0.76.2 checkout scan through the portable runtime; merge/publication/install remain pending. |
+| Blockers / limits | Stable 1.8.0 falsely rejects valid `repository` reports from local Git-checkout scans; the local fix preserves path/image binding and blocking findings. Live Context7 coverage and measured product speed/capacity remain unverified. Assignment/update guards remain binding. |
 
 ## Current cycle: R35-R39
 
@@ -113,7 +113,7 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 
 ## Scope and execution rules
 
-- Current authorization covers implementation commit/merge, the 1.8.0 release and local Head update. Preserve real assignments and local edits; no Context7 installation or unrelated provider activation is included.
+- Current authorization covers the Trivy compatibility fix commit/merge, the 1.8.1 patch release and local Head update. Preserve real assignments and local edits; no unrelated provider activation is included.
 - Work on one package at a time. Record its branch/PR, relevant checks, acceptance, blocker and next action at meaningful transitions.
 - Preserve Head authority, the sole UI/UX specialist, risk floors, required findings, scoped evidence freshness and current-source checks for new tasks.
 - Reuse existing preparation caching, test selection and valid evidence. Add only meaningful missing regressions; no test-count target, coverage quota, model evaluation or new framework.

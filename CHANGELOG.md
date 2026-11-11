@@ -6,6 +6,10 @@ Technical release history. Entries describe their release; current operating and
 
 No pending changes.
 
+## 1.8.1 — Trivy Git-checkout report compatibility
+
+- Accept native Trivy filesystem scans labeled `repository` for local Git checkouts, alongside `filesystem`, only when the absolute report path matches the requested target. Preserve image identity/type, report validation and blocking findings; add focused regression coverage and synchronize the portable package.
+
 ## 1.8.0 — Bound acceptance and version-matched engineering
 
 - R35: retain pre-change check definitions and require a current Head integrity disposition for changed/new acceptance checks, even after fresh passing execution. Equivalent test maintenance remains allowed; hashes do not prove assertion quality.

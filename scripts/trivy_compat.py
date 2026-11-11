@@ -35,6 +35,9 @@ def local_readiness() -> dict[str, object]:
 def release_findings(report: dict, target: str, target_type: str) -> dict[str, int]:
     """Inspect actual JSON findings; an exit-zero scan is not a clean scan."""
     artifact = report.get("ArtifactName") if isinstance(report, dict) else None
+    # Trivy fs reports a detected local Git checkout as a repository.
+    # Both filesystem report types must retain the same absolute-path binding.
+    artifact_types = {"fs": ("filesystem", "repository"), "image": ("container_image",)}
     bound = artifact == target
     if target_type == "fs" and isinstance(artifact, str):
         # Native Trivy reports forward slashes on Windows. Compare the actual
@@ -43,7 +46,7 @@ def release_findings(report: dict, target: str, target_type: str) -> dict[str, i
                  and Path(artifact).resolve() == Path(target).resolve())
     if (not isinstance(report, dict) or type(report.get("SchemaVersion")) is not int
             or report["SchemaVersion"] != 2 or not bound
-            or report.get("ArtifactType") != {"fs": "filesystem", "image": "container_image"}[target_type]):
+            or report.get("ArtifactType") not in artifact_types[target_type]):
         raise ValueError("invalid Trivy report or target binding")
     results = report.get("Results", [])  # Trivy omits an empty Results collection.
     if not isinstance(results, list):
