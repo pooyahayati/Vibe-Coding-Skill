@@ -342,21 +342,40 @@ class NativeTrivyReleaseTests(unittest.TestCase):
         self.assertEqual(self.scan(stderr="WARN unsupported input")['gate'], "WARN")
 
     def test_native_filesystem_report_accepts_path_spelling_not_another_target(self):
-        report = dict(self.report, ArtifactName=self.target.as_posix())
-        self.assertEqual(self.scan(report)["gate"], "PASS")
-        report["ArtifactName"] = (self.home / "unscanned").as_posix()
-        self.assertEqual(self.scan(report)["gate"], "BLOCK")
+        for artifact_type in ("filesystem", "repository"):
+            with self.subTest(artifact_type=artifact_type):
+                report = dict(self.report, ArtifactType=artifact_type,
+                              ArtifactName=self.target.as_posix())
+                self.assertEqual(self.scan(report)["gate"], "PASS")
+                for wrong_target in ((self.home / "unscanned").as_posix(), self.target.name):
+                    with self.subTest(wrong_target=wrong_target):
+                        report["ArtifactName"] = wrong_target
+                        self.assertEqual(self.scan(report)["gate"], "BLOCK")
+
+    def test_report_types_remain_bound_to_filesystem_or_immutable_image(self):
+        image = "sha256:" + "a" * 64
+        report = dict(self.report, ArtifactType="container_image", ArtifactName=image)
+        self.assertEqual(trivy_compat.release_findings(report, image, "image")["blocking"], 0)
+        with self.assertRaises(ValueError):
+            trivy_compat.release_findings(report, "sha256:" + "b" * 64, "image")
+        for artifact_type in ("filesystem", "repository", "unknown"):
+            with self.subTest(image_artifact_type=artifact_type), self.assertRaises(ValueError):
+                trivy_compat.release_findings(dict(report, ArtifactType=artifact_type), image, "image")
+        for artifact_type in ("container_image", "unknown"):
+            with self.subTest(fs_artifact_type=artifact_type), self.assertRaises(ValueError):
+                trivy_compat.release_findings(dict(self.report, ArtifactType=artifact_type), str(self.target), "fs")
 
     def test_exit_zero_does_not_hide_blocking_findings(self):
-        for key, finding in (("Vulnerabilities", {"Severity": "HIGH"}),
-                             ("Misconfigurations", {"Severity": "CRITICAL", "Status": "FAIL"}),
-                             ("Secrets", {"Severity": "LOW", "Match": "must-not-be-echoed"})):
-            with self.subTest(key=key):
-                report = dict(self.report, Results=[{key: [finding]}])
-                result = self.scan(report)
-                self.assertEqual(result["gate"], "BLOCK")
-                self.assertEqual(result["findings"]["blocking"], 1)
-                self.assertNotIn("must-not-be-echoed", json.dumps(result))
+        for artifact_type in ("filesystem", "repository"):
+            for key, finding in (("Vulnerabilities", {"Severity": "HIGH"}),
+                                 ("Misconfigurations", {"Severity": "CRITICAL", "Status": "FAIL"}),
+                                 ("Secrets", {"Severity": "LOW", "Match": "must-not-be-echoed"})):
+                with self.subTest(artifact_type=artifact_type, key=key):
+                    report = dict(self.report, ArtifactType=artifact_type, Results=[{key: [finding]}])
+                    result = self.scan(report)
+                    self.assertEqual(result["gate"], "BLOCK")
+                    self.assertEqual(result["findings"]["blocking"], 1)
+                    self.assertNotIn("must-not-be-echoed", json.dumps(result))
 
     def test_stale_output_failed_process_and_invalid_report_never_qualify(self):
         self.output.parent.mkdir()
