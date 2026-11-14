@@ -78,7 +78,29 @@ Each row has a stable `id`, `kind` (`choice` or `sample`), concrete `description
 - `project_state.py` and contract-backed planning inherit omitted decision rows from retained project state, including across a different `task_id`. The effective returned `task_contract` and digest are the binding to use afterward. Capture new/changed records once before a relevant UI assignment; no extra approval is requested by capture. Previous values survive in `design_decision_history` in the same snapshot, not a separate ledger.
 - UI assignments reference applicable records through `design_decision_ids`; returns preserve those IDs. A settled visual decision uses `{ "design_decision_id": "<id>" }` in `settled_decisions` and must resolve to approved/delegated authority. Free-text legacy/technical constraints never establish owner approval. Pending records can be assigned for proposal work; structured continuity is not final UI acceptance.
 
-This is an additive extension for current task-contract versions 1/2 and handoff version 1. Legacy records without it remain readable and lightweight. Existing assignment reconciliation/resource isolation still applies: migrate an older retained runtime explicitly before relying on R40 controls. Backend-only tasks and compatible mechanical changes need no new design record, repeated owner approval or formal assignment solely because a pending design exists elsewhere. R41 separately binds applicable design acceptance to completion; R40 does not add that completion gate.
+This is an additive extension for current task-contract versions 1/2 and handoff version 1. Legacy records without it remain readable and lightweight. Existing assignment reconciliation/resource isolation still applies: migrate an older retained runtime explicitly before relying on these controls. Backend-only tasks and compatible mechanical changes need no new design record, repeated owner approval or formal assignment solely because a pending design exists elsewhere.
+
+### Design delivery acceptance (R41)
+
+When retained design decisions overlap a structured task's scope, bind the intended outcome once in its existing contract:
+
+```json
+"design_delivery": {
+  "mode": "accepted-ui",
+  "decision_ids": ["primary-sample"],
+  "criterion_ids": ["workspace-usable"]
+}
+```
+
+Use all applicable decision IDs and the required criteria that describe this delivery. This references R40 records; it does not create another approval ledger. Planning and relevant UI assignments preserve these links. A successor task inherits known decisions even if it lists only functional criteria; omitting the delivery binding cannot establish accepted UI completion. Explicitly reconcile changes to an existing task's delivery target through the existing state mechanism.
+
+- `accepted-ui`: the applicable sample and choices need current, scoped owner approval or explicit delegation. Link the criteria to an existing required `visual-check` manual observation whose inputs cover the affected design scope. The observation records the actually reviewed rendered result, method and environment, not just screenshot generation. Qualifying rendered evidence and owner authority are separate; neither a working screen nor Head acceptance supplies the other.
+- `provisional-ui`: deliver a clearly labelled proposal or sample; unresolved decisions remain visible. It may complete its promised preview without claiming owner acceptance.
+- `functional-only`: complete independent engineering or a compatible mechanical edit while retaining the design context. Reuse unchanged approved choices; do not reopen discovery or request a new sample solely for this label.
+
+Completion reports expose `design_acceptance`, including pending IDs, `owner_approved` and `rollout_design_ready`. The latter requires both settled authority and qualifying current evidence; it is a design prerequisite, never deployment permission or release readiness. Before dependent broad rollout use the `accepted-ui` binding and require that prerequisite. Provisional/functional outcomes have their own `completion_scope` and cannot cross that boundary. An explicitly delegated final sample is labelled delegated, not owner-approved; ordinary permission to implement does not qualify.
+
+UI Verify/Review assignments retain the relevant rendered-review obligation; accepting an earlier preparation handoff cannot settle a pending owner decision. Existing receipt freshness and R40 revision/scope controls reject stale evidence or reuse of authority for changed choices. Reuse valid scoped evidence and authority instead of adding checks or questions. Disjoint backend tasks and legacy guidance-only edits do not acquire a design gate. An older record lacking the binding remains readable but cannot establish accepted UI delivery until its affected scope is reconciled; do not rewrite historical evidence.
 
 ## Execution receipt — E1/E2
 

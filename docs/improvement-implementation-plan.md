@@ -12,7 +12,7 @@ The relevant source, portable and installed controls match after line-ending nor
 
 ## Current execution boundaries
 
-1. **Sequence and authority:** Commit and merge verified R40, then implement R41 locally and stop at its scoped acceptance. Use one lead and relevant checks without another permission ceremony for routine steps. R41 commit/merge, publication and installation retain their separate authorization boundaries.
+1. **Sequence and authority:** Commit and merge verified R40, then implement R41 locally and stop at its scoped acceptance. Use one lead and relevant checks without another permission ceremony for routine steps. The current request authorizes R41 commit/merge, publication and local installation after the applicable delivery gates.
 2. **Keep domain ownership:** The sole UI/UX specialist owns discovery, visual methods and applicable sample review. The Head preserves owner decisions, scope and completion obligations; do not copy palette, font or layout rules into the parent skill. Head acceptance cannot manufacture owner consent.
 3. **Reuse rather than duplicate:** Extend existing contracts, project state, handoff/resume and evidence records only where needed. Define compatibility before changing persisted formats. No new service, general workflow engine, mandatory per-edit document or real-project mutation.
 4. **Bound the human interaction:** Reuse valid approval or scoped delegation. Ask one focused batch only for material unresolved choices or a conflict; no universal color/font questionnaire, automatic reapproval on every revision or extra approval for mechanical edits. Sample acceptance can resolve the relevant visual choices together. Backend work and clearly provisional samples remain possible while acceptance is pending.

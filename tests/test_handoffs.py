@@ -79,6 +79,7 @@ class HandoffTests(unittest.TestCase):
         row = design_decision()
         row["scope"] = ["src"]
         self.contract["design_decisions"] = [row]
+        self.contract["design_delivery"] = {"mode": "provisional-ui", "decision_ids": [row["id"]], "criterion_ids": ["setting"]}
         self.spec["contract_sha256"] = behavior.digest(self.contract)
         with self.assertRaisesRegex(ValueError, "omitted relevant owner design"):
             handoff.validate_assignment(self.spec, self.contract)
@@ -104,6 +105,7 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual(resumed["design_decisions"], [row])
         next_contract = copy.deepcopy(self.contract)
         next_contract.pop("design_decisions")
+        next_contract.pop("design_delivery")
         next_contract["task_id"] = "next-ui-task"
         spec = dict(self.spec, task_id="next-ui-task", assignment_id="next-ui", design_decision_ids=[],
                     contract_sha256=behavior.digest(next_contract))
@@ -112,6 +114,35 @@ class HandoffTests(unittest.TestCase):
 
     def start(self, spec=None):
         return handoff.assign(self.root, self.contract, spec or self.spec, self.skills, self.state)
+
+    def test_head_accepted_preparation_cannot_accept_pending_design_or_rollout(self):
+        from test_behavior_contract import design_decision
+        import project_state
+        import receipt_validation
+        sample = design_decision("primary-sample", "sample")
+        sample["scope"] = ["src"]
+        self.contract["design_decisions"] = [sample]
+        self.contract["design_delivery"] = {"mode": "accepted-ui", "decision_ids": [sample["id"]], "criterion_ids": ["setting"]}
+        self.contract["evidence_requirements"].append({"id": "render", "criterion_ids": ["setting"], "kind": "visual-check",
+            "origin": "manual", "required": True, "input_paths": ["src"]})
+        self.spec.update(stage="design", completion_binding="stage-handoff", contract_sha256=behavior.digest(self.contract),
+                         design_decision_ids=[sample["id"]], evidence_requirement_ids=["check", "render"])
+        project_state.capture(self.root, task_contract=self.contract)
+        with self.assertRaisesRegex(ValueError, "omitted rendered review"):
+            handoff.validate_assignment(dict(self.spec, stage="verify", evidence_requirement_ids=["check"]), self.contract)
+        returned = self.output(self.start())
+        rendered = receipt_validation.observe(self.root, self.contract, "render", {
+            "description": "Synthetic sample matches proposal; owner decision pending", "method": "Fixture observation", "environment": "local fixture"})
+        receipt = rendered["receipt"]
+        self.evidence.append({"id": receipt["id"], "kind": "visual-check", "origin": "manual", "result": "pass", "required": True,
+                              "requirement_id": "render", "receipt_ref": rendered["receipt_ref"], "receipt_sha256": rendered["receipt_sha256"]})
+        returned.update(design_decision_ids=[sample["id"]], evidence_ids=[e["id"] for e in self.evidence])
+        inspected = self.inspect(returned)
+        self.assertTrue(self.inspect(returned, self.decision(returned, inspected))["accepted"])
+        result = gate.evaluate(self.report(), task_contract=self.contract, root=self.root)
+        self.assertEqual(result["gate"], "BLOCK", result)
+        self.assertEqual(result["design_acceptance"]["pending_ids"], [sample["id"]])
+        self.assertFalse(result["design_acceptance"]["rollout_design_ready"])
 
     def install_head_fixture(self):
         head = manager.registry()["head"]

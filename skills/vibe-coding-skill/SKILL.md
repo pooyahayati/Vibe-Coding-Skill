@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Python 3.10+ and Git. Publication requires an installed native Trivy executable and relevant local release scans. Graphify is conditional. Network access is needed for registry, vulnerability data, GitHub and tool-update checks.
 metadata:
   author: "Pooya Hayati"
-  version: "1.8.1"
+  version: "1.9.0"
 ---
 
 # Vibe Coding Skill
@@ -164,6 +164,8 @@ Reuse sufficient evidence while its scoped inputs, artifacts and relevant contex
 ## Completion contract
 
 Never report `Done` without explicit acceptance criteria and relevant evidence.
+
+For new/material UI work with retained owner decisions, bind the [design delivery outcome](references/shared-improvement-contracts.md#design-delivery-acceptance-r41). Before owner-accepted UI claims or dependent broad rollout, require current design acceptance and rendered evidence; a provisional/functional task pass does not establish either. Reuse valid authority and keep compatible mechanical edits lightweight.
 
 For structured completion, retain the accepted task contract and use `scripts/completion_gate.py --task-contract <contract> --root <project>` with schema-3 receipts. Read [receipt usage and compatibility](references/execution-receipts.md) only when collecting/resolving receipts or migrating retained legacy state. Schema 3 cannot downgrade; schema-2 results remain declared evidence. Preserve required outcomes, checks and specialist commitments until explicit reconciliation. Failed, missing or stale required evidence blocks completion; extra passing checks cannot cancel it. Higher-risk provenance/revision binding remains. A task pass establishes only its accepted outcomes, not later release readiness.
 

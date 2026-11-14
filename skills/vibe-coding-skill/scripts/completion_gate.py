@@ -418,7 +418,22 @@ def evaluate(report, acceptance_baseline=None, *, task_contract=None, root=None,
         return {"gate": "BLOCK", "failures": ["report must be an object"], "warnings": []}
     if task_contract is not None:
         import receipt_validation
-        return receipt_validation.evaluate_completion(report, task_contract, root, receipt_root, context, evaluate_declared)
+        result = receipt_validation.evaluate_completion(report, task_contract, root, receipt_root, context, evaluate_declared)
+        if str(report.get("status", "")).lower() == "done":
+            import behavior_contract
+            try:
+                design = behavior_contract.design_completion(task_contract, root)
+                result["design_acceptance"] = design
+                result["failures"].extend(design["failures"])
+                if design["state"] in {"provisional-ui", "functional-only"}:
+                    result["completion_scope"] = design["state"]
+                design["rollout_design_ready"] = bool(result.get("receipt_verified") and not result["failures"]
+                                                       and design["state"] in {"approved", "delegated"})
+            except (ValueError, OSError, TypeError, RuntimeError) as exc:
+                result["failures"].append("invalid retained design delivery: " + str(exc))
+            if result["failures"]:
+                result.update(gate="BLOCK", receipt_verified=False)
+        return result
     if report.get("schema_version") == 3:
         return {"gate": "BLOCK", "failures": ["schema 3 requires an independently retained task contract and project root"], "warnings": [], "receipt_verified": False}
     result = evaluate_declared(report, acceptance_baseline)

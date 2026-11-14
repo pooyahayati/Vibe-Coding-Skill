@@ -112,6 +112,8 @@ Accepted unchanged bindings reuse the decision without another instruction diff 
 
 ## Stage return and Head acceptance (S2)
 
+For new/material UI work, carry the [design delivery binding](shared-improvement-contracts.md#design-delivery-acceptance-r41) alongside the existing assignment criteria. Preserve pending owner decisions across returns and successors; accepting preparation does not accept the final interface. The UI/UX specialist owns visual methodology, while the Head checks this binding at completion.
+
 For formal domain work, retain one small `vibe-specialist-assignment` with `scripts/specialist_handoff.py assign`. It requires the independently retained task contract and current S1-accepted specialist. It snapshots the actual project baseline and assigned source/Head controls outside product source. A planner may carry these objects in `bound_specialist_assignments` using repeatable `--specialist-assignment`; drafting or structurally validating a plan does not start or accept delegation. Guidance-only edits do not create this record; existing records remain binding.
 
 The assignment fields and return/Head decision formats are defined in [shared contracts](shared-improvement-contracts.md#specialist-assignment-and-return--s1s2). Use known criterion/evidence IDs, concrete project-relative scope, actual `platform.stack`/`platform.runtime`, settled decisions, protected invariants and existing authorized actions. Retain inherited criterion invariants. Optional `shared_contracts` entries (`id`, concrete producer/consumer `description`) name confirmed boundaries the return and Head must assess. Optional `input_excludes` identify generated input subtrees; do not exclude actual affected product inputs merely to suppress a mismatch.

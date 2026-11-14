@@ -124,12 +124,78 @@ def inherit_design_decisions(baseline: dict | None, current: dict) -> dict:
     failures = design_changes(baseline, result)
     if failures:
         raise ValueError("; ".join(failures))
-    return result
+    return validate(result)
 
 
 def related_design_ids(contract: dict, scope: list[str]) -> set[str]:
     return {key for key, row in design_decisions(contract.get("design_decisions", [])).items()
             if any(path_covered(p, scope) or any(path_covered(s, [p]) for s in scope) for p in row["scope"])}
+
+
+def validate_design_delivery(contract: dict) -> None:
+    """Bind delivery intent to existing decisions, criteria and rendered evidence."""
+    if "design_delivery" not in contract:
+        return  # Legacy records stay readable; applicable completion fails closed below.
+    binding = contract["design_delivery"]
+    if (not isinstance(binding, dict) or set(binding) != {"mode", "decision_ids", "criterion_ids"}
+            or not text(binding.get("mode")) or binding["mode"] not in {"accepted-ui", "provisional-ui", "functional-only"}
+            or any(not strings(binding.get(k), True) or len(set(binding[k])) != len(binding[k])
+                   for k in ("decision_ids", "criterion_ids"))):
+        raise ValueError("invalid scoped design_delivery binding")
+    relevant = related_design_ids(contract, contract["scope"])
+    required = {c["id"] for c in contract["acceptance_criteria"] if c["required"]}
+    if set(binding["decision_ids"]) != relevant or not set(binding["criterion_ids"]) <= required:
+        raise ValueError("design delivery omitted applicable decisions or required outcome links")
+    if binding["mode"] != "accepted-ui":
+        return
+    decisions = design_decisions(contract["design_decisions"])
+    if not any(decisions[key]["kind"] == "sample" for key in relevant):
+        raise ValueError("accepted UI delivery needs its applicable sample decision")
+    reviews = [e for e in contract["evidence_requirements"]
+               if e["required"] and e["kind"] == "visual-check" and e["origin"] == "manual"
+               and set(e["criterion_ids"]) & set(binding["criterion_ids"])]
+    if not set(binding["criterion_ids"]) <= {c for e in reviews for c in e["criterion_ids"]}:
+        raise ValueError("accepted UI delivery needs a linked rendered-review obligation")
+    for key in relevant:
+        affected = [p for p in contract["scope"] if path_covered(p, decisions[key]["scope"])]
+        affected += [p for p in decisions[key]["scope"] if path_covered(p, contract["scope"])]
+        if not any(all(path_covered(p, e.get("input_paths") or contract["scope"]) for p in affected)
+                   and not any(path_covered(p, [x]) or path_covered(x, [p])
+                               for p in affected for x in e.get("input_excludes", [])) for e in reviews):
+            raise ValueError("rendered review does not cover affected design scope: " + key)
+
+
+def design_completion(contract: dict, root=None) -> dict:
+    """Check known owner obligations, never infer consent from a technical pass."""
+    effective = validate(contract)
+    if root is not None:
+        import project_state
+        effective = project_state.inherit_contract(Path(root), effective)
+    relevant = related_design_ids(effective, effective["scope"])
+    result = {"state": "not-applicable", "decision_ids": sorted(relevant), "pending_ids": [],
+              "owner_approved": False, "rollout_design_ready": False, "failures": []}
+    if not relevant:
+        return result
+    decisions = design_decisions(effective["design_decisions"])
+    result["pending_ids"] = sorted(key for key in relevant if decisions[key]["status"] in {"proposed", "unknown"})
+    result["state"] = "unverified"
+    if not relevant <= design_decisions(contract.get("design_decisions", [])).keys():
+        result["failures"].append("retained owner design decisions omitted from delivery: " + ", ".join(sorted(relevant)))
+    binding = effective.get("design_delivery")
+    if binding is None:
+        result["failures"].append("applicable owner decisions need a scoped design_delivery binding: " + ", ".join(sorted(relevant)))
+        return result
+    # Inheritance may reveal decisions not known by the supplied delivery binding.
+    validate_design_delivery(effective)
+    if binding["mode"] != "accepted-ui":
+        result["state"] = binding["mode"]
+        return result
+    result["failures"].extend("owner design decision unresolved: " + key for key in result["pending_ids"])
+    if not result["failures"]:
+        result["owner_approved"] = all(decisions[key]["status"] == "approved" for key in relevant)
+        result["state"] = "approved" if result["owner_approved"] else "delegated"
+        # Receipt-backed rendered review must still qualify before this becomes ready.
+    return result
 
 
 def validate(value: Any) -> dict[str, Any]:
@@ -143,7 +209,7 @@ def validate(value: Any) -> dict[str, Any]:
         raise ValueError("integrity/security bindings require task-contract schema 2; explicitly reconcile legacy state")
     if value["schema_version"] == 2 and set(value) - {
             "format", "schema_version", "task_id", "objective", "scope", "risk_tier", "risk_facts",
-            "specialist_assignment_ids", "verification_baseline", "acceptance_criteria", "evidence_requirements", "design_decisions"}:
+            "specialist_assignment_ids", "verification_baseline", "acceptance_criteria", "evidence_requirements", "design_decisions", "design_delivery"}:
         raise ValueError("unsupported task-contract schema 2 fields")
     if not all(text(value.get(k)) for k in ("task_id", "objective")) or not strings(value.get("scope"), True):
         raise ValueError("task contract requires task_id, objective and scope")
@@ -228,6 +294,7 @@ def validate(value: Any) -> dict[str, Any]:
                        and _gate.evidence_family(e["kind"]) in {"verification", "integration", "runtime", "data", "manual"}
                        for e in obligations):
                 raise ValueError("security outcome needs behavioral evidence; a scan or design review alone is insufficient")
+    validate_design_delivery(value)
     digest(value)  # Reject non-JSON/non-finite extensions before persistence.
     return copy.deepcopy(value)
 
@@ -260,6 +327,8 @@ def compare(baseline: dict[str, Any], current: dict[str, Any]) -> list[str]:
         failures.append("retained risk floor lowered")
     failures.extend(material_risk_losses(baseline, current))
     failures.extend(design_changes(baseline, current))
+    if "design_delivery" in baseline and current.get("design_delivery") != baseline["design_delivery"]:
+        failures.append("retained design delivery target or outcome binding changed; reconcile explicitly")
     if "verification_baseline" in baseline and current.get("verification_baseline") != baseline["verification_baseline"]:
         failures.append("retained verification baseline changed or removed")
     for field in ("acceptance_criteria", "evidence_requirements"):
@@ -318,6 +387,8 @@ def plan_failures(plan: dict[str, Any], baseline: dict[str, Any] | None = None) 
         return [str(exc)]
     if plan.get("task_contract_sha256") != digest(contract):
         failures.append("task contract fingerprint mismatch")
+    if related_design_ids(contract, contract["scope"]) and "design_delivery" not in contract:
+        failures.append("applicable owner decisions need a scoped design_delivery binding")
     if plan.get("objective") != contract["objective"]:
         failures.append("plan objective differs from task contract")
     basis = plan.get("planning_basis") or {}
@@ -378,11 +449,14 @@ def completion(contract: dict[str, Any], report: dict[str, Any] | None, stale: b
                 outcome["evidence_ids"] = row.get("evidence_ids", [])
         collected_only = bool(result.get("receipt_resolution")) and all(r.get("qualified") and r.get("origin") == "collected" for r in result["receipt_resolution"])
         return {"gate": result["gate"], "verification_policy": _gate.VERIFICATION_POLICY,
-                "completion_scope": "retained-task-contract", "outcomes": outcomes, "failures": result["failures"],
+                "completion_scope": result.get("completion_scope", "retained-task-contract"), "outcomes": outcomes, "failures": result["failures"],
                 "receipt_verified": result.get("receipt_verified", False),
                 "execution_verified": result.get("receipt_verified", False) and collected_only,
+                **({"design_acceptance": result["design_acceptance"]} if "design_acceptance" in result else {}),
                 "reason": "receipts resolved against retained obligations and current scoped delivery inputs"}
     result = _gate.evaluate(report, contract["acceptance_criteria"])
+    if related_design_ids(contract, contract["scope"]):
+        result["failures"].append("scoped design delivery requires receipt-backed completion; legacy claims cannot accept UI")
     if type(report.get("schema_version")) is not int or report["schema_version"] != 2 or str(report.get("status") or "").lower() != "done":
         result["failures"].append("B2 outcome import requires a schema-2 Done report")
     if not _gate.valid_risk_tier(report.get("risk_tier")) or report["risk_tier"] < contract["risk_tier"]:
@@ -418,6 +492,8 @@ def handoff_lines(state: dict[str, Any]) -> list[str]:
                       "Recorded authority is not independently authenticated. Pending choices remain pending across tasks."]
             for row in contract["design_decisions"]:
                 lines.append("- " + json.dumps(row, ensure_ascii=False))
+            lines.append("Design delivery: " + json.dumps(contract.get("design_delivery"), ensure_ascii=False))
+            lines.append("Provisional/functional completion is not accepted UI or permission for dependent rollout.")
         lines += ["", "## Task behavior and reported outcomes", "",
                   "Task: " + contract["task_id"], "Objective: " + contract["objective"],
                   "Contract SHA-256: " + state["task_contract_sha256"],

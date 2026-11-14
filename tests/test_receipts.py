@@ -62,6 +62,96 @@ class ReceiptCompletionTests(unittest.TestCase):
     def evaluate(self, report=None, contract=None, **options):
         return gate.evaluate(report or self.report, task_contract=contract or self.c, root=self.root, **options)
 
+    def test_design_delivery_distinguishes_functional_preview_and_accepted_ui(self):
+        from test_behavior_contract import design_decision
+        c = copy.deepcopy(self.c)
+        sample = design_decision("primary-sample", "sample")
+        sample["scope"] = ["src"]
+        c["design_decisions"] = [sample]
+        c["design_delivery"] = {"mode": "accepted-ui", "decision_ids": [sample["id"]], "criterion_ids": ["setting"]}
+        c["evidence_requirements"].append({"id": "render", "criterion_ids": ["setting"], "kind": "visual-check",
+                                          "origin": "manual", "required": True, "input_paths": ["src"]})
+
+        def report_for(current):
+            results = [capture.capture(self.root, current, "check", [sys.executable, "check.py"])]
+            if any(e["id"] == "render" for e in current["evidence_requirements"]):
+                results.append(receipts.observe(self.root, current, "render", {
+                    "description": "Synthetic rendered-review fixture matches the bound sample",
+                    "method": "Fixture observation, not a real product visual review", "environment": "isolated local fixture"}))
+            evidence = [{"id": r["receipt"]["id"], "kind": r["receipt"]["kind"], "origin": r["receipt"]["origin"],
+                         "result": "pass", "required": True, "requirement_id": r["receipt"]["requirement_id"],
+                         "receipt_ref": r["receipt_ref"], "receipt_sha256": r["receipt_sha256"]} for r in results]
+            return dict(self.report, task_id=current["task_id"], contract_sha256=behavior.digest(current), evidence=evidence,
+                        acceptance_criteria=[dict(current["acceptance_criteria"][0], met=True, evidence_ids=[e["id"] for e in evidence])])
+
+        project_state.capture(self.root, task_contract=c)
+        pending = self.evaluate(report_for(c), c)
+        self.assertTrue(all(e["qualified"] for e in pending["receipt_resolution"]))
+        self.assertEqual(pending["gate"], "BLOCK")
+        self.assertIn("primary-sample", str(pending["failures"]))
+        self.assertFalse(pending["design_acceptance"]["rollout_design_ready"])
+
+        # A functional-only successor cannot drop known obligations by omitting them.
+        missing = dict(copy.deepcopy(self.c), task_id="functional-successor")
+        blocked = self.evaluate(report_for(missing), missing)
+        self.assertEqual(blocked["gate"], "BLOCK")
+        self.assertIn("design", str(blocked["failures"]))
+        effective = project_state.capture(self.root, task_contract=missing, new_task=True)["task_contract"]
+        for mode in ("provisional-ui", "functional-only"):
+            with self.subTest(mode=mode):
+                current = copy.deepcopy(effective)
+                current["design_delivery"] = dict(c["design_delivery"], mode=mode)
+                result = self.evaluate(report_for(current), current)
+                self.assertEqual(result["gate"], "PASS", result)
+                self.assertEqual(result["design_acceptance"]["state"], mode)
+                self.assertEqual(result["completion_scope"], mode)
+                self.assertEqual(result["design_acceptance"]["pending_ids"], ["primary-sample"])
+                self.assertFalse(result["design_acceptance"]["rollout_design_ready"])
+
+        backend = dict(copy.deepcopy(effective), task_id="backend-slice", scope=["check.py"])
+        self.assertEqual(self.evaluate(report_for(backend), backend)["design_acceptance"]["state"], "not-applicable")
+
+        approved = copy.deepcopy(c)
+        approved["task_id"] = "accepted-ui"
+        approved["design_decisions"][0].update(status="approved", authority={"kind": "visual-approval",
+            "reference": "owner:sample-1", "actor": "owner", "statement": "Approve this sample for src"})
+        project_state.capture(self.root, task_contract=approved, new_task=True)
+        report = report_for(approved)
+        result = self.evaluate(report, approved)
+        self.assertEqual(result["gate"], "PASS", result)
+        self.assertTrue(result["design_acceptance"]["owner_approved"])
+        self.assertTrue(result["design_acceptance"]["rollout_design_ready"])
+        (self.root / "README.md").write_text("unrelated documentation", encoding="utf-8")
+        self.assertEqual(self.evaluate(report, approved)["gate"], "PASS")
+        for field, value in (("scope", ["src", "extra"]), ("basis", {"reference": "DESIGN.md#primary", "revision": "sample-2"})):
+            changed = copy.deepcopy(approved)
+            changed["design_decisions"][0][field] = value
+            self.assertEqual(self.evaluate(report, changed)["gate"], "BLOCK")
+        (self.root / "src/value.txt").write_text("changed rendered input", encoding="utf-8")
+        stale = self.evaluate(report, approved)
+        self.assertEqual(stale["gate"], "BLOCK")
+        self.assertFalse(stale["design_acceptance"]["rollout_design_ready"])
+        delegated = copy.deepcopy(approved)
+        delegated["design_decisions"][0].update(status="delegated", authority={"kind": "design-delegation",
+            "reference": "owner:delegate-sample-1", "actor": "owner", "statement": "Delegate the final sample decision for this scope"})
+        result = self.evaluate(report_for(delegated), delegated)
+        self.assertEqual(result["gate"], "PASS", result)
+        self.assertEqual(result["design_acceptance"]["state"], "delegated")
+        self.assertFalse(result["design_acceptance"]["owner_approved"])
+
+        for mutation in ("no-render", "wrong-scope", "excluded-scope", "missing-link"):
+            invalid = copy.deepcopy(approved)
+            if mutation == "no-render":
+                invalid["evidence_requirements"] = invalid["evidence_requirements"][:1]
+            elif mutation == "wrong-scope":
+                invalid["evidence_requirements"][-1]["input_paths"] = ["check.py"]
+            elif mutation == "excluded-scope":
+                invalid["evidence_requirements"][-1]["input_excludes"] = ["src/value.txt"]
+            else:
+                invalid["design_delivery"]["decision_ids"] = []
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                behavior.validate(invalid)
+
     def test_weakened_check_needs_bound_review_and_equivalent_replacement_can_pass(self):
         import change_budget
         from test_cross_platform import git

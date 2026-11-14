@@ -4,7 +4,12 @@ Technical release history. Entries describe their release; current operating and
 
 ## Unreleased
 
-- R40: retain typed owner design choices, scoped authority and pending sample decisions through planning, assignment/return and successor-task handoff/resume. Preserve changed decision history, reject unsupported promotion and reuse of authority for changed choices, and keep legacy/mechanical work lightweight. R41 completion binding remains separate and unimplemented.
+No pending changes.
+
+## 1.9.0 — Design decisions and accepted UI delivery
+
+- R40: retain typed owner design choices, scoped authority and pending sample decisions through planning, assignment/return and successor-task handoff/resume. Preserve changed decision history, reject unsupported promotion and reuse of authority for changed choices, and keep legacy/mechanical work lightweight.
+- R41: bind applicable design decisions to existing delivery criteria and rendered-review evidence. Pending or omitted decisions block accepted UI completion; provisional UI and functional-only outcomes remain explicitly scoped. Preserve existing approval/delegation and lightweight routes without another specialist, questionnaire or test quota.
 
 ## 1.8.1 — Trivy Git-checkout report compatibility
 
