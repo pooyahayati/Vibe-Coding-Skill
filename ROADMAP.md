@@ -1,6 +1,6 @@
 # Improvement Roadmap
 
-Canonical progress tracker. Reviewed: 2026-11-11, Asia/Tehran. All documented improvement packages use one permanent sequence, starting at **R1**.
+Canonical progress tracker. Reviewed: 2026-11-14, Asia/Tehran. All documented improvement packages use one permanent sequence, starting at **R1**.
 
 ## Current position
 
@@ -8,13 +8,24 @@ Canonical progress tracker. Reviewed: 2026-11-11, Asia/Tehran. All documented im
 |---|---|
 | Published runtime | Stable [1.8.1](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.8.1), release commit `2302346737646fc2b423b0e513fb6c40d044f0fd`. |
 | Local installation | Active **1.8.1**, verified on 2026-11-11. All 82 installed files match the published ZIP byte-for-byte. Offline installation and fresh installed Head preflight passed without failures or warnings; 1.8.0 is backed up outside discovery. |
-| Review baseline | Main `38925f29a733528321004389f3a337779406ad9f`, runtime 1.7.1; source review, a bounded verification-weakening reproduction and current documentation research. See the [evidence boundaries](docs/improvement-implementation-plan.md#review-baseline-and-evidence-boundaries). |
-| Overall progress | **R1-R39 complete.** The counts track packages, not quality or coverage. |
-| Current phase | Trivy Git-checkout compatibility merged in [PR #112](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/112), released as 1.8.1 and installed locally. R35-R39 remain complete in [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110). |
-| Next action | No active implementation package. Allocate R40 only for a meaningful, evidence-backed follow-up. |
-| Next unallocated ID | **R40**. Continue the same sequence for later improvements. |
+| Review baseline | Main `31c0d83de94e81db40aeffd3bc1fc43d8e999ca8`, runtime 1.8.1 and UI/UX specialist 3.7.1; observed design-approval loss across a real task handoff, checked against retained records and validation code. See the [evidence boundaries](docs/improvement-implementation-plan.md#ui-decision-audit-baseline). |
+| Overall progress | **R1-R39 complete; R40-R41 planned.** The counts track packages, not quality or coverage. |
+| Current phase | R40-R41 scope and execution plan prepared. Implementation has not started. Prior maintenance delivery remains recorded below. |
+| Next action | Implement R40 first when implementation is authorized, accept its scoped result, then implement R41 using the same decision records. |
+| Next unallocated ID | **R42**. Continue the same sequence for later improvements. |
 | Delivery state | Source, stable tag, consumer ZIP/checksum and active installation verified for 1.8.1. Exact-revision hosted baselines and native final-artifact Trivy passed; maintenance evidence is below. |
-| Blockers / limits | No delivery blocker. Live Context7 coverage and measured product speed/capacity remain unverified. Assignment/update guards remain binding. |
+| Blockers / limits | No planning blocker. R40-R41 are not implemented or included in 1.8.1. Live Context7 coverage and measured product speed/capacity remain unverified. Assignment/update guards remain binding. |
+
+## Current cycle: R40-R41
+
+| Priority | Package | Intended improvement | Status |
+|---|---|---|---|
+| 1 / High | [R40: Owner design-decision continuity](docs/improvement-implementation-plan.md#r40) | Preserve proposal, scoped delegation and approval provenance across tasks; prevent implementation permission from silently settling visual choices. | **Planned** |
+| 2 / High | [R41: Design acceptance bound to UI delivery](docs/improvement-implementation-plan.md#r41) | Carry applicable specialist design-acceptance obligations into Head completion; functional checks alone cannot establish owner-approved design. | **Planned** |
+
+Execution order is **R40 -> R41**; R41 depends on R40's decision provenance. Use existing contracts, project state and specialist acceptance. New or materially redesigned interfaces need only unresolved, consequential choices clarified; an unchanged approved design and small compatible edits do not trigger repeated questions or approvals. Independent engineering and explicitly provisional previews can continue while design acceptance is pending.
+
+The [execution plan](docs/improvement-implementation-plan.md#current-execution-boundaries) defines scope, acceptance and bounded verification. This cycle adds no testing quota, mandatory multi-agent review, new design specialist or separate approval service. Planning authorization does not start implementation or delivery.
 
 ## Verified maintenance delivery: 1.8.1
 
@@ -22,7 +33,9 @@ Canonical progress tracker. Reviewed: 2026-11-11, Asia/Tehran. All documented im
 - **Release:** all six exact-revision hosted baselines passed, including [validation](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/43003269527) and the [four-platform matrix](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/43003269544). [Publication attempt 2](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/43003589544/attempts/2) completed the matching draft through bounded recovery after the initial identity-check interruption; native Trivy 0.76.2 scanned the final extracted package successfully. The tag was not moved and assets were not replaced.
 - **Package and activation:** the published 82-file ZIP matches canonical release resources; SHA-256 `0bf80b054b808e883161e6a9897ad8c81e07351613c902953a766b8abd7f44db`. Managed installation selected v1.8.1 at that commit, all installed bytes match the ZIP, and offline installation plus fresh reloaded Head preflight passed without failures or warnings. The prior default is backed up outside discovery; no assignment was stopped or silently migrated.
 
-## Current cycle: R35-R39
+<a id="current-cycle-r35-r39"></a>
+
+## Delivered cycle: R35-R39
 
 | Priority | Package | Intended improvement | Status |
 |---|---|---|---|
@@ -32,7 +45,7 @@ Canonical progress tracker. Reviewed: 2026-11-11, Asia/Tehran. All documented im
 | 4 | [R38: Reuse and structural growth](docs/improvement-implementation-plan.md#r38) | Review the need for a new subsystem, runtime dependency or architectural boundary before adding maintenance cost. | **Complete** |
 | 5 | [R39: Measured operational readiness](docs/improvement-implementation-plan.md#r39) | Support performance, capacity and recovery claims with representative, scoped evidence. | **Complete** |
 
-Execution order is **R35 -> R36 -> R37 -> R38 -> R39**. R37 builds on R35's evidence-integrity controls; the other ordering is primarily prioritization and integration sequencing. Acceptance of a package is not permission to exceed the user's authorized scope.
+Historical execution order was **R35 -> R36 -> R37 -> R38 -> R39**. R37 builds on R35's evidence-integrity controls; the other ordering was primarily prioritization and integration sequencing. Acceptance of a package is not permission to exceed the user's authorized scope.
 
 These packages address one reproduced control limitation (R35) and four evidenced coverage/execution gaps (R36-R39), not five proven product defects. No measured speed gain, product vulnerability or production-capacity result is claimed. Implementation steps, components and bounded verification belong in the [execution plan](docs/improvement-implementation-plan.md#execution-and-validation-boundaries).
 
@@ -109,6 +122,8 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 | R37 | None | [Security outcomes bound to change acceptance](docs/improvement-implementation-plan.md#r37) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); missing protection, scanner-only substitution, denial-with-mutation and retained resume checked. |
 | R38 | None | [Evidence-based reuse and structural growth review](docs/improvement-implementation-plan.md#r38) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); existing decision/diff review extended; no new detector or runtime dependency. |
 | R39 | None | [Measured performance, capacity and recovery](docs/improvement-implementation-plan.md#r39) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); operational conditions and scoped context binding checked; no product capacity claim. |
+| R40 | None | [Owner design-decision continuity](docs/improvement-implementation-plan.md#r40) | **Planned** | Planning only; no implementation, acceptance or release claim. |
+| R41 | None | [Design acceptance bound to UI delivery](docs/improvement-implementation-plan.md#r41) | **Planned** | Follows R40; planning only, with no implementation, acceptance or release claim. |
 
 ## Numbering policy
 
@@ -119,7 +134,7 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 
 ## Scope and execution rules
 
-- Current authorization covers the Trivy compatibility fix commit/merge, the 1.8.1 patch release and local Head update. Preserve real assignments and local edits; no unrelated provider activation is included.
+- Current authorization covers R40-R41 planning and commit/merge of these planning documents. Runtime implementation, release and local installation are outside this request; previous delivery permissions are historical. Preserve real assignments and local edits.
 - Work on one package at a time. Record its branch/PR, relevant checks, acceptance, blocker and next action at meaningful transitions.
 - Preserve Head authority, the sole UI/UX specialist, risk floors, required findings, scoped evidence freshness and current-source checks for new tasks.
 - Reuse existing preparation caching, test selection and valid evidence. Add only meaningful missing regressions; no test-count target, coverage quota, model evaluation or new framework.
