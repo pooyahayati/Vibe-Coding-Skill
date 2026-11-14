@@ -2,7 +2,7 @@
 
 Package numbers belong to the permanent [repository roadmap register](../ROADMAP.md#roadmap-register); they do not restart with a new release or cycle.
 
-[ROADMAP.md](../ROADMAP.md) is the only current progress tracker. This document defines R40-R41 scope and acceptance in priority order and retains delivered R31-R39 specifications below. Runtime behavior belongs to canonical scripts and operating references; implementation evidence belongs in the roadmap. Current authorization covers R40 commit/merge, then local R41 implementation and focused verification.
+[ROADMAP.md](../ROADMAP.md) is the only current progress tracker. This document defines R40-R41 scope and acceptance in priority order and retains delivered R31-R39 specifications below. Runtime behavior belongs to canonical scripts and operating references; implementation evidence belongs in the roadmap. R40/R41 implementation, merge, 1.9.0 publication and local installation are complete; current evidence is in ROADMAP.md.
 
 ## UI decision audit baseline
 
