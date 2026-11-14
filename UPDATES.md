@@ -4,6 +4,12 @@ User-facing release summaries; [CHANGELOG.md](CHANGELOG.md) retains technical hi
 
 From `1.0.0`, publication requires no model evaluation/provider key. Recent releases include a verified portable ZIP and checksum; publication does not update local installations. The pre-1.0 entries below describe historical policies, not current release requirements.
 
+## 1.9.0 — Preserve design decisions through delivery
+
+- Keep proposed choices, scoped delegation and owner approval distinct across tasks, specialist handoffs and resume.
+- Require current rendered evidence and recorded design authority before accepting a new or materially redesigned interface. Functional success alone does not settle pending design.
+- Keep provisional previews and independent engineering available, reusing valid approvals without repeated questions or blanket test suites.
+
 ## 1.8.1 — Reliable release scans of Git checkouts
 
 - Fix false publication blocks when a native Trivy filesystem scan identifies the local checkout as a repository.

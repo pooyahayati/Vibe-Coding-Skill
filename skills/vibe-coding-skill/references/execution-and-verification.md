@@ -44,6 +44,8 @@ For the supported legacy schema-2 route, keep observable required outcomes in th
 
 ## Verification by change type
 
+For accepted new/material UI delivery, apply the existing [design acceptance binding](shared-improvement-contracts.md#design-delivery-acceptance-r41): current rendered observation plus scoped owner authority, not a functional pass alone. Reuse a sufficient visual observation; this adds no visual-test suite or approval screen. Provisional samples and independent engineering retain their narrower completion scope.
+
 | Change type | New tests usually needed | Checks to execute |
 |---|---|---|
 | Text/copy/isolated visual spacing | usually zero | one focused source/rendered observation; another check only if it adds needed detection value |

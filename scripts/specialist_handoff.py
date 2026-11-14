@@ -72,8 +72,18 @@ def validate_assignment(value, contract):
     require(behavior.strings(design_ids) and len(set(design_ids)) == len(design_ids)
             and set(design_ids) <= design.keys(), "unknown or duplicate design decision references")
     if value["specialist_id"] == "ui-ux-skill":
-        require(behavior.related_design_ids(contract, value["scope"]) <= set(design_ids),
+        relevant_design = behavior.related_design_ids(contract, value["scope"])
+        require(relevant_design <= set(design_ids),
                 "UI assignment omitted relevant owner design decisions")
+        if relevant_design:
+            binding = contract.get("design_delivery")
+            require(binding is not None and set(binding["criterion_ids"]) <= set(value["criterion_ids"]),
+                    "UI assignment needs the scoped design delivery outcome binding")
+            if binding["mode"] == "accepted-ui" and value["stage"] in {"verify", "review"}:
+                reviews = {e["id"] for e in contract["evidence_requirements"]
+                           if e["required"] and e["kind"] == "visual-check"
+                           and set(e["criterion_ids"]) & set(binding["criterion_ids"])}
+                require(reviews <= set(value["evidence_requirement_ids"]), "UI acceptance assignment omitted rendered review")
     settled = value["settled_decisions"]
     require(isinstance(settled, list), "invalid settled decisions")
     for row in settled:

@@ -80,6 +80,28 @@ class PortableIntegrationTests(unittest.TestCase):
         self.assertIn('"status": "proposed"', handoff["markdown"])
         resumed = self.cli("resume_context.py", "--root", self.product, "--json")
         self.assertEqual(resumed["local_state"]["project_state"]["task_contract"], state["task_contract"])
+        observation = json.dumps({"description": "Synthetic rendered fixture matches the proposed sample",
+                                  "method": "Fixture observation", "environment": "isolated installed route"})
+
+        def complete(current, expected):
+            path = self.json_file("design-completion-contract", current)
+            receipt = self.cli("receipt_validation.py", "--root", self.product, "--task-contract", path,
+                               "--requirement", "view", "--observation", observation)
+            report = self.report(current, receipt)
+            report["evidence"][0]["requirement_id"] = "view"
+            return self.cli("completion_gate.py", self.json_file("design-report", report), "--root", self.product,
+                            "--task-contract", path, "--json", expected=expected)
+
+        self.assertIn("design_delivery", str(complete(state["task_contract"], 2)["failures"]))
+        current = copy.deepcopy(state["task_contract"])
+        current["design_delivery"] = {"mode": "accepted-ui", "decision_ids": ["primary-sample"], "criterion_ids": ["label"]}
+        pending = complete(current, 2)
+        self.assertEqual(pending["design_acceptance"]["pending_ids"], ["primary-sample"])
+        current["design_decisions"][0].update(status="approved", authority={"kind": "visual-approval", "actor": "owner",
+            "reference": "owner:sample-1", "statement": "Approve this sample for settings.txt"})
+        self.cli("project_state.py", "capture", "--root", self.product,
+                 "--task-contract", self.json_file("design-approved", current), "--json")
+        self.assertTrue(complete(current, 0)["design_acceptance"]["rollout_design_ready"])
 
     def test_installed_reviewed_risk_survives_capture_handoff_resume_and_planning(self):
         (self.product / "settings.txt").write_text("Production authentication label\n", encoding="utf-8")

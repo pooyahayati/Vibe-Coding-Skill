@@ -9,30 +9,36 @@ Canonical progress tracker. Reviewed: 2026-11-15, Asia/Tehran. All documented im
 | Published runtime | Stable [1.8.1](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.8.1), release commit `2302346737646fc2b423b0e513fb6c40d044f0fd`. |
 | Local installation | Active **1.8.1**, verified on 2026-11-11. All 82 installed files match the published ZIP byte-for-byte. Offline installation and fresh installed Head preflight passed without failures or warnings; 1.8.0 is backed up outside discovery. |
 | Review baseline | Main `31c0d83de94e81db40aeffd3bc1fc43d8e999ca8`, runtime 1.8.1 and UI/UX specialist 3.7.1; observed design-approval loss across a real task handoff, checked against retained records and validation code. See the [evidence boundaries](docs/improvement-implementation-plan.md#ui-decision-audit-baseline). |
-| Overall progress | **R1-R39 complete; R40 locally verified, awaiting merge; R41 planned.** The counts track packages, not quality or coverage. |
-| Current phase | R40 implemented and locally verified on `codex/r40-design-decision-continuity`. R41 has not started. |
-| Next action | Commit and merge the verified R40 changes, then implement and verify R41 locally under the current request. |
+| Overall progress | **R1-R40 complete; R41 locally verified, awaiting merge.** The counts track packages, not quality or coverage. |
+| Current phase | R40 merged in [PR #115](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/115); R41 is implemented and locally verified on `codex/r41-ui-design-acceptance`. |
+| Next action | Commit/merge R41 and publish 1.9.0, then update the local installation under current authorization. |
 | Next unallocated ID | **R42**. Continue the same sequence for later improvements. |
 | Delivery state | Source, stable tag, consumer ZIP/checksum and active installation verified for 1.8.1. Exact-revision hosted baselines and native final-artifact Trivy passed; maintenance evidence is below. |
-| Blockers / limits | No known implementation blocker. R40 changes are local and unmerged; R41 is not implemented. Neither is included in 1.8.1. Live Context7 coverage and measured product speed/capacity remain unverified. Assignment/update guards remain binding. |
+| Blockers / limits | No known implementation blocker. R40 is merged; R41 is local and unmerged. Neither is included in 1.8.1. Live Context7 coverage and measured product speed/capacity remain unverified. Assignment/update guards remain binding. |
 
 ## Current cycle: R40-R41
 
 | Priority | Package | Intended improvement | Status |
 |---|---|---|---|
-| 1 / High | [R40: Owner design-decision continuity](docs/improvement-implementation-plan.md#r40) | Preserve proposal, scoped delegation and approval provenance across tasks; prevent implementation permission from silently settling visual choices. | **Locally verified / awaiting merge** |
-| 2 / High | [R41: Design acceptance bound to UI delivery](docs/improvement-implementation-plan.md#r41) | Carry applicable specialist design-acceptance obligations into Head completion; functional checks alone cannot establish owner-approved design. | **Planned** |
+| 1 / High | [R40: Owner design-decision continuity](docs/improvement-implementation-plan.md#r40) | Preserve proposal, scoped delegation and approval provenance across tasks; prevent implementation permission from silently settling visual choices. | **Complete** |
+| 2 / High | [R41: Design acceptance bound to UI delivery](docs/improvement-implementation-plan.md#r41) | Carry applicable specialist design-acceptance obligations into Head completion; functional checks alone cannot establish owner-approved design. | **Locally verified / awaiting merge** |
 
 Execution order is **R40 -> R41**; R41 depends on R40's decision provenance. Use existing contracts, project state and specialist acceptance. New or materially redesigned interfaces need only unresolved, consequential choices clarified; an unchanged approved design and small compatible edits do not trigger repeated questions or approvals. Independent engineering and explicitly provisional previews can continue while design acceptance is pending.
 
-The [execution plan](docs/improvement-implementation-plan.md#current-execution-boundaries) defines scope, acceptance and bounded verification. This cycle adds no testing quota, mandatory multi-agent review, new design specialist or separate approval service. Current authority covers R40 commit/merge followed by local R41 implementation and related checks. R41 commit/merge, release and installation remain separate.
+The [execution plan](docs/improvement-implementation-plan.md#current-execution-boundaries) defines scope, acceptance and bounded verification. This cycle adds no testing quota, mandatory multi-agent review, new design specialist or separate approval service. Current authority covers R40 commit/merge followed by local R41 implementation and related checks. R41 commit/merge, release 1.9.0 and local installation are authorized.
 
 ### R40 local acceptance — 2026-11-14
 
 - **Implemented:** Typed owner choices/sample decisions with source, scope and revision; automatic continuity through successor plans, captured state, UI assignments/returns and resume. Prior decision values are retained. Legacy context remains readable; implementation permission is not owner design authority.
 - **Verified:** The affected behavior-contract module passed (13 tests); after final hardening, its two design cases and three selected handoff cases passed, including existing acceptance/revision compatibility. One extracted-package CLI case passed through successor planning, capture, handoff and resume. Structure, changed-document links, portable parity and all 16 existing deterministic policy scenarios passed; no model evaluation or full suite was run. Purity found no forbidden tracked/staged artifacts; its existing local-exclude configuration warning remains.
-- **Limits:** Validation checks recorded provenance, not the authenticity of an owner's conversation or visual quality. R41's final design-acceptance gate is not implemented. R40 merge is pending; release and active installation remain 1.8.1.
-- **Integration follow-up:** PR #115 exposed sibling test-fixture imports that worked under discovery but failed under selected-module CI execution. The importing test modules now explicitly include their fixture directory; integration checks must pass before merge.
+- **Limits:** Validation checks recorded provenance, not the authenticity of an owner's conversation or visual quality. This R40 evidence does not establish R41 acceptance; release and active installation remain 1.8.1.
+- **Integration:** [PR #115](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/115) merged as `546ff26d747a424d4e20ad344c945aaebab10d91` after all selected PR checks passed, including the platform matrix. Selected checks also passed on merged main; automatic publication steps were skipped. Initial CI exposed sibling fixture imports that worked under discovery but failed under selected-module execution; the importing test modules were corrected and the affected cases passed in that execution mode before the successful CI run.
+
+### R41 local acceptance — 2026-11-15
+
+- **Implemented:** Existing task criteria bind applicable owner decisions to accepted UI, provisional UI or functional-only delivery. Accepted UI requires scoped authority and current rendered-review evidence; a Head-accepted preparation does not settle an owner decision. Known omitted/pending decisions cannot disappear behind functional success. Explicit delegation stays distinguishable from owner approval, and narrower completion is not design readiness for dependent rollout.
+- **Verified:** The affected contract module, focused receipt/Head-handoff cases and adjacent legacy, evidence-reuse and security-state checks passed. The extracted-package successor-task path passed through plan, capture, handoff, resume and completion: missing/pending bindings blocked, matching authority passed. Structure, changed links, portable parity and all 16 existing deterministic policy scenarios passed. No full local suite, additional platform run, model evaluation or real-project mutation was used for R41.
+- **Limits / delivery:** These synthetic cases prove recorded binding and evidence handling, not conversation authenticity or subjective visual quality. R41 changes remain uncommitted/unmerged; the active installation and release are unchanged. Compatibility/migration and existing publication/security controls remain binding.
 
 ## Verified maintenance delivery: 1.8.1
 
@@ -129,8 +135,8 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 | R37 | None | [Security outcomes bound to change acceptance](docs/improvement-implementation-plan.md#r37) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); missing protection, scanner-only substitution, denial-with-mutation and retained resume checked. |
 | R38 | None | [Evidence-based reuse and structural growth review](docs/improvement-implementation-plan.md#r38) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); existing decision/diff review extended; no new detector or runtime dependency. |
 | R39 | None | [Measured performance, capacity and recovery](docs/improvement-implementation-plan.md#r39) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); operational conditions and scoped context binding checked; no product capacity claim. |
-| R40 | None | [Owner design-decision continuity](docs/improvement-implementation-plan.md#r40) | **Locally verified / awaiting merge** | Scoped local acceptance above; implementation on `codex/r40-design-decision-continuity`, with no merge or release claim. |
-| R41 | None | [Design acceptance bound to UI delivery](docs/improvement-implementation-plan.md#r41) | **Planned** | Follows R40; planning only, with no implementation, acceptance or release claim. |
+| R40 | None | [Owner design-decision continuity](docs/improvement-implementation-plan.md#r40) | **Complete** | [PR #115](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/115), merge `546ff26d747a424d4e20ad344c945aaebab10d91`; verified source, unreleased. |
+| R41 | None | [Design acceptance bound to UI delivery](docs/improvement-implementation-plan.md#r41) | **Locally verified / awaiting merge** | Scoped local acceptance above; `codex/r41-ui-design-acceptance`, uncommitted/unmerged and unreleased. |
 
 ## Numbering policy
 
@@ -141,7 +147,7 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 
 ## Scope and execution rules
 
-- Current authorization covers R40 commit/merge followed by local R41 implementation and necessary related verification. The planning documents were merged in [PR #114](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/114). R41 commit/merge, release and local installation are outside this request. Preserve real assignments and local edits.
+- Current authorization covers R40 commit/merge followed by local R41 implementation and necessary related verification. The planning documents were merged in [PR #114](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/114). R41 commit/merge, release 1.9.0 and local installation are authorized. Preserve real assignments and local edits.
 - Work on one package at a time. Record its branch/PR, relevant checks, acceptance, blocker and next action at meaningful transitions.
 - Preserve Head authority, the sole UI/UX specialist, risk floors, required findings, scoped evidence freshness and current-source checks for new tasks.
 - Reuse existing preparation caching, test selection and valid evidence. Add only meaningful missing regressions; no test-count target, coverage quota, model evaluation or new framework.

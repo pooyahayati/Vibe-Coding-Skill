@@ -19,6 +19,8 @@ Preserve settled decisions. Do not independently expand scope, install arbitrary
 
 For owner-controlled design choices, use the [retained decision binding](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/main/references/shared-improvement-contracts.md#owner-design-decisions-r40). Head precedence and implementation authorization cannot promote a proposal into owner approval. Preserve pending choices across assignments; reuse scoped authority without repeated questions.
 
+Bind applicable design acceptance to the Head's [delivery outcome](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/main/references/shared-improvement-contracts.md#design-delivery-acceptance-r41). Preserve its criterion/decision references and rendered-review obligation during Verify/Review. Preparation acceptance and a functional pass do not settle owner design decisions or authorize dependent rollout; report a provisional result as provisional.
+
 For Head-reviewed mechanical edits within settled decisions, apply the relevant current, accepted guidance without starting a new formal assignment or standalone lifecycle. Preserve the risk floor and perform the focused outcome check. New domain decisions, material behavior/boundary changes, uncertainty or explicit assignments use the formal handoff below. A lightweight follow-up cannot abandon retained assignments or required findings.
 
 ## Verification and conflicts
