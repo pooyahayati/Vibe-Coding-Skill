@@ -2,7 +2,7 @@
 
 Package numbers belong to the permanent [repository roadmap register](../ROADMAP.md#roadmap-register); they do not restart with a new release or cycle.
 
-[ROADMAP.md](../ROADMAP.md) is the only current progress tracker. This document defines R40-R41 scope and acceptance in priority order and retains delivered R31-R39 specifications below. Runtime behavior belongs to canonical scripts and operating references; implementation evidence belongs in the roadmap. Current authorization covers planning and commit/merge of these documents, not runtime implementation.
+[ROADMAP.md](../ROADMAP.md) is the only current progress tracker. This document defines R40-R41 scope and acceptance in priority order and retains delivered R31-R39 specifications below. Runtime behavior belongs to canonical scripts and operating references; implementation evidence belongs in the roadmap. Current authorization covers R40 commit/merge, then local R41 implementation and focused verification.
 
 ## UI decision audit baseline
 
@@ -12,11 +12,11 @@ The relevant source, portable and installed controls match after line-ending nor
 
 ## Current execution boundaries
 
-1. **Sequence and authority:** Plan R40, then dependent R41. Commit/merge of the planning documents is authorized; implementation has not been requested. Once implementation is authorized, use one lead and scoped acceptance between packages; do not introduce another per-package permission ceremony. Publication and installation retain their existing authorization boundaries.
+1. **Sequence and authority:** Commit and merge verified R40, then implement R41 locally and stop at its scoped acceptance. Use one lead and relevant checks without another permission ceremony for routine steps. R41 commit/merge, publication and installation retain their separate authorization boundaries.
 2. **Keep domain ownership:** The sole UI/UX specialist owns discovery, visual methods and applicable sample review. The Head preserves owner decisions, scope and completion obligations; do not copy palette, font or layout rules into the parent skill. Head acceptance cannot manufacture owner consent.
 3. **Reuse rather than duplicate:** Extend existing contracts, project state, handoff/resume and evidence records only where needed. Define compatibility before changing persisted formats. No new service, general workflow engine, mandatory per-edit document or real-project mutation.
 4. **Bound the human interaction:** Reuse valid approval or scoped delegation. Ask one focused batch only for material unresolved choices or a conflict; no universal color/font questionnaire, automatic reapproval on every revision or extra approval for mechanical edits. Sample acceptance can resolve the relevant visual choices together. Backend work and clearly provisional samples remain possible while acceptance is pending.
-5. **Bound verification:** Extend existing fixtures only for uncovered failure modes and reuse them across R40-R41. Run affected checks during implementation and check the changed portable route once integrated; preserve existing release/security triggers without adding full suites per edit, browser frameworks, coverage quotas or model evaluations. For this planning edit, only documentation structure, links/IDs, historical evidence, purity and unchanged mirror need checking.
+5. **Bound verification:** Extend existing fixtures only for uncovered failure modes and reuse them across R40-R41. Run affected checks during implementation and check the changed portable route once integrated; preserve existing release/security triggers without adding full suites per edit, browser frameworks, coverage quotas or model evaluations.
 
 <a id="r40"></a>
 

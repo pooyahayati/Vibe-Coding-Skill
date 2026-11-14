@@ -4,7 +4,7 @@
 
 Automate operational state capture without generating noisy repository commits.
 
-Stable project knowledge may live in Git: PROJECT.md, STATUS.md, ARCHITECTURE.md, PROJECT_GRAPH.md, ROADMAP.md, AGENTS.md, and README.md. Machine/session state remains local.
+Stable project knowledge may live in Git: PROJECT.md, STATUS.md, ARCHITECTURE.md, DESIGN.md when applicable, PROJECT_GRAPH.md, ROADMAP.md, AGENTS.md, and README.md. Machine/session state remains local.
 
 ## Capture
 
@@ -34,7 +34,7 @@ python scripts/project_state.py handoff --root . --write-local
 
 Produces a concise local handoff snapshot and preserves the resume order:
 
-`STATUS -> PROJECT -> ROADMAP -> ARCHITECTURE -> PROJECT_GRAPH -> AGENTS -> GitHub -> source/tests`
+`STATUS -> PROJECT -> ROADMAP -> ARCHITECTURE -> DESIGN (if present) -> PROJECT_GRAPH -> AGENTS -> GitHub -> source/tests`
 
 ### Preserve task behavior and useful delivery details (B2)
 
@@ -54,6 +54,8 @@ State/handoff retains the task ID, full acceptance/behavior fields, evidence obl
 Supplying a changed required outcome or protected behavior, or removing a retained `specialist_assignment_ids` entry, fails before overwriting the snapshot. This includes unstarted assignments; reordering IDs or adding a commitment does not remove an existing one. For an already authorized, Head-reconciled material change, `--task-contract <replacement.json> --accept-contract-change "<reason>"` retains the previous contract/digest in the reconciliation record and invalidates old result binding. It cannot lower the known risk floor. For a different current task, use an explicit contract with a different `task_id` and `--new-task`; it clears prior task results/operating notes and does not inherit legacy completion. These options record a caller decision, not permission or authenticated user approval. Protect independent baselines using host/writer controls.
 
 Each contract revision retains its previous contract/digest, next digest and Head reason in `contract_revisions`. Existing specialist assignments do not automatically inherit that revision: use the explicit [assignment reconciliation route](specialist-composition.md#contract-revisions) before renewed acceptance.
+
+Owner [design decisions](shared-improvement-contracts.md#owner-design-decisions-r40) are project context: `--new-task` preserves them even while clearing old task results. Capture/planning returns the effective contract including inherited rows; use that contract and digest for subsequent assignments. Changed prior values remain in the snapshot's `design_decision_history`. Handoff/resume shows pending and unknown choices explicitly and includes an existing `DESIGN.md`; this neither asks for approval again nor blocks independent engineering. Legacy prose is not automatically upgraded to owner authority.
 
 Snapshots are atomically replaced with a retained recovery copy. Unreadable state, mismatched copies or altered contract fingerprints require [repair or explicit obligation reconstruction](recovery-and-resume.md#corrupt-local-state) before replacement. Product requirements remain legitimate Git documents; operational snapshots stay in the existing local workspace. See [shared formats and trust limits](shared-improvement-contracts.md).
 

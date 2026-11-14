@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +15,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import behavior_contract as behavior
 import execution_plan
 import project_state
+import resume_context
 
 
 def contract(tier=0):
@@ -25,7 +27,102 @@ def contract(tier=0):
             "evidence_requirements": [{"id": "view", "criterion_ids": ["label"], "kind": "visual-check", "origin": "manual", "required": True}]}
 
 
+def design_decision(key="primary-palette", kind="choice"):
+    return {"id": key, "kind": kind, "description": "Primary visual proposal",
+            "scope": ["settings.txt"], "status": "proposed",
+            "basis": {"reference": "DESIGN.md#primary", "revision": "sample-1"}, "authority": None}
+
+
 class BehaviorContractTests(unittest.TestCase):
+    def test_design_authority_cannot_be_inferred_or_reused_for_changed_choices(self):
+        c = contract()
+        c["schema_version"] = 2
+        c["design_decisions"] = [design_decision(), design_decision("primary-sample", "sample")]
+        promoted = copy.deepcopy(c)
+        row = promoted["design_decisions"][0]
+        row["status"] = "approved"
+        with self.assertRaisesRegex(ValueError, "scoped owner authority"):
+            behavior.validate(promoted)
+        row["authority"] = {"kind": "implementation-permission", "reference": "conversation:connect",
+                            "actor": "owner", "statement": "Connect the working application"}
+        with self.assertRaisesRegex(ValueError, "implementation permission"):
+            behavior.validate(promoted)
+        row["status"] = "delegated"
+        row["authority"] = {"kind": "design-delegation", "reference": "conversation:palette",
+                            "actor": "owner", "statement": "Use your proposed palette"}
+        self.assertEqual(behavior.validate(promoted)["design_decisions"][1]["status"], "proposed")
+        claimed = copy.deepcopy(promoted)
+        claimed["design_decisions"][0]["status"] = "approved"
+        claimed["design_decisions"][0]["authority"]["kind"] = "visual-approval"
+        with self.assertRaisesRegex(ValueError, "reuse previous owner authority"):
+            behavior.inherit_design_decisions(promoted, claimed)
+        self.assertEqual(behavior.inherit_design_decisions(promoted, contract())["design_decisions"], promoted["design_decisions"])
+        for field, value in (("basis", {"reference": "DESIGN.md#primary", "revision": "sample-2"}),
+                             ("scope", ["settings.txt", "new-screen.html"])):
+            changed = copy.deepcopy(promoted)
+            changed["design_decisions"][0][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "reuse previous owner authority"):
+                behavior.inherit_design_decisions(promoted, changed)
+        changed["design_decisions"][0].update(status="proposed", authority=None)
+        self.assertEqual(behavior.inherit_design_decisions(promoted, changed)["design_decisions"][0]["status"], "proposed")
+        self.assertTrue(behavior.compare(promoted, contract()))
+        legacy = contract()
+        self.assertNotIn("design_decisions", behavior.inherit_design_decisions(legacy, legacy))
+        legacy["design_decisions"] = [dict(design_decision(), status="unknown", basis=None)]
+        self.assertEqual(behavior.validate(legacy)["design_decisions"][0]["status"], "unknown")
+        malformed = copy.deepcopy(legacy)
+        malformed["design_decisions"][0]["status"] = []
+        with self.assertRaisesRegex(ValueError, "invalid or duplicate"):
+            behavior.validate(malformed)
+
+    def test_design_decisions_survive_new_tasks_plan_handoff_and_resume(self):
+        with tempfile.TemporaryDirectory() as td, patch.dict(os.environ, {"VIBE_CODING_HOME": str(Path(td) / "local")}):
+            root = Path(td) / "product"
+            root.mkdir()
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            (root / "settings.txt").write_text("Preview", encoding="utf-8")
+            (root / "DESIGN.md").write_text("Primary sample is proposed; owner review pending.", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(["git", "-c", "user.name=Fixture", "-c", "user.email=test@example.invalid", "commit", "-qm", "baseline"], cwd=root, check=True)
+            initial = contract()
+            initial["design_decisions"] = [design_decision(), design_decision("primary-sample", "sample")]
+            project_state.capture(root, task_contract=initial)
+            successor = dict(contract(), task_id="connect-workflow")
+            plan = execution_plan.draft(root, successor["objective"], task_contract=successor)
+            self.assertEqual(plan["task_contract"]["design_decisions"], initial["design_decisions"])
+            state = project_state.capture(root, task_contract=successor, new_task=True)
+            self.assertEqual(state["task_contract"], plan["task_contract"])
+            self.assertFalse(state["acceptance"].get("receipt_verified", False))
+            missing = copy.deepcopy(plan)
+            missing["task_contract"].pop("design_decisions")
+            missing["task_contract_sha256"] = behavior.digest(missing["task_contract"])
+            self.assertEqual(execution_plan.validate_plan(missing, state["task_contract"])["gate"], "BLOCK")
+            saved = project_state.state_path(root).read_bytes()
+            approved = copy.deepcopy(state["task_contract"])
+            approved["design_decisions"][0]["status"] = "approved"
+            with self.assertRaisesRegex(ValueError, "scoped owner authority"):
+                project_state.capture(root, task_contract=approved, accept_contract_change="Head accepted technical work")
+            self.assertEqual(project_state.state_path(root).read_bytes(), saved)
+            approved["design_decisions"][0]["authority"] = {
+                "kind": "visual-approval", "reference": "conversation:sample-1", "actor": "owner",
+                "statement": "Approve the palette in sample-1; sample layout still needs review"}
+            accepted = project_state.capture(root, task_contract=approved)
+            self.assertEqual(accepted["design_decision_history"][0]["decision"]["status"], "proposed")
+            pending = copy.deepcopy(approved)
+            pending["design_decisions"][0].update(status="proposed", authority=None,
+                                                 basis={"reference": "DESIGN.md#primary", "revision": "sample-2"})
+            project_state.capture(root, task_contract=pending)
+            backend = dict(contract(), task_id="independent-backend", scope=["backend.py"])
+            state = project_state.capture(root, task_contract=backend, new_task=True)
+            self.assertEqual(state["task_contract"]["design_decisions"], pending["design_decisions"])
+            self.assertEqual(state["design_decision_history"][-1]["decision"]["status"], "approved")
+            handoff = project_state.handoff(root, False)
+            self.assertIn('"status": "proposed"', handoff["markdown"])
+            resumed = resume_context.build_context(root)
+            self.assertEqual(resumed["local_state"]["project_state"]["task_contract"], state["task_contract"])
+            self.assertIn("DESIGN.md", [doc["name"] for doc in resumed["documents"]])
+            self.assertIn("primary-sample", resume_context.render_markdown(resumed))
+
     def test_confirmed_security_outcome_needs_protection_and_behavioral_obligation(self):
         c = contract(2)
         row = c["acceptance_criteria"][0]

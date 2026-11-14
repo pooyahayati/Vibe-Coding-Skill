@@ -13,6 +13,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tests"))
 
 
 class PortableIntegrationTests(unittest.TestCase):
@@ -59,6 +60,26 @@ class PortableIntegrationTests(unittest.TestCase):
         report["checks"][0]["validation_scope"] = "full"
         report.pop("schema_version")
         self.assertEqual(self.cli("release_readiness.py", self.json_file("legacy-readiness", report), *args, expected=2)["gate"], "BLOCK")
+
+    def test_installed_design_decisions_survive_successor_task(self):
+        from test_behavior_contract import contract, design_decision
+        (self.product / "settings.txt").write_text("Proposed UI", encoding="utf-8")
+        self.git("add", ".")
+        self.git("commit", "-qm", "fixture")
+        original = contract()
+        original["design_decisions"] = [design_decision("primary-sample", "sample")]
+        self.cli("project_state.py", "capture", "--root", self.product,
+                 "--task-contract", self.json_file("design-first", original), "--json")
+        next_task = dict(contract(), task_id="connect-workflow")
+        source = self.json_file("design-next", next_task)
+        planned = self.cli("execution_plan.py", "draft", "--root", self.product, "--task-contract", source, "--json")
+        state = self.cli("project_state.py", "capture", "--root", self.product, "--task-contract", source, "--new-task", "--json")
+        self.assertEqual(state["task_contract"], planned["task_contract"])
+        self.assertEqual(state["task_contract"]["design_decisions"], original["design_decisions"])
+        handoff = self.cli("project_state.py", "handoff", "--root", self.product, "--json")
+        self.assertIn('"status": "proposed"', handoff["markdown"])
+        resumed = self.cli("resume_context.py", "--root", self.product, "--json")
+        self.assertEqual(resumed["local_state"]["project_state"]["task_contract"], state["task_contract"])
 
     def test_installed_reviewed_risk_survives_capture_handoff_resume_and_planning(self):
         (self.product / "settings.txt").write_text("Production authentication label\n", encoding="utf-8")

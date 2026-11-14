@@ -22,6 +22,7 @@ DOC_ORDER = [
     "PROJECT.md",
     "ROADMAP.md",
     "ARCHITECTURE.md",
+    "DESIGN.md",
     "PROJECT_GRAPH.md",
     "AGENTS.md",
     "README.md",

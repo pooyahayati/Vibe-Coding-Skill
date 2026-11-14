@@ -22,6 +22,7 @@ DOCS = [
     "PROJECT.md",
     "ROADMAP.md",
     "ARCHITECTURE.md",
+    "DESIGN.md",
     "PROJECT_GRAPH.md",
     "AGENTS.md",
     "README.md",
@@ -90,6 +91,17 @@ def current_state(root: Path, task_contract=None, completion_report=None, delive
         if previous.get("task_contract_sha256") != behavior_contract.digest(retained):
             raise ValueError("retained task contract fingerprint mismatch")
     contract = behavior_contract.validate(task_contract) if task_contract is not None else retained
+    if contract is not None:
+        contract = behavior_contract.inherit_design_decisions(retained, contract)
+    design_history = list(previous.get("design_decision_history", []))
+    if retained and contract:
+        old_design = behavior_contract.design_decisions(retained.get("design_decisions", []))
+        new_design = behavior_contract.design_decisions(contract.get("design_decisions", []))
+        for key, row in old_design.items():
+            if row != new_design[key]:
+                design_history.append({"task_id": retained["task_id"], "decision": row})
+    if design_history:
+        current["design_decision_history"] = design_history
     if sum((new_task, accept_contract_change is not None, reclassify_risk is not None)) > 1:
         raise ValueError("choose a new task, contract reconciliation or risk reclassification, not multiple")
     if new_task and (task_contract is None or (retained and contract["task_id"] == retained["task_id"])):
@@ -176,6 +188,15 @@ def state_path(root: Path, create: bool = False) -> Path:
     return local_workspace.state_path(root, "project-state.json", create=create)
 
 
+def inherit_contract(root: Path, contract: dict) -> dict:
+    """Read-only preparation: return the effective contract for planning/assignment."""
+    rc, _ = run_git(root, "rev-parse", "--show-toplevel")
+    if rc != 0:
+        return behavior_contract.validate(contract)
+    previous = load_previous(root) or {}
+    return behavior_contract.inherit_design_decisions(previous.get("task_contract"), contract)
+
+
 def backup_path(root: Path) -> Path:
     return local_workspace.state_path(root, "project-state-retained.json")
 
@@ -196,6 +217,12 @@ def read_snapshot(path: Path, root: Path) -> dict[str, Any]:
         raise ValueError("incomplete retained project snapshot")
     if not isinstance(value.get("contract_revisions", []), list):
         raise ValueError("invalid contract revision history")
+    if not isinstance(value.get("design_decision_history", []), list):
+        raise ValueError("invalid design decision history")
+    for record in value.get("design_decision_history", []):
+        if not isinstance(record, dict) or set(record) != {"task_id", "decision"} or not behavior_contract.text(record["task_id"]):
+            raise ValueError("invalid design decision history record")
+        behavior_contract.design_decisions([record["decision"]])
     for revision in value.get("contract_revisions", []):
         if not isinstance(revision, dict) or not behavior_contract.text(revision.get("reason")) or not behavior_contract.text(revision.get("next_sha256")):
             raise ValueError("invalid contract revision record")
@@ -205,9 +232,12 @@ def read_snapshot(path: Path, root: Path) -> dict[str, Any]:
         contract = behavior_contract.validate(value["task_contract"])
         if behavior_contract.digest(contract) != value.get("task_contract_sha256"):
             raise ValueError("retained task contract fingerprint mismatch")
+        ids = behavior_contract.design_decisions(contract.get("design_decisions", []))
+        if any(record["decision"]["id"] not in ids for record in value.get("design_decision_history", [])):
+            raise ValueError("retained design history lost its current decision")
         if type(value.get("completion_schema", 2)) is not int or value.get("completion_schema", 2) not in (2, 3):
             raise ValueError("unsupported retained completion workflow")
-    elif any(key in value for key in ("task_contract_sha256", "completion_report", "contract_revisions")):
+    elif any(key in value for key in ("task_contract_sha256", "completion_report", "contract_revisions", "design_decision_history")):
         raise ValueError("retained task context is missing its contract")
     value.pop("state_path", None)  # CLI presentation, never a retained binding.
     return value
@@ -305,7 +335,7 @@ def handoff_markdown(state: dict[str, Any]) -> str:
         f"- GitHub repository: {github.get('repository')}",
         "",
         "Resume order:",
-        "STATUS.md -> PROJECT.md -> ROADMAP.md -> ARCHITECTURE.md -> PROJECT_GRAPH.md -> AGENTS.md -> GitHub -> source/tests",
+        "STATUS.md -> PROJECT.md -> ROADMAP.md -> ARCHITECTURE.md -> DESIGN.md (if present) -> PROJECT_GRAPH.md -> AGENTS.md -> GitHub -> source/tests",
         "",
         "This file is local operational state. Do not commit it to the project repository.",
         "",

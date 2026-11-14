@@ -48,7 +48,7 @@ def validate_assignment(value, contract):
     contract = behavior.validate(contract)
     base = {"format", "schema_version", "task_id", "assignment_id", "specialist_id", "stage", "contract_sha256",
             "criterion_ids", "scope", "settled_decisions", "protected_invariants", "authorized_actions", "evidence_requirement_ids", "platform"}
-    fields(value, base | {"shared_contracts", "input_excludes", "completion_binding"}, base)
+    fields(value, base | {"shared_contracts", "input_excludes", "completion_binding", "design_decision_ids"}, base)
     identity(value, "vibe-specialist-assignment")
     require(value["task_id"] == contract["task_id"] and value["contract_sha256"] == behavior.digest(contract), "assignment changed retained task contract")
     entry = next((e for e in manager.registry()["specialists"] if e["id"] == value["specialist_id"]), None)
@@ -67,7 +67,26 @@ def validate_assignment(value, contract):
                     and behavior._gate.evidence_family(obligations[e]["kind"]) in {"verification", "integration", "runtime", "data", "manual"}
                     for c in obligations[e]["criterion_ids"]}
         require(security_ids <= assigned, "security verification assignment omitted its behavioral evidence obligation")
-    for k in ("settled_decisions", "protected_invariants", "authorized_actions"):
+    design = behavior.design_decisions(contract.get("design_decisions", []))
+    design_ids = value.get("design_decision_ids", [])
+    require(behavior.strings(design_ids) and len(set(design_ids)) == len(design_ids)
+            and set(design_ids) <= design.keys(), "unknown or duplicate design decision references")
+    if value["specialist_id"] == "ui-ux-skill":
+        require(behavior.related_design_ids(contract, value["scope"]) <= set(design_ids),
+                "UI assignment omitted relevant owner design decisions")
+    settled = value["settled_decisions"]
+    require(isinstance(settled, list), "invalid settled decisions")
+    for row in settled:
+        if isinstance(row, str):  # Legacy/technical context is not owner approval.
+            require(behavior.text(row), "invalid settled decision")
+            continue
+        require(isinstance(row, dict) and set(row) == {"design_decision_id"}
+                and behavior.text(row["design_decision_id"]) and row["design_decision_id"] in design_ids,
+                "settled design needs an assigned decision reference")
+        require(design[row["design_decision_id"]]["status"] in {"approved", "delegated"},
+                "proposed or unknown design is not a settled owner decision")
+    require(len({behavior.digest(row) for row in settled}) == len(settled), "duplicate settled decisions")
+    for k in ("protected_invariants", "authorized_actions"):
         require(behavior.strings(value[k]) and len(set(value[k])) == len(value[k]), "invalid assignment constraints")
     inherited = {i for c in value["criterion_ids"] for i in criteria[c].get("behavior", {}).get("protected_invariants", [])}
     require(inherited <= set(value["protected_invariants"]), "assignment lost retained protected invariant")
@@ -160,6 +179,18 @@ def assignment_inputs(root, contract, specification, skills_dir, state):
     assignment = copy.deepcopy(specification)
     assignment.setdefault("completion_binding", "current-delivery" if assignment.get("stage") in ("verify", "review", "ship") else "stage-handoff")
     entry = validate_assignment(assignment, contract)
+    if entry["id"] == "ui-ux-skill":
+        import project_state
+        inherited = project_state.inherit_contract(root, contract)
+        required = behavior.related_design_ids(inherited, assignment["scope"])
+        require(required <= set(assignment.get("design_decision_ids", [])),
+                "UI continuation must inherit retained design decisions through planning or state capture")
+        if required:
+            retained = (project_state.load_previous(root) or {}).get("task_contract", {})
+            recorded = behavior.design_decisions(retained.get("design_decisions", []))
+            supplied = behavior.design_decisions(contract.get("design_decisions", []))
+            require(all(recorded.get(key) == supplied.get(key) for key in required),
+                    "capture current owner design decisions once before UI assignment")
     require(not (directory(root, contract["task_id"], assignment["assignment_id"]) / "operation.json").exists(),
             "assignment ID already retained; create a new stage assignment")
     return root, skills_dir, state, assignment, entry
@@ -298,9 +329,13 @@ def load_operation(root, contract, assignment_id, allow_transition=False):
 def validate_return(returned, operation):
     keys = {"format", "schema_version", "task_id", "assignment_id", "specialist_id", "stage", "contract_sha256", "upstream_revision", "head_contract_sha256",
             "changed_surfaces", "decisions", "invariants", "evidence_ids", "findings", "unperformed_checks", "conflicts", "next_action"}
-    fields(returned, keys, keys)
+    fields(returned, keys | {"design_decision_ids"}, keys)
     identity(returned, "vibe-specialist-return")
     assignment = operation["assignment"]
+    design_ids = returned.get("design_decision_ids", [])
+    require(behavior.strings(design_ids) and len(design_ids) == len(set(design_ids))
+            and set(design_ids) == set(assignment.get("design_decision_ids", [])),
+            "return omitted or changed assigned design decision references")
     for k in ("task_id", "assignment_id", "specialist_id", "stage", "contract_sha256"):
         require(returned[k] == assignment[k], "return binding mismatch: " + k)
     require(returned["upstream_revision"] == operation["source"]["commit"] and returned["head_contract_sha256"] == operation["source"]["package_policy"], "return changed assigned specialist provenance")
@@ -580,6 +615,9 @@ def resume_assignment(root, contract, assignment_id):
                   "specialist_skill": str(Path(operation["skills_dir"]) / entry["skill_name"] / "SKILL.md"),
                   "limitation": operation.get("runtime_limitation", "No verified isolated binding; active update guard retained.")}
     result.update(closed=operation["closed"], contract_sha256=behavior.digest(contract), record_path=str(base / "operation.json"))
+    if operation["assignment"].get("design_decision_ids"):
+        result["design_decisions"] = [row for row in contract["design_decisions"]
+                                      if row["id"] in operation["assignment"]["design_decision_ids"]]
     required = {}
     history = sorted((base / "returns").glob("*.json"))
     require(len(history) <= 1000, "return history limit exceeded")
