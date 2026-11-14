@@ -6,22 +6,22 @@ Canonical progress tracker. Reviewed: 2026-11-15, Asia/Tehran. All documented im
 
 | State | Position |
 |---|---|
-| Published runtime | Stable [1.8.1](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.8.1), release commit `2302346737646fc2b423b0e513fb6c40d044f0fd`. |
-| Local installation | Active **1.8.1**, verified on 2026-11-11. All 82 installed files match the published ZIP byte-for-byte. Offline installation and fresh installed Head preflight passed without failures or warnings; 1.8.0 is backed up outside discovery. |
+| Published runtime | Stable [1.9.0](https://github.com/pooyahayati/Vibe-Coding-Skill/releases/tag/v1.9.0), release commit `24f989257f4eccbd5b3c4c98c7fe4242dfd1f264`. |
+| Local installation | Active **1.9.0**, verified 2026-11-15. All 82 installed files match the published ZIP byte-for-byte; offline installation PASS with no warnings. Previous 1.8.1 default backed up outside discovery; no assignments stopped. |
 | Review baseline | Main `31c0d83de94e81db40aeffd3bc1fc43d8e999ca8`, runtime 1.8.1 and UI/UX specialist 3.7.1; observed design-approval loss across a real task handoff, checked against retained records and validation code. See the [evidence boundaries](docs/improvement-implementation-plan.md#ui-decision-audit-baseline). |
-| Overall progress | **R1-R40 complete; R41 locally verified, awaiting merge.** The counts track packages, not quality or coverage. |
-| Current phase | R40 merged in [PR #115](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/115); R41 is implemented and locally verified on `codex/r41-ui-design-acceptance`. |
-| Next action | Commit/merge R41 and publish 1.9.0, then update the local installation under current authorization. |
+| Overall progress | **R1-R41 complete.** The counts track packages, not quality or coverage. |
+| Current phase | R40/R41 merged, released in 1.9.0 and installed locally. |
+| Next action | No approved implementation remains; allocate R42 only for a justified next improvement. |
 | Next unallocated ID | **R42**. Continue the same sequence for later improvements. |
-| Delivery state | Source, stable tag, consumer ZIP/checksum and active installation verified for 1.8.1. Exact-revision hosted baselines and native final-artifact Trivy passed; maintenance evidence is below. |
-| Blockers / limits | No known implementation blocker. R40 is merged; R41 is local and unmerged. Neither is included in 1.8.1. Live Context7 coverage and measured product speed/capacity remain unverified. Assignment/update guards remain binding. |
+| Delivery state | Exact-revision hosted release baselines and native final-artifact Trivy passed. Published ZIP/checksum and installed parity verified; see 1.9.0 delivery evidence below. |
+| Blockers / limits | No delivery blocker. Live Context7 coverage, conversation authenticity, subjective design quality and measured product speed/capacity remain outside this mechanism validation. |
 
 ## Current cycle: R40-R41
 
 | Priority | Package | Intended improvement | Status |
 |---|---|---|---|
 | 1 / High | [R40: Owner design-decision continuity](docs/improvement-implementation-plan.md#r40) | Preserve proposal, scoped delegation and approval provenance across tasks; prevent implementation permission from silently settling visual choices. | **Complete** |
-| 2 / High | [R41: Design acceptance bound to UI delivery](docs/improvement-implementation-plan.md#r41) | Carry applicable specialist design-acceptance obligations into Head completion; functional checks alone cannot establish owner-approved design. | **Locally verified / awaiting merge** |
+| 2 / High | [R41: Design acceptance bound to UI delivery](docs/improvement-implementation-plan.md#r41) | Carry applicable specialist design-acceptance obligations into Head completion; functional checks alone cannot establish owner-approved design. | **Complete** |
 
 Execution order is **R40 -> R41**; R41 depends on R40's decision provenance. Use existing contracts, project state and specialist acceptance. New or materially redesigned interfaces need only unresolved, consequential choices clarified; an unchanged approved design and small compatible edits do not trigger repeated questions or approvals. Independent engineering and explicitly provisional previews can continue while design acceptance is pending.
 
@@ -31,14 +31,20 @@ The [execution plan](docs/improvement-implementation-plan.md#current-execution-b
 
 - **Implemented:** Typed owner choices/sample decisions with source, scope and revision; automatic continuity through successor plans, captured state, UI assignments/returns and resume. Prior decision values are retained. Legacy context remains readable; implementation permission is not owner design authority.
 - **Verified:** The affected behavior-contract module passed (13 tests); after final hardening, its two design cases and three selected handoff cases passed, including existing acceptance/revision compatibility. One extracted-package CLI case passed through successor planning, capture, handoff and resume. Structure, changed-document links, portable parity and all 16 existing deterministic policy scenarios passed; no model evaluation or full suite was run. Purity found no forbidden tracked/staged artifacts; its existing local-exclude configuration warning remains.
-- **Limits:** Validation checks recorded provenance, not the authenticity of an owner's conversation or visual quality. This R40 evidence does not establish R41 acceptance; release and active installation remain 1.8.1.
+- **Limits:** Validation checks recorded provenance, not the authenticity of an owner's conversation or visual quality. This R40 evidence does not establish R41 acceptance; at that stage release and active installation remained 1.8.1.
 - **Integration:** [PR #115](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/115) merged as `546ff26d747a424d4e20ad344c945aaebab10d91` after all selected PR checks passed, including the platform matrix. Selected checks also passed on merged main; automatic publication steps were skipped. Initial CI exposed sibling fixture imports that worked under discovery but failed under selected-module execution; the importing test modules were corrected and the affected cases passed in that execution mode before the successful CI run.
 
 ### R41 local acceptance — 2026-11-15
 
 - **Implemented:** Existing task criteria bind applicable owner decisions to accepted UI, provisional UI or functional-only delivery. Accepted UI requires scoped authority and current rendered-review evidence; a Head-accepted preparation does not settle an owner decision. Known omitted/pending decisions cannot disappear behind functional success. Explicit delegation stays distinguishable from owner approval, and narrower completion is not design readiness for dependent rollout.
 - **Verified:** The affected contract module, focused receipt/Head-handoff cases and adjacent legacy, evidence-reuse and security-state checks passed. The extracted-package successor-task path passed through plan, capture, handoff, resume and completion: missing/pending bindings blocked, matching authority passed. Structure, changed links, portable parity and all 16 existing deterministic policy scenarios passed. No full local suite, additional platform run, model evaluation or real-project mutation was used for R41.
-- **Limits / delivery:** These synthetic cases prove recorded binding and evidence handling, not conversation authenticity or subjective visual quality. R41 changes remain uncommitted/unmerged; the active installation and release are unchanged. Compatibility/migration and existing publication/security controls remain binding.
+- **Limits / delivery:** These synthetic cases prove recorded binding and evidence handling, not conversation authenticity or subjective visual quality. R41 merged in PR #116 and is released/installed as 1.9.0. Compatibility/migration and existing publication/security controls remain binding.
+
+## Verified delivery: 1.9.0
+
+- **Merge:** [PR #116](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/116), commit `24f989257f4eccbd5b3c4c98c7fe4242dfd1f264`; required full release baselines passed on this exact revision.
+- **Publication:** [successful recovery attempt](https://github.com/pooyahayati/Vibe-Coding-Skill/actions/runs/43644242949/attempts/3) passed native Trivy on the final package and completed the matching draft. A failed native scanner execution and a draft-visibility interruption were retained; no tag was moved, asset replaced or control bypassed.
+- **Package/install:** ZIP SHA-256 `bb77c4c7eac57ee333facb3c57bbafb4021934ad628a86dd6b0c4aa8fa18415c`; all 82 installed files match the published ZIP exactly. Managed installation selected v1.9.0 at the release commit, preserved the prior default outside discovery and passed offline installation without warnings. No live assignment or product data was changed.
 
 ## Verified maintenance delivery: 1.8.1
 
@@ -136,7 +142,7 @@ Legacy aliases explain old conversations, PRs and technical references. In parti
 | R38 | None | [Evidence-based reuse and structural growth review](docs/improvement-implementation-plan.md#r38) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); existing decision/diff review extended; no new detector or runtime dependency. |
 | R39 | None | [Measured performance, capacity and recovery](docs/improvement-implementation-plan.md#r39) | **Complete** | `1.8.0` / [PR #110](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/110); operational conditions and scoped context binding checked; no product capacity claim. |
 | R40 | None | [Owner design-decision continuity](docs/improvement-implementation-plan.md#r40) | **Complete** | [PR #115](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/115), merge `546ff26d747a424d4e20ad344c945aaebab10d91`; verified source, unreleased. |
-| R41 | None | [Design acceptance bound to UI delivery](docs/improvement-implementation-plan.md#r41) | **Locally verified / awaiting merge** | Scoped local acceptance above; `codex/r41-ui-design-acceptance`, uncommitted/unmerged and unreleased. |
+| R41 | None | [Design acceptance bound to UI delivery](docs/improvement-implementation-plan.md#r41) | **Complete** | [PR #116](https://github.com/pooyahayati/Vibe-Coding-Skill/pull/116); released and installed as 1.9.0. |
 
 ## Numbering policy
 
