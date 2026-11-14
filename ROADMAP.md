@@ -32,6 +32,7 @@ The [execution plan](docs/improvement-implementation-plan.md#current-execution-b
 - **Implemented:** Typed owner choices/sample decisions with source, scope and revision; automatic continuity through successor plans, captured state, UI assignments/returns and resume. Prior decision values are retained. Legacy context remains readable; implementation permission is not owner design authority.
 - **Verified:** The affected behavior-contract module passed (13 tests); after final hardening, its two design cases and three selected handoff cases passed, including existing acceptance/revision compatibility. One extracted-package CLI case passed through successor planning, capture, handoff and resume. Structure, changed-document links, portable parity and all 16 existing deterministic policy scenarios passed; no model evaluation or full suite was run. Purity found no forbidden tracked/staged artifacts; its existing local-exclude configuration warning remains.
 - **Limits:** Validation checks recorded provenance, not the authenticity of an owner's conversation or visual quality. R41's final design-acceptance gate is not implemented. R40 merge is pending; release and active installation remain 1.8.1.
+- **Integration follow-up:** PR #115 exposed sibling test-fixture imports that worked under discovery but failed under selected-module CI execution. The importing test modules now explicitly include their fixture directory; integration checks must pass before merge.
 
 ## Verified maintenance delivery: 1.8.1
 
