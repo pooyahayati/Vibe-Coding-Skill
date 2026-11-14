@@ -2,7 +2,74 @@
 
 Package numbers belong to the permanent [repository roadmap register](../ROADMAP.md#roadmap-register); they do not restart with a new release or cycle.
 
-[ROADMAP.md](../ROADMAP.md) is the only current progress tracker. This document defines R35-R39 scope and acceptance in priority order and retains the delivered R31-R34 specifications below. Runtime behavior belongs to canonical scripts and operating references; implementation evidence belongs in the roadmap. The execution boundaries below reflect the subsequent implementation authorization; installation and publication remain separate.
+[ROADMAP.md](../ROADMAP.md) is the only current progress tracker. This document defines R40-R41 scope and acceptance in priority order and retains delivered R31-R39 specifications below. Runtime behavior belongs to canonical scripts and operating references; implementation evidence belongs in the roadmap. Current authorization covers planning and commit/merge of these documents, not runtime implementation.
+
+## UI decision audit baseline
+
+Reviewed 2026-11-14, Asia/Tehran: main `31c0d83de94e81db40aeffd3bc1fc43d8e999ca8`, installed Head 1.8.1 and UI/UX specialist 3.7.1. A real new-product workflow selected and formally used the specialist, recorded visual approval as pending, then classified the proposed design as settled when the user authorized functional implementation. The next task omitted the pending approval; functional UI evidence satisfied its declared criteria and completion returned `PASS` without warnings.
+
+The relevant source, portable and installed controls match after line-ending normalization. A read-only call accepted the actual assignment. [Assignment validation](../scripts/specialist_handoff.py) checks `settled_decisions` as strings and evaluates declared obligations/findings; [task contracts](../scripts/behavior_contract.py) do not establish whether an initially omitted owner decision was captured. The specialist already distinguishes recommendations, owner approval and engineering authorization. This is a demonstrated execution/continuity gap, not evidence of missing specialist installation, invalid functional tests or universal UI noncompliance. Private conversation, screenshots and local project records remain outside this repository.
+
+## Current execution boundaries
+
+1. **Sequence and authority:** Plan R40, then dependent R41. Commit/merge of the planning documents is authorized; implementation has not been requested. Once implementation is authorized, use one lead and scoped acceptance between packages; do not introduce another per-package permission ceremony. Publication and installation retain their existing authorization boundaries.
+2. **Keep domain ownership:** The sole UI/UX specialist owns discovery, visual methods and applicable sample review. The Head preserves owner decisions, scope and completion obligations; do not copy palette, font or layout rules into the parent skill. Head acceptance cannot manufacture owner consent.
+3. **Reuse rather than duplicate:** Extend existing contracts, project state, handoff/resume and evidence records only where needed. Define compatibility before changing persisted formats. No new service, general workflow engine, mandatory per-edit document or real-project mutation.
+4. **Bound the human interaction:** Reuse valid approval or scoped delegation. Ask one focused batch only for material unresolved choices or a conflict; no universal color/font questionnaire, automatic reapproval on every revision or extra approval for mechanical edits. Sample acceptance can resolve the relevant visual choices together. Backend work and clearly provisional samples remain possible while acceptance is pending.
+5. **Bound verification:** Extend existing fixtures only for uncovered failure modes and reuse them across R40-R41. Run affected checks during implementation and check the changed portable route once integrated; preserve existing release/security triggers without adding full suites per edit, browser frameworks, coverage quotas or model evaluations. For this planning edit, only documentation structure, links/IDs, historical evidence, purity and unchanged mirror need checking.
+
+<a id="r40"></a>
+
+## R40: Owner design-decision continuity
+
+**Priority:** 1 / High. **Complexity:** Medium. **Dependency:** None.
+
+**Trigger / outcome:** When a new interface or material redesign introduces owner-controlled visual choices, keep proposals, explicit delegation, approval and unresolved decisions distinguishable across stages and new tasks. Existing approved design remains reusable.
+
+**Implementation sequence:**
+
+1. Define the smallest decision binding in existing contract/state records: stable identity, status, covered choices/surfaces, actual owner source or scoped delegation, and applicable sample/handbook revision. Distinguish delegated choices from sample approval; neither generic implementation permission nor a working screen establishes either.
+2. Carry pending decisions and their blocking scope through assignment, return, plan, resume and successor tasks even when `task_id` changes. Reference the authoritative record rather than copying competing ledgers. Reconcile conflicting claims before calling a choice settled; technical Head review cannot silently upgrade it.
+3. Define conservative compatibility for old records: retain historical decisions, reuse available valid authority and mark missing provenance unknown only where it affects the current design decision. Affected new design work may need clarification; unrelated backend work and mechanical edits must not trigger project-wide rediscovery.
+
+**Likely components:** `scripts/behavior_contract.py`, `scripts/specialist_handoff.py`, relevant `execution_plan.py`, `project_state.py` and `resume_context.py` callers; `references/specialist-authority.md`, `references/specialist-composition.md`, `references/shared-improvement-contracts.md` and existing recovery/state guidance. Synchronize affected portable resources during implementation.
+
+**Acceptance:**
+
+- A proposed palette/type direction cannot become approved or owner-delegated merely because the user asks to connect the application. Settled owner-controlled decisions have a relevant source and scope.
+- Pending sample acceptance survives a new task ID and resume; accepted preparation does not close a future design obligation. Materially changed choices reopen only affected decisions.
+- Explicit scoped delegation and an unchanged approved baseline remain usable without repeated questions. Unknown legacy authority is reported honestly without blocking unrelated work or rewriting history.
+
+**Verification:** Extend existing handoff/state fixtures with one synthetic proposal-to-successor-task case, including attempted unsupported promotion and resume. Reuse or extend its variants for valid scoped authority and legacy unknown state. Check record continuity and compatibility, not the model's subjective design taste; no new test harness or real user-project run is required.
+
+<a id="r41"></a>
+
+## R41: Design acceptance bound to UI delivery
+
+**Priority:** 2 / High. **Complexity:** Medium. **Dependency:** R40's decision provenance and continuity.
+
+**Trigger / outcome:** Before broad rollout or claiming an owner-accepted new/materially redesigned interface, preserve the specialist's applicable design-acceptance obligation in Head completion. Provisional prototype completion and independent functional completion remain distinct valid outcomes.
+
+**Implementation sequence:**
+
+1. Bind the specialist's applicable sample/approval obligation to existing task criteria, assignment and completion records at scope definition, using R40's source of truth. Carry a known pending obligation into a successor task rather than relying on a free-text `unperformed_checks` entry that can disappear. Reject a missing or dropped required binding for the affected UI scope even if the successor contract lists only functional criteria.
+2. Keep functional evidence, rendered review, owner-scoped acceptance/delegation and engineering rollout authority distinct. Evaluate the current sample/baseline and affected choices; a screenshot, successful build or Head `accepted` decision cannot substitute for required owner evidence. Honor actual explicit user instructions at their stated scope.
+3. Make acceptance outcomes precise: allow a labelled proposal and independent engineering to complete within scope, but withhold final design acceptance or dependent broad rollout while a material decision is unresolved. Preserve guidance-only handling and valid evidence for small compatible edits; a changed revision alone does not invalidate unrelated approval.
+
+**Likely components:** `scripts/specialist_handoff.py`, `scripts/behavior_contract.py`, `scripts/completion_gate.py` and affected planning/resume integration; `references/specialist-composition.md`, `references/execution-and-verification.md` and only necessary entrypoint routing. Keep visual methodology in the existing specialist; synchronize affected portable resources.
+
+**Acceptance:**
+
+- The observed pending-design case cannot claim owner-approved UI completion or cross its dependent rollout boundary even when every functional check passes; the missing decision is named clearly.
+- A current, properly scoped accepted sample satisfies the obligation once. Stale or differently scoped approval cannot authorize changed visual choices; legitimate explicit delegation retains its exact scope.
+- A clearly provisional sample or independent backend slice can complete without pretending design acceptance occurred. No mandatory design gate is added to backend-only work or a compatible mechanical edit using a valid baseline.
+- Head/domain ownership, required findings, security controls and existing lightweight selection remain intact. No extra approval screen, specialist or blanket visual test suite is introduced.
+
+**Verification:** Extend R40's retained fixture through the existing completion gate: functional-pass/pending-or-omitted-design cannot establish final design acceptance; matching authority permits it; changed scope does not inherit it. Reuse existing light-route checks for unchanged approved UI and backend-only work. Run affected checks and one combined extracted-package handoff/resume/completion path; do not repeat the same scenario as separate suites for each package.
+
+## Retained specifications: R35-R39
+
+The following baseline, implementation sequence and delivery authorization describe completed 1.8.0 work. They are historical and do not authorize or restart R40-R41. Current boundaries are above; status and delivery evidence remain in the roadmap.
 
 ## Review baseline and evidence boundaries
 
@@ -20,7 +87,7 @@ The R35 observation is retained audit evidence, not a committed regression or a 
 
 ## Execution and validation boundaries
 
-1. **Authorization:** The planning-only request was superseded by explicit authorization to commit/merge the plan and implement **R35 -> R36 -> R37 -> R38 -> R39**, including the README update. Continue after scoped acceptance without another approval for every step. The subsequent delivery request authorizes implementation commit/merge, a new release and local Head update; verify and record each outcome separately.
+1. **Historical authorization:** Explicit authorization covered plan commit/merge and **R35 -> R36 -> R37 -> R38 -> R39** implementation, including the README update, without another approval for every step. The subsequent delivery request covered implementation commit/merge, release and local Head update. These completed permissions do not authorize the current cycle.
 2. **Existing mechanisms first:** Reuse task contracts, evidence obligations, Head acceptance, routing, state and receipt freshness. R37 depends on R35's integrity handling; R36, R38 and R39 otherwise follow priority/integration order, not a requirement to install each other's providers. Define compatibility/migration before changing a persisted format; retain obligations and handle legacy/unknown state explicitly.
 3. **No extra workflow:** Add no new orchestrator, mandatory specialist, global test quota, model evaluation, blanket scanner, recurring service or per-edit document. Keep the sole UI/UX specialist. A small non-runtime edit must not acquire formal security work, documentation lookups or load tests from this cycle.
 4. **Proportionate verification:** Reuse sufficient existing cases and receipts. Extend existing fixtures only for an uncovered acceptance failure; run affected checks during implementation. When portable behavior changes, synchronize the canonical resources and check the affected extracted route. Existing full integration/publication and native final-artifact Trivy gates keep their current triggers; no full suite after every edit.
@@ -217,7 +284,7 @@ Baseline: main `1204b41fced7cb144721bebc90a5ec03d84dad50`, runtime `1.7.0`, revi
 
 <a id="deferred-and-excluded-work"></a>
 
-R33-R34 retained the existing preparation/state mechanisms and proportionate checks; their implementation and publication permissions are historical. Broad instruction slimming, a new routing cache, a monitoring service and test quotas were outside that cycle. The R35-R39 boundaries above define the current planning scope without reopening delivered work.
+R33-R34 retained the existing preparation/state mechanisms and proportionate checks; their implementation and publication permissions are historical. Broad instruction slimming, a new routing cache, a monitoring service and test quotas were outside that cycle. The R40-R41 boundaries at the top define the current planning scope without reopening delivered work.
 
 ## Retained specifications: R31-R32
 
