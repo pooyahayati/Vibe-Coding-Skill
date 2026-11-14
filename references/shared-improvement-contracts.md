@@ -54,6 +54,32 @@ A tiny task can reuse one concise description and a manual or static obligation 
 }
 ```
 
+### Owner design decisions (R40)
+
+For a new interface or material redesign, use the existing task contract's optional `design_decisions` array for consequential owner choices and applicable sample acceptance. Do not run a universal color/font interview. Inspect existing authority first; obtain one focused answer or scoped delegation only for a material unresolved choice. The UI/UX specialist owns discovery and sample methodology.
+
+Each row has a stable `id`, `kind` (`choice` or `sample`), concrete `description`, affected project-relative `scope`, `status`, `basis` and `authority`. Example proposed record:
+
+```json
+{
+  "id": "primary-sample",
+  "kind": "sample",
+  "description": "Primary workspace layout and visual direction",
+  "scope": ["src/ui"],
+  "status": "proposed",
+  "basis": {"reference": "DESIGN.md#primary", "revision": "sample-1"},
+  "authority": null
+}
+```
+
+- `proposed` is not accepted. Use `unknown` with a null basis/authority when legacy evidence is missing; absence of this optional field does not invent approval or mandate rediscovery.
+- `approved` requires authority `{ "kind": "visual-approval", "reference": "<actual owner message/decision>", "actor": "<owner>", "statement": "<scoped instruction>" }`. `delegated` uses `kind: design-delegation`; it covers only the recorded choice/scope and is not sample approval. Implementation permission, silence, a screenshot or Head acceptance cannot be substituted. The Head must inspect the source; JSON fields do not authenticate a conversation.
+- Reuse unchanged accepted choices without new questions. A materially changed choice/scope needs new owner authority or a proposed/unknown successor basis. Reusing the same source for a changed choice or for promotion from delegation to approval is rejected. Keep unrelated accepted choices unchanged; a new global document revision alone is not a reason to reopen them.
+- `project_state.py` and contract-backed planning inherit omitted decision rows from retained project state, including across a different `task_id`. The effective returned `task_contract` and digest are the binding to use afterward. Capture new/changed records once before a relevant UI assignment; no extra approval is requested by capture. Previous values survive in `design_decision_history` in the same snapshot, not a separate ledger.
+- UI assignments reference applicable records through `design_decision_ids`; returns preserve those IDs. A settled visual decision uses `{ "design_decision_id": "<id>" }` in `settled_decisions` and must resolve to approved/delegated authority. Free-text legacy/technical constraints never establish owner approval. Pending records can be assigned for proposal work; structured continuity is not final UI acceptance.
+
+This is an additive extension for current task-contract versions 1/2 and handoff version 1. Legacy records without it remain readable and lightweight. Existing assignment reconciliation/resource isolation still applies: migrate an older retained runtime explicitly before relying on R40 controls. Backend-only tasks and compatible mechanical changes need no new design record, repeated owner approval or formal assignment solely because a pending design exists elsewhere. R41 separately binds applicable design acceptance to completion; R40 does not add that completion gate.
+
 ## Execution receipt — E1/E2
 
 | Field | Type / requirement | Meaning |

@@ -72,6 +72,43 @@ class HandoffTests(unittest.TestCase):
                      "authorized_actions": ["Edit assigned UI within existing authority"], "evidence_requirement_ids": ["check"], "platform": {"stack": "fixture product", "runtime": "Python"},
                      "completion_binding": "current-delivery"}
 
+    def test_design_references_survive_assignment_return_and_resume(self):
+        from test_behavior_contract import design_decision
+        import project_state
+        row = design_decision()
+        row["scope"] = ["src"]
+        self.contract["design_decisions"] = [row]
+        self.spec["contract_sha256"] = behavior.digest(self.contract)
+        with self.assertRaisesRegex(ValueError, "omitted relevant owner design"):
+            handoff.validate_assignment(self.spec, self.contract)
+        self.spec["design_decision_ids"] = [row["id"]]
+        self.spec["settled_decisions"] = [{"design_decision_id": row["id"]}]
+        with self.assertRaisesRegex(ValueError, "not a settled owner decision"):
+            handoff.validate_assignment(self.spec, self.contract)
+        self.spec["settled_decisions"] = ["Preserve the actual stack"]
+        with self.assertRaisesRegex(ValueError, "capture current owner design"):
+            handoff.assignment_inputs(self.root, self.contract, self.spec, self.skills, self.state)
+        project_state.capture(self.root, task_contract=self.contract)
+        assigned = self.start()
+        operation = manager.read_local_json(Path(assigned["record_path"]))
+        returned = {k: self.spec[k] for k in ("schema_version", "task_id", "assignment_id", "specialist_id", "stage", "contract_sha256")}
+        returned.update(format="vibe-specialist-return", upstream_revision=assigned["upstream_revision"],
+                        head_contract_sha256=assigned["head_contract_sha256"], changed_surfaces=[], decisions=[],
+                        invariants=[], evidence_ids=[], findings=[], unperformed_checks=[], conflicts=[], next_action="Review the proposed sample")
+        with self.assertRaisesRegex(ValueError, "design decision references"):
+            handoff.validate_return(returned, operation)
+        returned["design_decision_ids"] = [row["id"]]
+        self.assertEqual(handoff.validate_return(returned, operation), {})
+        resumed = handoff.resume_assignment(self.root, self.contract, self.spec["assignment_id"])
+        self.assertEqual(resumed["design_decisions"], [row])
+        next_contract = copy.deepcopy(self.contract)
+        next_contract.pop("design_decisions")
+        next_contract["task_id"] = "next-ui-task"
+        spec = dict(self.spec, task_id="next-ui-task", assignment_id="next-ui", design_decision_ids=[],
+                    contract_sha256=behavior.digest(next_contract))
+        with self.assertRaisesRegex(ValueError, "inherit retained design"):
+            handoff.assignment_inputs(self.root, next_contract, spec, self.skills, self.state)
+
     def start(self, spec=None):
         return handoff.assign(self.root, self.contract, spec or self.spec, self.skills, self.state)
 

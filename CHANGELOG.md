@@ -4,7 +4,7 @@ Technical release history. Entries describe their release; current operating and
 
 ## Unreleased
 
-No pending changes.
+- R40: retain typed owner design choices, scoped authority and pending sample decisions through planning, assignment/return and successor-task handoff/resume. Preserve changed decision history, reject unsupported promotion and reuse of authority for changed choices, and keep legacy/mechanical work lightweight. R41 completion binding remains separate and unimplemented.
 
 ## 1.8.1 — Trivy Git-checkout report compatibility
 

@@ -17,6 +17,8 @@ Vibe retains the objective, scope, stack, architecture, risk floor, approvals, d
 
 Preserve settled decisions. Do not independently expand scope, install arbitrary linked skills/tools, start other agents, evaluate coding models, publish, or deploy. A dependency link is a request for the Head, not unrestricted installation authority. Honor existing user authorization; raise only a genuinely new material user-owned decision.
 
+For owner-controlled design choices, use the [retained decision binding](https://github.com/pooyahayati/Vibe-Coding-Skill/blob/main/references/shared-improvement-contracts.md#owner-design-decisions-r40). Head precedence and implementation authorization cannot promote a proposal into owner approval. Preserve pending choices across assignments; reuse scoped authority without repeated questions.
+
 For Head-reviewed mechanical edits within settled decisions, apply the relevant current, accepted guidance without starting a new formal assignment or standalone lifecycle. Preserve the risk floor and perform the focused outcome check. New domain decisions, material behavior/boundary changes, uncertainty or explicit assignments use the formal handoff below. A lightweight follow-up cannot abandon retained assignments or required findings.
 
 ## Verification and conflicts

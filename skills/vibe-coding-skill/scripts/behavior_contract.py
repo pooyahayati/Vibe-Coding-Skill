@@ -59,6 +59,79 @@ def path_covered(path: str, scopes: list[str]) -> bool:
                for scope in map(normalize_scope, scopes) if scope)
 
 
+def design_decisions(value: Any) -> dict[str, dict]:
+    """Validate recorded authority, not conversation authenticity or visual quality."""
+    if not isinstance(value, list):
+        raise ValueError("design_decisions must be an array")
+    result = {}
+    fields = {"id", "kind", "description", "scope", "status", "basis", "authority"}
+    for row in value:
+        if (not isinstance(row, dict) or set(row) != fields
+                or not text(row.get("id")) or row["id"] in result
+                or not text(row.get("kind")) or row["kind"] not in {"choice", "sample"}
+                or not text(row.get("description")) or not strings(row.get("scope"), True)
+                or len(set(row["scope"])) != len(row["scope"])
+                or any(not path_covered(p, ["."]) for p in row["scope"])
+                or not text(row.get("status")) or row["status"] not in {"proposed", "unknown", "delegated", "approved"}):
+            raise ValueError("invalid or duplicate design decision")
+        basis, authority = row["basis"], row["authority"]
+        if basis is not None and (not isinstance(basis, dict) or set(basis) != {"reference", "revision"}
+                                  or not all(text(v) for v in basis.values())):
+            raise ValueError("design basis needs a reference and revision")
+        if basis is None and row["status"] != "unknown":
+            raise ValueError("known design decision needs a revision-bound basis")
+        if row["status"] in {"approved", "delegated"}:
+            kind = "visual-approval" if row["status"] == "approved" else "design-delegation"
+            if (not isinstance(authority, dict) or set(authority) != {"kind", "reference", "actor", "statement"}
+                    or authority["kind"] != kind or not all(text(v) for v in authority.values())):
+                raise ValueError("settled design needs scoped owner authority; implementation permission is insufficient")
+        elif authority is not None:
+            raise ValueError("proposed or unknown design cannot carry active owner authority")
+        result[row["id"]] = row
+    return result
+
+
+def design_changes(baseline: dict, current: dict) -> list[str]:
+    """Keep known choices and prevent reuse of authority for a different choice."""
+    before = design_decisions(baseline.get("design_decisions", []))
+    after = design_decisions(current.get("design_decisions", []))
+    failures = []
+    for key, old in before.items():
+        new = after.get(key)
+        if new is None:
+            failures.append("retained design decision removed: " + key)
+            continue
+        if new["kind"] != old["kind"]:
+            failures.append("design decision kind changed: " + key)
+        same_choice = all(new[k] == old[k] for k in ("description", "basis")) and set(new["scope"]) == set(old["scope"])
+        if old["authority"] and new["authority"] and (not same_choice or old["status"] != new["status"]):
+            if new["authority"]["reference"] == old["authority"]["reference"]:
+                failures.append("changed design cannot reuse previous owner authority: " + key)
+        if old["status"] in {"approved", "delegated"} and new["status"] in {"proposed", "unknown"} and same_choice:
+            failures.append("unchanged settled design cannot silently lose authority: " + key)
+    return failures
+
+
+def inherit_design_decisions(baseline: dict | None, current: dict) -> dict:
+    """Carry project choices into a successor contract; omitted rows are not deletion."""
+    result = validate(current)
+    if not baseline:
+        return result
+    old = design_decisions(validate(baseline).get("design_decisions", []))
+    supplied = design_decisions(result.get("design_decisions", []))
+    if old:
+        result["design_decisions"] = list({**copy.deepcopy(old), **supplied}.values())
+    failures = design_changes(baseline, result)
+    if failures:
+        raise ValueError("; ".join(failures))
+    return result
+
+
+def related_design_ids(contract: dict, scope: list[str]) -> set[str]:
+    return {key for key, row in design_decisions(contract.get("design_decisions", [])).items()
+            if any(path_covered(p, scope) or any(path_covered(s, [p]) for s in scope) for p in row["scope"])}
+
+
 def validate(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict) or value.get("format") != "vibe-task-contract":
         raise ValueError("expected vibe-task-contract object")
@@ -70,12 +143,13 @@ def validate(value: Any) -> dict[str, Any]:
         raise ValueError("integrity/security bindings require task-contract schema 2; explicitly reconcile legacy state")
     if value["schema_version"] == 2 and set(value) - {
             "format", "schema_version", "task_id", "objective", "scope", "risk_tier", "risk_facts",
-            "specialist_assignment_ids", "verification_baseline", "acceptance_criteria", "evidence_requirements"}:
+            "specialist_assignment_ids", "verification_baseline", "acceptance_criteria", "evidence_requirements", "design_decisions"}:
         raise ValueError("unsupported task-contract schema 2 fields")
     if not all(text(value.get(k)) for k in ("task_id", "objective")) or not strings(value.get("scope"), True):
         raise ValueError("task contract requires task_id, objective and scope")
     if not _gate.valid_risk_tier(value.get("risk_tier")):
         raise ValueError("task contract requires risk_tier 0-3")
+    design_decisions(value.get("design_decisions", []))
     if "risk_facts" in value:
         if not isinstance(value["risk_facts"], dict):
             raise ValueError("task contract risk_facts must be an object")
@@ -185,6 +259,7 @@ def compare(baseline: dict[str, Any], current: dict[str, Any]) -> list[str]:
     if current["risk_tier"] < baseline["risk_tier"]:
         failures.append("retained risk floor lowered")
     failures.extend(material_risk_losses(baseline, current))
+    failures.extend(design_changes(baseline, current))
     if "verification_baseline" in baseline and current.get("verification_baseline") != baseline["verification_baseline"]:
         failures.append("retained verification baseline changed or removed")
     for field in ("acceptance_criteria", "evidence_requirements"):
@@ -338,6 +413,11 @@ def handoff_lines(state: dict[str, Any]) -> list[str]:
     contract = state.get("task_contract")
     lines = []
     if contract:
+        if contract.get("design_decisions"):
+            lines += ["", "## Owner design decisions", "",
+                      "Recorded authority is not independently authenticated. Pending choices remain pending across tasks."]
+            for row in contract["design_decisions"]:
+                lines.append("- " + json.dumps(row, ensure_ascii=False))
         lines += ["", "## Task behavior and reported outcomes", "",
                   "Task: " + contract["task_id"], "Objective: " + contract["objective"],
                   "Contract SHA-256: " + state["task_contract_sha256"],

@@ -128,6 +128,8 @@ def draft(
     behavior = load_behavior_contract()
     contract = behavior.validate(task_contract) if task_contract is not None else None
     if contract is not None:
+        import project_state
+        contract = project_state.inherit_contract(root, contract)
         if task != contract["objective"]:
             raise ValueError("task differs from retained contract objective")
         paths = paths or contract["scope"]
